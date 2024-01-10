@@ -6,10 +6,14 @@
 
 namespace error {
 
-class Error : public std::runtime_error {
+class Error : public std::exception {
+private:
+    std::string desc_;
+
 public:
-    explicit Error(std::string desc)
-        : std::runtime_error{GetCurrentTime() + "| " + desc + ": " + std::strerror(errno)} {
+    explicit Error(std::string desc) : desc_{GetCurrentTime() + " | " + desc} {
+        perror(desc_.c_str());
+        std::abort();
     }
 };
 

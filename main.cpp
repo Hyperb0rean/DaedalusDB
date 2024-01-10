@@ -1,10 +1,9 @@
-#include <unistd.h>
 #include <fcntl.h>
+#include <unistd.h>
+
 #include <iostream>
 
-int main(int argc, char** argv) {
-    (void)argc;
-    (void)argv;
+int main() {
     std::cout << "Hello world \n";
     return 0;
 }

@@ -8,7 +8,7 @@ project(
 
 set(CMAKE_C_FLAGS "-Werror -Wall -Wextra -pedantic -Wmissing-prototypes -Wstrict-prototypes ")
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 
 set(CMAKE_CXX_FLAGS_ASAN "-g -fsanitize=address -fsanitize=pointer-compare -fsanitize=pointer-subtract -fsanitize=leak -fsanitize=undefined -fsanitize-address-use-after-scope"
         CACHE STRING "Compiler flags in asan build"
@@ -18,4 +18,4 @@ set(CMAKE_C_FLAGS_ASAN "-g -fsanitize=address -fsanitize=pointer-compare -fsanit
                    CACHE STRING "Compiler flags in asan build"
                    FORCE)
                    
-add_executable(database main.cpp io/io.cpp io/io.h)
+add_executable(database main.cpp util/exceptions.h io/io.h)

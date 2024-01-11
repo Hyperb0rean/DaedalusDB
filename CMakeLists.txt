@@ -18,4 +18,5 @@ set(CMAKE_C_FLAGS_ASAN "-g -fsanitize=address -fsanitize=pointer-compare -fsanit
                    CACHE STRING "Compiler flags in asan build"
                    FORCE)
                    
-add_executable(database main.cpp util/error.h util/utils.h util/utils.cpp mem/io.h db_struct/database.h)
+add_executable(database main.cpp util/error.h 
+util/utils.h util/utils.cpp mem/file.h mem/mem.cpp mem/mem.h db_struct/database.h)

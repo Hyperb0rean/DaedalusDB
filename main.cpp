@@ -10,6 +10,7 @@ int main() {
     struct Point {
         int x, y;
     };
-    database->AddType<Point>();
+    auto point = database->AddType<Point>("point");
+
     return 0;
 }

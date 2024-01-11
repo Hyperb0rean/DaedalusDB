@@ -3,13 +3,12 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <memory>
 #include <string>
 #include <type_traits>
 
 #include "../util/error.h"
 
-namespace io {
+namespace mem {
 
 using FileDescriptor = int32_t;
 using Offset = off_t;
@@ -99,4 +98,4 @@ public:
     // TODO: override Read and Write for vectors to reduce number of syscalls
 };
 
-}  // namespace io
+}  // namespace mem

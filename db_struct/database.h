@@ -3,38 +3,35 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../mem/io.h"
+#include "../mem/mem.h"
 
 namespace db {
 
-class AbstractHeader {
+class AbstractType {
 public:
-    virtual ~AbstractHeader() = 0;
+    virtual ~AbstractType() = 0;
 };
 
 template <typename T>
-class TypeHeader : AbstractHeader {
+class Type : AbstractType {
     std::vector<T> instances_;
 
 public:
+    ~Type() = default;
+    void AddNode(T data);
+    void DeleteNode();
 };
 
 class Database {
 
-    struct Superblock {
-        size_t nodes;
-        size_t relations;
-    } superblock_;
-
-    std::unordered_map<std::string, AbstractHeader> types_;
-    std::shared_ptr<io::File> file_;
+    std::unordered_map<std::string, AbstractType> types_;
+    std::shared_ptr<mem::File> file_;
 
 public:
-    Database(std::shared_ptr<io::File>&& file);
-    Database(const std::shared_ptr<io::File>& file);
+    Database(std::shared_ptr<mem::File> file);
 
     template <typename T>
-    void AddType(std::string label);
+    [[nodiscard]] std::unique_ptr<Type<T>> AddType(std::string label);
 
     template <typename T>
     void DeleteType(std::string label);

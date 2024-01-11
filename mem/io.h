@@ -3,7 +3,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <memory>
 #include <string>
+#include <type_traits>
 
 #include "../util/error.h"
 
@@ -25,19 +27,19 @@ class File {
     }
 
 public:
-    File(std::string&& fileName) : fileName_(std::forward<std::string>(fileName)) {
+    explicit File(std::string&& fileName) : fileName_(std::forward<std::string>(fileName)) {
         fd_ = open(fileName_.c_str(), O_RDWR | O_CREAT, S_IRWXU | S_IRGRP | S_IROTH);
         if (fd_ == -1) {
             throw error::IoError("File could not be opened");
         }
     }
-    File(const std::string& fileName) : File(std::string(fileName)) {
+    explicit File(const std::string& fileName) : File(std::string(fileName)) {
     }
     ~File() {
         close(fd_);
     }
 
-    _GLIBCXX_NODISCARD size_t GetSize() const {
+    [[nodiscard]] size_t GetSize() const {
 
         // TODO: Adapt for Windows
         struct stat64 file_stat;
@@ -49,8 +51,7 @@ public:
     }
 
     template <typename T>
-    Offset Write(std::remove_cvref_t<T> data, Offset offset = 0,
-                 size_t count = sizeof(std::remove_cvref_t<T>)) {
+    Offset Write(const T& data, Offset offset = 0, size_t count = sizeof(T)) {
         auto new_offset = Seek(offset);
         if (write(fd_, &data, count) == -1) {
             throw error::IoError("Failed to write to file " + fileName_);
@@ -67,10 +68,10 @@ public:
     }
 
     template <typename T>
-    _GLIBCXX_NODISCARD T Read(Offset offset = 0,
-                              size_t count = sizeof(std::remove_cvref_t<T>)) const {
+    requires std::is_default_constructible_v<T>
+    [[nodiscard]] T Read(Offset offset = 0, size_t count = sizeof(T)) const {
         auto new_offset = Seek(offset);
-        std::remove_cvref_t<T> data{};
+        T data{};
         auto result = read(fd_, &data, count);
         if (result == -1) {
             throw error::IoError("Failed to read from file " + fileName_);
@@ -81,7 +82,7 @@ public:
         return data;
     }
 
-    _GLIBCXX_NODISCARD std::string Read(Offset offset = 0, size_t count = 0) const {
+    [[nodiscard]] std::string Read(Offset offset = 0, size_t count = 0) const {
         auto new_offset = Seek(offset);
         std::string str;
         str.resize(count);

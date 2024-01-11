@@ -16,6 +16,14 @@ class File {
     FileDescriptor fd_;
     std::string fileName_;
 
+    Offset Seek(Offset offset) const {
+        Offset new_offset = lseek(fd_, offset, SEEK_SET);
+        if (new_offset == offset - 1) {
+            throw error::BadArgument("Wrong arguments");
+        }
+        return new_offset;
+    }
+
 public:
     File(std::string&& fileName) : fileName_(std::forward<std::string>(fileName)) {
         fd_ = open(fileName_.c_str(), O_RDWR | O_CREAT, S_IRWXU | S_IRGRP | S_IROTH);
@@ -40,30 +48,54 @@ public:
         return file_stat.st_size;
     }
 
-    Offset Write(const void* data, size_t count, Offset offset = 0) {
-        Offset new_offset = lseek(fd_, offset, SEEK_SET);
-        if (new_offset == offset - 1) {
-            throw error::BadArgument("Wrong arguments");
-        }
-        if (write(fd_, data, count) == -1) {
+    template <typename T>
+    Offset Write(std::remove_cvref_t<T> data, Offset offset = 0,
+                 size_t count = sizeof(std::remove_cvref_t<T>)) {
+        auto new_offset = Seek(offset);
+        if (write(fd_, &data, count) == -1) {
             throw error::IoError("Failed to write to file " + fileName_);
         }
         return new_offset;
     }
 
-    void Read(void* data, size_t count, Offset offset = 0) const {
-        Offset new_offset = lseek(fd_, offset, SEEK_SET);
-        if (new_offset == offset - 1) {
-            throw error::BadArgument("Wrong arguments");
+    Offset Write(std::string str, Offset offset = 0, size_t count = std::string::npos) {
+        auto new_offset = Seek(offset);
+        if (write(fd_, str.data(), std::min(str.size(), count)) == -1) {
+            throw error::IoError("Failed to write to file " + fileName_);
         }
-        auto result = read(fd_, data, count);
+        return new_offset;
+    }
+
+    template <typename T>
+    _GLIBCXX_NODISCARD T Read(Offset offset = 0,
+                              size_t count = sizeof(std::remove_cvref_t<T>)) const {
+        auto new_offset = Seek(offset);
+        std::remove_cvref_t<T> data{};
+        auto result = read(fd_, &data, count);
         if (result == -1) {
             throw error::IoError("Failed to read from file " + fileName_);
         }
         if (result == 0) {
             throw error::BadArgument("Reached EOF");
         }
+        return data;
     }
+
+    _GLIBCXX_NODISCARD std::string Read(Offset offset = 0, size_t count = 0) const {
+        auto new_offset = Seek(offset);
+        std::string str;
+        str.resize(count);
+        auto result = read(fd_, str.data(), count);
+        if (result == -1) {
+            throw error::IoError("Failed to read from file " + fileName_);
+        }
+        if (result == 0) {
+            throw error::BadArgument("Reached EOF");
+        }
+        return str;
+    }
+
+    // TODO: override Read and Write for vectors to reduce number of syscalls
 };
 
 }  // namespace io

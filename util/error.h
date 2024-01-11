@@ -11,7 +11,7 @@ private:
     std::string desc_;
 
 public:
-    explicit Error(std::string desc) : desc_{GetCurrentTime() + " | " + desc} {
+    explicit Error(std::string desc) : desc_{utils::GetCurrentTime() + " | " + desc} {
         perror(desc_.c_str());
         std::abort();
     }

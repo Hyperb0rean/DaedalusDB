@@ -4,9 +4,7 @@
 
 int main() {
     io::File f("test.txt");
-    f.Write("Hello, world!\n", 14, 1);
-    char buf[15];
-    f.Read(buf, 14);
-    std::cout << std::string{buf};
+    f.Write(std::string{"Hello, world!\n"}, 10);
+    std::cout << f.Read(0, 15);
     return 0;
 }

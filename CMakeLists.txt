@@ -19,4 +19,4 @@ set(CMAKE_C_FLAGS_ASAN "-g -fsanitize=address -fsanitize=pointer-compare -fsanit
                    FORCE)
                    
 add_executable(database main.cpp util/error.h 
-util/utils.h util/utils.cpp mem/file.h mem/mem.cpp mem/mem.h db_struct/database.h)
+util/utils.h util/utils.cpp mem/file.h mem/mem.cpp mem/mem.h db_struct/database.h db_struct/database.cpp)

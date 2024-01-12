@@ -5,6 +5,7 @@
 
 #include <string>
 #include <type_traits>
+#include <vector>
 
 #include "../util/error.h"
 
@@ -67,6 +68,15 @@ public:
     }
 
     template <typename T>
+    Offset Write(const std::vector<T>& vec, Offset offset = 0, size_t count = SIZE_MAX) {
+        auto new_offset = Seek(offset);
+        if (write(fd_, vec.data(), std::min(vec.size(), count) * sizeof(T)) == -1) {
+            throw error::IoError("Failed to write to file " + fileName_);
+        }
+        return new_offset;
+    }
+
+    template <typename T>
     requires std::is_default_constructible_v<T>
     [[nodiscard]] T Read(Offset offset = 0, size_t count = sizeof(T)) const {
         auto new_offset = Seek(offset);
@@ -81,7 +91,7 @@ public:
         return data;
     }
 
-    [[nodiscard]] std::string Read(Offset offset = 0, size_t count = 0) const {
+    [[nodiscard]] std::string ReadString(Offset offset = 0, size_t count = 0) const {
         auto new_offset = Seek(offset);
         std::string str;
         str.resize(count);
@@ -95,7 +105,20 @@ public:
         return str;
     }
 
-    // TODO: override Read and Write for vectors to reduce number of syscalls
+    template <typename T>
+    requires std::is_default_constructible_v<T>
+    [[nodiscard]] std::vector<T> ReadVector(Offset offset = 0, size_t count = 0) const {
+        auto new_offset = Seek(offset);
+        std::vector<T> vec(count);
+        auto result = read(fd_, vec.data(), count * sizeof(T));
+        if (result == -1) {
+            throw error::IoError("Failed to read from file " + fileName_);
+        }
+        if (result == 0) {
+            throw error::BadArgument("Reached EOF");
+        }
+        return vec;
+    }
 };
 
 }  // namespace mem

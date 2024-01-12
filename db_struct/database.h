@@ -1,7 +1,6 @@
 #pragma once
 
 #include <unordered_map>
-#include <vector>
 
 #include "../mem/mem.h"
 
@@ -24,17 +23,20 @@ public:
 
 class Database {
 
-    std::unordered_map<std::string, AbstractType> types_;
     std::shared_ptr<mem::File> file_;
 
 public:
-    Database(std::shared_ptr<mem::File> file);
+    Database(std::shared_ptr<mem::File> file) : file_(file) {
+    }
 
     template <typename T>
-    [[nodiscard]] std::unique_ptr<Type<T>> AddType(std::string label);
+    [[nodiscard]] std::unique_ptr<Type<T>> AddType(std::string label) {
+        return nullptr;
+    }
 
     template <typename T>
-    void DeleteType(std::string label);
+    void DeleteType(std::string label) {
+    }
 };
 
 }  // namespace db

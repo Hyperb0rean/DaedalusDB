@@ -2,7 +2,9 @@
 #include <cerrno>
 #include <stdexcept>
 
-#include "utils.h"
+namespace utils {
+const std::string GetCurrentTime();
+}
 
 namespace error {
 
@@ -27,6 +29,11 @@ public:
     explicit BadArgument(std::string desc) : Error{"BadArgument | " + desc} {};
 };
 
+class BadCast : public Error {
+public:
+    explicit BadCast(std::string desc) : Error{"BadArgument | " + desc} {};
+};
+
 class NotImplemented : public Error {
 public:
     explicit NotImplemented(std::string desc) : Error{"NotImplemented | " + desc} {};
@@ -38,3 +45,5 @@ public:
 };
 
 }  // namespace error
+
+#include "utils.h"

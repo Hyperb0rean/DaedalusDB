@@ -21,4 +21,4 @@ set(CMAKE_CXX_FLAGS_ASAN "-g -fsanitize=address -fsanitize=pointer-compare -fsan
                    FORCE)
                    
 add_executable(database main.cpp util/error.h 
-util/utils.h util/utils.cpp mem/file.h mem/mem.cpp mem/mem.h db_struct/database.h db_struct/database.cpp)
+util/utils.h util/utils.cpp mem/file.h mem/mem.cpp mem/mem.h db_struct/database.h db_struct/database.cpp db_struct/types.h)

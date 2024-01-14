@@ -41,5 +41,11 @@ int main() {
     city->AddField(types::PrimitiveType<std::string>("name"));
     city->AddField(coords);
 
+    auto node = types::Struct("person");
+    node.AddFieldValue(types::Primitive<std::string>("name", "Greg"));
+    node.AddFieldValue(types::Primitive<std::string>("surname", "Sosnovtsev"));
+    file->Write("Cool", 4);
+    node.Read(file, 0);
+
     return 0;
 }

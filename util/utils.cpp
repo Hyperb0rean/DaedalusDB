@@ -10,4 +10,5 @@ const std::string GetCurrentTime() {
     strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
     return buf;
 }
+
 }  // namespace utils

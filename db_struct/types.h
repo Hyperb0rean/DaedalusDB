@@ -1,5 +1,6 @@
 #pragma once
 #include <initializer_list>
+#include <iostream>
 
 #include "../mem/mem.h"
 
@@ -36,17 +37,25 @@ public:
         return type_;
     }
     virtual ~Object() = default;
-    virtual size_t GetSize() {
+    virtual size_t GetSize() const {
         throw error::NotImplemented("Void Type");
     }
-    virtual std::string GetName() {
+    virtual std::string GetName() const {
+        throw error::NotImplemented("Void Type");
+    }
+    virtual mem::Offset Write(std::unique_ptr<mem::File>& file, mem::Offset offset) const {
+        throw error::NotImplemented("Void Type");
+    }
+    virtual void Read(std::unique_ptr<mem::File>& file, mem::Offset offset) {
+        throw error::NotImplemented("Void Type");
+    }
+    virtual std::string ToString() const {
         throw error::NotImplemented("Void Type");
     }
 };
 
 template <typename T>
 class Primitive : public Object {
-
     T value_;
 
 public:
@@ -54,8 +63,23 @@ public:
     explicit Primitive(const std::string& name, T value) : value_(value) {
         this->type_ = std::make_shared<PrimitiveType<T>>(name);
     }
-    size_t GetSize() override {
+    size_t GetSize() const override {
         return sizeof(T);
+    }
+    T GetValue() const {
+        return value_;
+    }
+    T& GetValue() {
+        return value_;
+    }
+    mem::Offset Write(std::unique_ptr<mem::File>& file, mem::Offset offset) const override {
+        return file->Write<T>(value_, offset);
+    }
+    void Read(std::unique_ptr<mem::File>& file, mem::Offset offset) {
+        value_ = file->Read<T>(offset);
+    }
+    std::string ToString() const override {
+        return type_->name_ + ": " + std::to_string(value_);
     }
 };
 
@@ -71,8 +95,25 @@ public:
     explicit Primitive(std::string name, const std::string& str) : str_(str) {
         this->type_ = std::make_shared<PrimitiveType<std::string>>(name);
     }
-    size_t GetSize() override {
-        return str_.size();
+    size_t GetSize() const override {
+        return str_.size() + 4;
+    }
+    std::string GetValue() const {
+        return str_;
+    }
+    std::string& GetValue() {
+        return str_;
+    }
+    mem::Offset Write(std::unique_ptr<mem::File>& file, mem::Offset offset) const override {
+        auto new_offset = file->Write<uint32_t>(str_.size(), offset) + 4;
+        return file->Write(str_, new_offset);
+    }
+    void Read(std::unique_ptr<mem::File>& file, mem::Offset offset) override {
+        uint32_t size = file->Read<uint32_t>(offset);
+        str_ = file->ReadString(offset + 4, size);
+    }
+    std::string ToString() const override {
+        return type_->name_ + ": \"" + str_ + "\"";
     }
 };
 
@@ -87,10 +128,10 @@ public:
     Struct(const std::string& name) {
         this->type_ = std::make_shared<StructType>(name);
         for (auto& field : fields_) {
-            std::dynamic_pointer_cast<StructType>(type_)->fields_.push_back(field->GetType());
+            utils::As<StructType>(type_)->fields_.push_back(field->GetType());
         }
     }
-    size_t GetSize() override {
+    size_t GetSize() const override {
         size_t size = 0;
         for (auto& field : fields_) {
             size += field->GetSize();
@@ -101,6 +142,32 @@ public:
     void AddFieldValue(ActualType value) requires std::derived_from<ActualType, Object> {
         fields_.push_back(std::make_shared<ActualType>(value));
     }
-};  // namespace types
+    mem::Offset Write(std::unique_ptr<mem::File>& file, mem::Offset offset) const override {
+        mem::Offset new_offset = offset;
+        for (auto& field : fields_) {
+            field->Write(file, new_offset);
+            new_offset = field->GetSize();
+        }
+        return new_offset;
+    }
+    void Read(std::unique_ptr<mem::File>& file, mem::Offset offset) override {
+        mem::Offset new_offset = offset;
+        for (auto& field : fields_) {
+            field->Read(file, new_offset);
+            new_offset += field->GetSize();
+        }
+    }
+    std::string ToString() const override {
+        std::string result = type_->name_ + ": { ";
+        for (auto& field : fields_) {
+            if (field != *fields_.begin()) {
+                result += ", ";
+            }
+            result += field->ToString();
+        }
+        result += " } ";
+        return result;
+    }
+};
 
 }  // namespace types

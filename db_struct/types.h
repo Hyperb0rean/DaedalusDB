@@ -55,7 +55,7 @@ public:
 
 class Struct : public Type {
 
-    using Fields = std::unordered_map<std::string, Type*>;
+    using Fields = std::unordered_map<std::string, std::unique_ptr<Type>>;
 
     std::string name_;
     Fields fields_;

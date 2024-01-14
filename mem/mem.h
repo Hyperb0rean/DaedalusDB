@@ -7,7 +7,6 @@ namespace mem {
 
 class Superblock {
     size_t types_;
-    size_t relations_;
 
     struct TypeEntry {
         std::string label;
@@ -16,17 +15,21 @@ class Superblock {
     std::vector<TypeEntry> entries_;
 
 public:
-    Superblock(const std::shared_ptr<File>& file);
+    Superblock(const std::unique_ptr<File>& file);
 };
 
 class TypeHeader {
     size_t nodes_;
     size_t size;
 
-    std::vector<Offset> entries_;
+    struct NodeEntry {
+        Offset offset;
+        size_t size;
+    };
+    std::vector<NodeEntry> entries_;
 
 public:
-    TypeHeader(const std::shared_ptr<File>& file);
+    TypeHeader(Offset start, const std::unique_ptr<File>& file);
 };
 
 }  // namespace mem

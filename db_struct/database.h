@@ -8,13 +8,13 @@ namespace db {
 
 class Database {
 
-    std::shared_ptr<mem::File> file_;
-    std::unordered_map<std::string, Type> types_;
+    std::unique_ptr<mem::File> file_;
+    std::unordered_map<std::string, std::unique_ptr<Type>> types_;
 
 public:
-    Database(std::shared_ptr<mem::File> file) : file_(file) {
+    Database(std::unique_ptr<mem::File> file) : file_(std::move(file)) {
     }
-    void InitializeTypes(const std::unordered_map<std::string, Type>& types) {
+    void InitializeTypes(const std::unordered_map<std::string, std::unique_ptr<Type>>& types) {
     }
 };
 

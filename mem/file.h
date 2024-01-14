@@ -51,26 +51,32 @@ public:
     }
 
     template <typename T>
-    Offset Write(const T& data, Offset offset = 0, size_t count = sizeof(T)) {
+    Offset Write(const T& data, Offset offset = 0, size_t struct_offset = 0,
+                 size_t count = sizeof(T)) {
+        count = std::min(count, sizeof(T) - struct_offset);
         auto new_offset = Seek(offset);
-        if (write(fd_, &data, count) == -1) {
+        if (write(fd_, reinterpret_cast<const char*>(&data) + struct_offset, count) == -1) {
             throw error::IoError("Failed to write to file " + fileName_);
         }
         return new_offset;
     }
 
-    Offset Write(std::string str, Offset offset = 0, size_t count = std::string::npos) {
+    Offset Write(std::string str, Offset offset = 0, size_t from = 0,
+                 size_t count = std::string::npos) {
+        count = std::min(count, str.size() - from);
         auto new_offset = Seek(offset);
-        if (write(fd_, str.data(), std::min(str.size(), count)) == -1) {
+        if (write(fd_, str.data() + from, count) == -1) {
             throw error::IoError("Failed to write to file " + fileName_);
         }
         return new_offset;
     }
 
     template <typename T>
-    Offset Write(const std::vector<T>& vec, Offset offset = 0, size_t count = SIZE_MAX) {
+    Offset Write(const std::vector<T>& vec, Offset offset = 0, size_t from = 0,
+                 size_t count = SIZE_MAX) {
+        count = std::min(count, vec.size() - from);
         auto new_offset = Seek(offset);
-        if (write(fd_, vec.data(), std::min(vec.size(), count) * sizeof(T)) == -1) {
+        if (write(fd_, vec.data(), count * sizeof(T)) == -1) {
             throw error::IoError("Failed to write to file " + fileName_);
         }
         return new_offset;
@@ -78,10 +84,12 @@ public:
 
     template <typename T>
     requires std::is_default_constructible_v<T>
-    [[nodiscard]] T Read(Offset offset = 0, size_t count = sizeof(T)) const {
+    [[nodiscard]] T Read(Offset offset = 0, size_t struct_offset = 0,
+                         size_t count = sizeof(T)) const {
+        count = std::min(count, sizeof(T) - struct_offset);
         auto new_offset = Seek(offset);
         T data{};
-        auto result = read(fd_, &data, count);
+        auto result = read(fd_, reinterpret_cast<char*>(&data) + struct_offset, count);
         if (result == -1) {
             throw error::IoError("Failed to read from file " + fileName_);
         }

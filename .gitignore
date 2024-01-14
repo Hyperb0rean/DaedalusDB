@@ -2,3 +2,5 @@
 build*
 test.txt*
 database.data
+peda-session-database.txt
+.gdb_history

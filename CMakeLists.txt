@@ -6,7 +6,9 @@ project(
   VERSION 1.0
   LANGUAGES CXX)
 
-set(CMAKE_C_FLAGS "-Werror -Wall -Wextra -pedantic -Wmissing-prototypes -Wstrict-prototypes ")
+set(CMAKE_C_FLAGS "-g   -Werror -Wall -Wextra -pedantic -Wmissing-prototypes -Wstrict-prototypes ")
+set(CMAKE_CXX_FLAGS "-g -Werror -Wall -Wextra -pedantic -Wno-error=unused-variable -Wno-error=unused-parameter -Wno-error=unused-private-field" )
+
 
 set(CMAKE_CXX_STANDARD 23)
 

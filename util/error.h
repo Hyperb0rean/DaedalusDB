@@ -26,4 +26,10 @@ class BadArgument : public Error {
 public:
     explicit BadArgument(std::string desc) : Error{"BadArgument | " + desc} {};
 };
+
+class NotImplemented : public Error {
+public:
+    explicit NotImplemented(std::string desc) : Error{"NotImplemented | " + desc} {};
+};
+
 }  // namespace error

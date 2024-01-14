@@ -1,13 +1,41 @@
 #pragma once
-#include <unordered_map>
+#include <initializer_list>
 
 #include "../mem/mem.h"
 
-namespace db {
+namespace types {
 
-class Type {
-public:
+struct Type {
+    std::string name_;
     virtual ~Type() = default;
+};
+template <typename T>
+struct PrimitiveType : public Type {
+    explicit PrimitiveType(std::string name) {
+        this->name_ = name;
+    }
+};
+struct StructType : public Type {
+    std::vector<std::shared_ptr<Type>> fields_;
+
+    StructType(std::string name) {
+        this->name_ = name;
+    }
+    template <typename ActualType>
+    void AddField(ActualType field) requires std::derived_from<ActualType, Type> {
+        fields_.push_back(std::make_shared<ActualType>(field));
+    }
+};
+
+class Object {
+protected:
+    std::shared_ptr<Type> type_;
+
+public:
+    virtual std::shared_ptr<Type> GetType() {
+        return type_;
+    }
+    virtual ~Object() = default;
     virtual size_t GetSize() {
         throw error::NotImplemented("Void Type");
     }
@@ -17,63 +45,62 @@ public:
 };
 
 template <typename T>
-class Primitive : public Type {
-    std::string name_;
+class Primitive : public Object {
+
     T value_;
 
 public:
     virtual ~Primitive() = default;
-    explicit Primitive(const std::string& name, T value) : name_(name), value_(value) {
+    explicit Primitive(const std::string& name, T value) : value_(value) {
+        this->type_ = std::make_shared<PrimitiveType<T>>(name);
     }
     size_t GetSize() override {
         return sizeof(T);
     }
-    std::string GetName() override {
-        return name_;
-    }
 };
 
 template <>
-class Primitive<std::string> : public Type {
-    std::string name_;
+class Primitive<std::string> : public Object {
     std::string str_;
 
 public:
     virtual ~Primitive() = default;
-    explicit Primitive(const std::string& name, std::string&& str)
-        : name_(name), str_(std::forward<std::string>(str)) {
+    explicit Primitive(std::string name, std::string&& str) : str_(std::forward<std::string>(str)) {
+        this->type_ = std::make_shared<PrimitiveType<std::string>>(name);
     }
-    explicit Primitive(const std::string& name, const std::string& str) : name_(name), str_(str) {
+    explicit Primitive(std::string name, const std::string& str) : str_(str) {
+        this->type_ = std::make_shared<PrimitiveType<std::string>>(name);
     }
     size_t GetSize() override {
         return str_.size();
     }
-    std::string GetName() override {
-        return name_;
-    }
 };
 
-class Struct : public Type {
+class Struct : public Object {
 
-    using Fields = std::unordered_map<std::string, std::unique_ptr<Type>>;
+    using Fields = std::vector<std::shared_ptr<Object>>;
 
-    std::string name_;
     Fields fields_;
 
 public:
     virtual ~Struct() = default;
-    Struct(const std::string& name, const Fields& fields) : name_(name), fields_(fields) {
+    Struct(const std::string& name) {
+        this->type_ = std::make_shared<StructType>(name);
+        for (auto& field : fields_) {
+            std::dynamic_pointer_cast<StructType>(type_)->fields_.push_back(field->GetType());
+        }
     }
     size_t GetSize() override {
         size_t size = 0;
         for (auto& field : fields_) {
-            size += field.second->GetSize();
+            size += field->GetSize();
         }
         return size;
     }
-    std::string GetName() override {
-        return name_;
+    template <typename ActualType>
+    void AddFieldValue(ActualType value) requires std::derived_from<ActualType, Object> {
+        fields_.push_back(std::make_shared<ActualType>(value));
     }
-};
+};  // namespace types
 
-}  // namespace db
+}  // namespace types

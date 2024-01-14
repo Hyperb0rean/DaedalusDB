@@ -5,8 +5,15 @@
 
 namespace mem {
 
+struct FreeListNode {
+    Offset page;
+    Offset previous;
+    Offset next;
+};
+
 class Superblock {
     size_t types_;
+    FreeListNode free_list;
 
     struct TypeEntry {
         std::string label;
@@ -15,7 +22,8 @@ class Superblock {
     std::vector<TypeEntry> entries_;
 
 public:
-    Superblock(const std::unique_ptr<File>& file);
+    void ReadSuperblock(const std::unique_ptr<File>& file);
+    void WriteSuperblock(const std::unique_ptr<File>& file);
 };
 
 class TypeHeader {
@@ -29,7 +37,8 @@ class TypeHeader {
     std::vector<NodeEntry> entries_;
 
 public:
-    TypeHeader(Offset start, const std::unique_ptr<File>& file);
+    void ReadTypeHeader(Offset start, const std::unique_ptr<File>& file);
+    void WriteTypeHeader(Offset start, const std::unique_ptr<File>& file);
 };
 
 }  // namespace mem

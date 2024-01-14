@@ -39,6 +39,10 @@ public:
         close(fd_);
     }
 
+    [[nodiscard]] std::string GetFilename() const {
+        return fileName_;
+    }
+
     [[nodiscard]] size_t GetSize() const {
 
         // TODO: Adapt for Windows
@@ -83,9 +87,8 @@ public:
     }
 
     template <typename T>
-    requires std::is_default_constructible_v<T>
-    [[nodiscard]] T Read(Offset offset = 0, size_t struct_offset = 0,
-                         size_t count = sizeof(T)) const {
+    [[nodiscard]] T Read(Offset offset = 0, size_t struct_offset = 0, size_t count = sizeof(T))
+        const requires std::is_default_constructible_v<T> {
         count = std::min(count, sizeof(T) - struct_offset);
         auto new_offset = Seek(offset);
         T data{};
@@ -114,8 +117,8 @@ public:
     }
 
     template <typename T>
-    requires std::is_default_constructible_v<T>
-    [[nodiscard]] std::vector<T> ReadVector(Offset offset = 0, size_t count = 0) const {
+    [[nodiscard]] std::vector<T> ReadVector(
+        Offset offset = 0, size_t count = 0) const requires std::is_default_constructible_v<T> {
         auto new_offset = Seek(offset);
         std::vector<T> vec(count);
         auto result = read(fd_, vec.data(), count * sizeof(T));

@@ -32,4 +32,9 @@ public:
     explicit NotImplemented(std::string desc) : Error{"NotImplemented | " + desc} {};
 };
 
+class StructureError : public Error {
+public:
+    explicit StructureError(std::string desc) : Error{"StructureError | " + desc} {};
+};
+
 }  // namespace error

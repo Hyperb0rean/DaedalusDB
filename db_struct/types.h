@@ -55,7 +55,7 @@ public:
 
 class Struct : public Type {
 
-    using Fields = std::unordered_map<std::string, Type>;
+    using Fields = std::unordered_map<std::string, Type*>;
 
     std::string name_;
     Fields fields_;
@@ -67,7 +67,7 @@ public:
     size_t GetSize() override {
         size_t size = 0;
         for (auto& field : fields_) {
-            size += field.second.GetSize();
+            size += field.second->GetSize();
         }
         return size;
     }

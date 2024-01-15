@@ -1,23 +1,16 @@
 #include <memory>
 #include <vector>
 
-#include "../util/intrusive_list.h"
 #include "file.h"
 #include "page.h"
 
 namespace mem {
 
-struct FreeListNode {
-    Page first_page;
-    size_t count_pages;
-    Offset previous;
-    Offset next;
-};
-
 class Superblock {
     size_t types_;
     Offset cr3_;
-    FreeListNode head_;
+    Offset free_list_head_;
+    size_t free_list_count_;
 
     struct TypeEntry {
         std::string label;

@@ -44,8 +44,17 @@ int main() {
     auto node = types::Struct("person");
     node.AddFieldValue(types::Primitive<std::string>("name", "Greg"));
     node.AddFieldValue(types::Primitive<std::string>("surname", "Sosnovtsev"));
-    file->Write("Cool", 4);
+    node.AddFieldValue(types::Primitive<int>("age", 19));
+
+    node.Write(file, 0);
+    file->Write("Cool", 4, 0, 4);
+    file->Write(20, 22);
+
+    std::cerr << node.ToString() << '\n';
+    // person: { name: "Greg", surname: "Sosnovtsev" }
     node.Read(file, 0);
+    std::cerr << node.ToString();
+    // person: { name: "Cool", surname: "Sosnovtsev" }
 
     return 0;
 }

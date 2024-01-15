@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cstring>
 #include <ctime>
+#include <memory>
 #include <string>
 
 #include "error.h"

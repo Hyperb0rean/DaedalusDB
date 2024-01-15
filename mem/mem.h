@@ -1,19 +1,14 @@
 #include <memory>
 #include <vector>
 
-#include "file.h"
+#include "page.h"
 
 namespace mem {
 
-struct FreeListNode {
-    Offset page;
-    Offset previous;
-    Offset next;
-};
-
 class Superblock {
     size_t types_;
-    FreeListNode free_list;
+    Offset cr3_;
+    FreeListNode head_;
 
     struct TypeEntry {
         std::string label;

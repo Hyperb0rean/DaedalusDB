@@ -1,11 +1,18 @@
-#include "file.h"
+#pragma once
+
+#include <unistd.h>
 
 namespace mem {
-class Page {};
+using Offset = off_t;
 
-struct FreeListNode {
-    Page page;
-    Offset previous;
-    Offset next;
+const size_t kPageSize = 4096;
+enum class PageType { kTypeHeader, kData, kAllocatorMetadata };
+
+class Page {
+protected:
+    PageType type_;
+    size_t index_;
+    size_t actual_size_;
+    Offset first_free_;
 };
 }  // namespace mem

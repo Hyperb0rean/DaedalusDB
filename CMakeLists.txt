@@ -7,7 +7,7 @@ project(
   LANGUAGES CXX)
 
 set(CMAKE_C_FLAGS "-g   -Werror -Wall -Wextra -pedantic -Wmissing-prototypes -Wstrict-prototypes ")
-set(CMAKE_CXX_FLAGS "-g -Werror -Wall -Wextra -pedantic -Wno-error=unused-variable -Wno-error=unused-parameter -Wno-error=unused-private-field" )
+set(CMAKE_CXX_FLAGS "-g -Werror -Wall -Wextra -pedantic -Wno-error=unused-variable -Wno-error=unused-parameter " )
 
 
 set(CMAKE_CXX_STANDARD 23)
@@ -21,4 +21,4 @@ set(CMAKE_CXX_FLAGS_ASAN "-g -fsanitize=address -fsanitize=pointer-compare -fsan
                    FORCE)
                    
 add_executable(database main.cpp util/error.h 
-util/utils.h util/utils.cpp mem/file.h mem/mem.cpp mem/mem.h mem/page.h db_struct/database.h db_struct/database.cpp db_struct/types.h)
+util/utils.h util/utils.cpp mem/file.h mem/mem.cpp mem/page.h util/intrusive_list.h mem/mem.h mem/allocator.h db_struct/database.h db_struct/database.cpp db_struct/types.h)

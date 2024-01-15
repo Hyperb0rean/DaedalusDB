@@ -19,8 +19,8 @@ class Superblock {
     std::vector<TypeEntry> entries_;
 
 public:
-    void ReadSuperblock(const std::unique_ptr<File>& file);
-    void WriteSuperblock(const std::unique_ptr<File>& file);
+    void ReadSuperblock(std::shared_ptr<File>& file);
+    void WriteSuperblock(std::shared_ptr<File>& file);
 };
 
 class TypeHeader : public Page {
@@ -35,11 +35,11 @@ class TypeHeader : public Page {
 
 public:
     TypeHeader() {
-        this->type_ = PageType::kTypeHeader;
+        this->type = PageType::kTypeHeader;
     }
 
-    void ReadTypeHeader(Offset start, const std::unique_ptr<File>& file);
-    void WriteTypeHeader(Offset start, const std::unique_ptr<File>& file);
+    void ReadTypeHeader(Offset start, std::shared_ptr<File>& file);
+    void WriteTypeHeader(Offset start, std::shared_ptr<File>& file);
 };
 
 }  // namespace mem

@@ -44,10 +44,10 @@ public:
     [[nodiscard]] virtual std::string GetName() const {
         throw error::NotImplemented("Void Type");
     }
-    virtual mem::Offset Write(std::unique_ptr<mem::File>& file, mem::Offset offset) const {
+    virtual mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const {
         throw error::NotImplemented("Void Type");
     }
-    virtual void Read(std::unique_ptr<mem::File>& file, mem::Offset offset) {
+    virtual void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) {
         throw error::NotImplemented("Void Type");
     }
     [[nodiscard]] virtual std::string ToString() const {
@@ -73,10 +73,10 @@ public:
     [[nodiscard]] T& GetValue() {
         return value_;
     }
-    mem::Offset Write(std::unique_ptr<mem::File>& file, mem::Offset offset) const override {
+    mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
         return file->Write<T>(value_, offset);
     }
-    void Read(std::unique_ptr<mem::File>& file, mem::Offset offset) override {
+    void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) override {
         value_ = file->Read<T>(offset);
     }
     [[nodiscard]] std::string ToString() const override {
@@ -105,11 +105,11 @@ public:
     [[nodiscard]] std::string& GetValue() {
         return str_;
     }
-    mem::Offset Write(std::unique_ptr<mem::File>& file, mem::Offset offset) const override {
+    mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
         auto new_offset = file->Write<uint32_t>(str_.size(), offset) + 4;
         return file->Write(str_, new_offset);
     }
-    void Read(std::unique_ptr<mem::File>& file, mem::Offset offset) override {
+    void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) override {
         uint32_t size = file->Read<uint32_t>(offset);
         str_ = file->ReadString(offset + 4, size);
     }
@@ -143,7 +143,7 @@ public:
     void AddFieldValue(ActualType value) requires std::derived_from<ActualType, Object> {
         fields_.push_back(std::make_shared<ActualType>(value));
     }
-    mem::Offset Write(std::unique_ptr<mem::File>& file, mem::Offset offset) const override {
+    mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
         mem::Offset new_offset = offset;
         for (auto& field : fields_) {
             field->Write(file, new_offset);
@@ -151,7 +151,7 @@ public:
         }
         return new_offset;
     }
-    void Read(std::unique_ptr<mem::File>& file, mem::Offset offset) override {
+    void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) override {
         mem::Offset new_offset = offset;
         for (auto& field : fields_) {
             field->Read(file, new_offset);

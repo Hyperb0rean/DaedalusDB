@@ -13,7 +13,7 @@ struct FreeListNode {
 class PageAllocator {
     Offset cr3_;
     std::vector<FreeListNode> free_list_;
-    std::unique_ptr<mem::File> file_;
+    std::shared_ptr<mem::File> file_;
     Page current_metadata_page_;
 
 public:
@@ -24,9 +24,11 @@ public:
         }
     }
 
-    [[nodiscard]] Offset AllocatePageRange(size_t count) {
+    [[nodiscard]] PageRange AllocatePageRange(size_t count) {
+        for (auto& page : free_list_) {
+        }
     }
-    void DeallocatePage(Offset page) {
+    void DeallocatePageRange(PageRange range) {
     }
 };
 

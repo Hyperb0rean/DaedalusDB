@@ -32,7 +32,7 @@ int main() {
     // test2.Foo();
     // // 1
 
-    auto file = std::make_unique<mem::File>("database.data");
+    auto file = std::make_shared<mem::File>("database.data");
     auto coords = types::StructType("coords");
     coords.AddField(types::PrimitiveType<double>("lat"));
     coords.AddField(types::PrimitiveType<double>("lon"));
@@ -55,6 +55,15 @@ int main() {
     node.Read(file, 0);
     std::cerr << node.ToString();
     // person: { name: "Cool", surname: "Sosnovtsev" }
+
+    auto range = mem::PageRange(0, 2);
+    file->Write<mem::Page>({mem::PageType::kAllocatorMetadata, 0, 0, 60}, 60);
+    file->Write<mem::Page>({mem::PageType::kAllocatorMetadata, 1, 0, 60}, 60 + mem::kPageSize);
+
+    range.SetSource(60, file);
+    for (auto page : range) {
+        std::cerr << page.index;
+    }
 
     return 0;
 }

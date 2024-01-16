@@ -5,7 +5,7 @@
 #include "page.h"
 
 namespace mem {
-const int64_t kMagic = 0xDEADBEEF;
+inline const int64_t kMagic = 0xDEADBEEF;
 
 class Superblock {
 

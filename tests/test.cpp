@@ -1,34 +1,20 @@
-#include <cassert>
+#include <gtest/gtest.h>
+
 #include <iostream>
 
 #include "database.h"
 
-struct A {
-public:
-    virtual ~A() {
-    }
-    virtual int Foo() {
-        throw error::NotImplemented("lol");
-    }
-};
+TEST(TestGroupName, Subtest_1) {
+    ASSERT_TRUE(1 == 1);
+}
 
-struct B : public A {
-    int value;
+TEST(TestGroupName, Subtest_2) {
+    ASSERT_FALSE('b' == 'b');
+    std::cout << "continue test after failure" << std::endl;
+}
 
-public:
-    ~B() = default;
-    int Foo() override {
-        return value;
-    }
-};
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
 
-int main() {
-    auto file = std::make_unique<mem::File>("test.txt");
-    B test;
-    test.value = 1;
-    assert(test.Foo() == 1);
-    file->Write<B>(test, 0, 8);
-    B test2 = file->Read<B>(0, 8);
-    assert(test.Foo() == 1);
-    return 0;
+    return RUN_ALL_TESTS();
 }

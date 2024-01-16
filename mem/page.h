@@ -3,7 +3,6 @@
 #include "file.h"
 
 namespace mem {
-using Offset = off_t;
 
 const size_t kPageSize = 4096;
 enum class PageType { kTypeHeader, kData, kAllocatorMetadata };
@@ -76,15 +75,12 @@ class PageRange {
 public:
     PageRange(size_t from, size_t to) : from_(from), to_(to) {
     }
-    void SetSource(Offset cr3, std::shared_ptr<mem::File>& file) {
+    void SetSource(Offset cr3, const std::shared_ptr<mem::File>& file) {
         cr3_ = cr3;
         file_ = file;
     }
 
-    [[nodiscard]]
-
-    [[nodiscard]] PageIterator
-    begin() {
+    [[nodiscard]] PageIterator begin() {
         return PageIterator(file_, from_, to_, cr3_);
     }
     [[nodiscard]] PageIterator end() {

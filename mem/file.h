@@ -12,7 +12,7 @@
 namespace mem {
 
 using FileDescriptor = int32_t;
-using Offset = off_t;
+using Offset = size_t;
 
 class File {
     FileDescriptor fd_;

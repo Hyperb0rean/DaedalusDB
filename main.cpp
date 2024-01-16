@@ -56,13 +56,16 @@ int main() {
     std::cerr << node.ToString();
     // person: { name: "Cool", surname: "Sosnovtsev" }
 
-    auto range = mem::PageRange(0, 2);
-    file->Write<mem::Page>({mem::PageType::kAllocatorMetadata, 0, 0, 60}, 60);
-    file->Write<mem::Page>({mem::PageType::kAllocatorMetadata, 1, 0, 60}, 60 + mem::kPageSize);
+    auto range = mem::PageRange(0, 5);
+    for (size_t i = 0; i < 5; ++i) {
+        file->Write<mem::Page>({mem::PageType::kAllocatorMetadata, i, 0, 60 + mem::kPageSize * i},
+                               60 + mem::kPageSize * i);
+    }
 
-    range.SetSource(60, file);
-    for (auto page : range) {
-        std::cerr << page.index;
+    auto alloc = mem::PageAllocator(file, 3, 60, 0, 0);
+
+    for (auto page : alloc.GetPageRange(0, 5)) {
+        std::cerr << page.index << ' ';
     }
 
     return 0;

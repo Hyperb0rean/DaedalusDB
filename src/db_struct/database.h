@@ -2,7 +2,7 @@
 
 #include <unordered_map>
 
-#include "../mem/allocator.h"
+#include "allocator.h"
 #include "types.h"
 
 namespace db {

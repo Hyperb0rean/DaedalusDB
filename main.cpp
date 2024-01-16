@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "db_struct/database.h"
+#include "database.h"
 
 struct A {
 public:

@@ -2,8 +2,8 @@
 #include <initializer_list>
 #include <iostream>
 
-#include "../mem/file.h"
-#include "../util/utils.h"
+#include "file.h"
+#include "utils.h"
 
 namespace types {
 

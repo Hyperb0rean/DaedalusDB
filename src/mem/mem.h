@@ -13,12 +13,10 @@ class Superblock {
         size_t types_;
         Offset cr3_;
         size_t pages_count;
-        Offset free_list_head_;
-        size_t free_list_count_;
+        size_t free_list_head_index_;
     } header_;
 
     struct TypeEntry {
-        std::string label;
         Offset offset;
     };
     std::vector<TypeEntry> entries_;
@@ -42,12 +40,7 @@ public:
 class TypeHeader : public Page {
     size_t nodes_;
     Page current_page_;
-
-    struct NodeEntry {
-        Offset offset;
-        size_t size;
-    };
-    std::vector<NodeEntry> entries_;
+    Page first_page_;
 
 public:
     TypeHeader() {

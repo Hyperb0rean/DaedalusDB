@@ -21,20 +21,21 @@ TEST(TypeTests, SimpleReadWrite) {
     ASSERT_EQ("person: { name: \"Cool\", surname: \"Sosnovtsev\", age: 20 }", node.ToString());
 }
 
-TEST(PageRangeTests, SimpleIteration) {
+TEST(PageIterator, SimpleIteration) {
     auto file = std::make_shared<mem::File>("test.data");
 
-    auto range = mem::PageRange(0, 5);
-    for (size_t i = 0; i < 5; ++i) {
-        file->Write<mem::Page>({mem::PageType::kAllocatorMetadata, i, 0, 60 + mem::kPageSize * i},
+    file->Write<mem::Page>({mem::PageType::kFree, 0, 0, 0, 0, 1}, 60);
+    for (size_t i = 1; i < 5; ++i) {
+        file->Write<mem::Page>({mem::PageType::kFree, i, 0, 0, (i - 1), (i + 1)},
                                60 + mem::kPageSize * i);
     }
+    file->Write<mem::Page>({mem::PageType::kFree, 5, 0, 0, 4, 5}, 60 + mem::kPageSize * 5);
 
-    auto alloc = mem::PageAllocator(file, 60, 0, 0, 0);
-
+    auto alloc = std::make_shared<mem::PageAllocator>(file, 60, 6);
+    alloc->InitFreeList(0);
     int index = 0;
-    for (auto& page : alloc.GetPageRange(0, 5)) {
-        ASSERT_EQ(page.index, index++);
+    for (auto it = alloc->GetFreeList(); it->index < alloc->GetPagesCount(); ++it) {
+        ASSERT_EQ(it->index, index++);
     }
 }
 

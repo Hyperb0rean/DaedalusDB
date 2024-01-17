@@ -8,8 +8,8 @@ TEST(TypeTests, SimpleReadWrite) {
     auto file = std::make_shared<mem::File>("test.data");
 
     auto node = types::Struct("person");
-    node.AddFieldValue(types::Primitive<std::string>("name", "Greg"));
-    node.AddFieldValue(types::Primitive<std::string>("surname", "Sosnovtsev"));
+    node.AddFieldValue(types::String("name", "Greg"));
+    node.AddFieldValue(types::String("surname", "Sosnovtsev"));
     node.AddFieldValue(types::Primitive<int>("age", 19));
 
     node.Write(file, 0);
@@ -19,6 +19,23 @@ TEST(TypeTests, SimpleReadWrite) {
     ASSERT_EQ("person: { name: \"Greg\", surname: \"Sosnovtsev\", age: 19 }", node.ToString());
     node.Read(file, 0);
     ASSERT_EQ("person: { name: \"Cool\", surname: \"Sosnovtsev\", age: 20 }", node.ToString());
+}
+
+TEST(TypeTests, TypeDump) {
+    auto file = std::make_shared<mem::File>("test.data");
+
+    auto person_class = std::make_shared<types::StructClass>("person");
+    person_class->AddField(types::StringClass("name"));
+    person_class->AddField(types::StringClass("surname"));
+    person_class->AddField(types::PrimitiveClass<int>("age"));
+
+    types::ClassObject(person_class).Write(file, 1488);
+    ASSERT_EQ(types::ClassObject(person_class).ToString(),
+              "class: &__struct@person<&__string@name&__string@surname&__int@age>");
+
+    types::ClassObject read_class;
+    // read_class.Read(file, 1488);
+    // std::cerr << read_class->ToString() << std::endl;
 }
 
 TEST(PageIterator, SimpleIteration) {
@@ -31,8 +48,7 @@ TEST(PageIterator, SimpleIteration) {
     }
     file->Write<mem::Page>({mem::PageType::kFree, 5, 0, 0, 4, 5}, 60 + mem::kPageSize * 5);
 
-    auto alloc = std::make_shared<mem::PageAllocator>(file, 60, 6);
-    alloc->InitFreeList(0);
+    auto alloc = std::make_shared<mem::PageAllocator>(file, 60, 6, 0);
     int index = 0;
     for (auto it = alloc->GetFreeList(); it->index < alloc->GetPagesCount(); ++it) {
         ASSERT_EQ(it->index, index++);

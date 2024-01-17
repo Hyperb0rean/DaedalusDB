@@ -12,7 +12,6 @@ enum class Mode { kDefault, kOpen, kWrite };
 class Database {
     std::shared_ptr<mem::Superblock> superblock_;
     std::shared_ptr<mem::File> file_;
-    std::vector<std::shared_ptr<types::Type>> types_;
 
 public:
     Database(const std::shared_ptr<mem::File>& file, Mode mode = Mode::kDefault) : file_(file) {

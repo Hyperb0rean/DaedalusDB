@@ -1,41 +1,77 @@
 #pragma once
-#include <initializer_list>
-#include <iostream>
+#include <typeinfo>
 
 #include "file.h"
 #include "utils.h"
 
 namespace types {
 
-struct Type {
+// TODO: May be compiler dependent
+template <typename T>
+constexpr std::string_view type_name() {
+    constexpr auto prefix = std::string_view{"[with T = "};
+    constexpr auto suffix = std::string_view{";"};
+    constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
+    constexpr auto start = function.find(prefix) + prefix.size();
+    constexpr auto end = function.rfind(suffix);
+    static_assert(start < end);
+    constexpr auto result = function.substr(start, (end - start));
+    return result;
+}
+
+struct Class {
     std::string name_;
-    virtual ~Type() = default;
+    virtual ~Class() = default;
+    [[nodiscard]] virtual std::string Serialize() const = 0;
 };
 template <typename T>
-struct PrimitiveType : public Type {
-    explicit PrimitiveType(std::string name) {
+struct PrimitiveClass : public Class {
+    explicit PrimitiveClass(std::string name) {
         this->name_ = name;
+    }
+    [[nodiscard]] std::string Serialize() const override {
+        std::string result = "&__";
+        result += type_name<T>();
+        result += "@";
+        result += name_;
+        return result;
     }
 };
-struct StructType : public Type {
-    std::vector<std::shared_ptr<Type>> fields_;
-
-    StructType(std::string name) {
+struct StringClass : public Class {
+    explicit StringClass(std::string name) {
         this->name_ = name;
     }
-    template <typename ActualType>
-    void AddField(ActualType field) requires std::derived_from<ActualType, Type> {
-        fields_.push_back(std::make_shared<ActualType>(field));
+    [[nodiscard]] std::string Serialize() const override {
+        return "&__string@" + name_;
+    }
+};
+struct StructClass : public Class {
+    std::vector<std::shared_ptr<Class>> fields_;
+
+    StructClass(std::string name) {
+        this->name_ = name;
+    }
+    template <typename ActualClass>
+    void AddField(ActualClass field) requires std::derived_from<ActualClass, Class> {
+        fields_.push_back(std::make_shared<ActualClass>(field));
+    }
+    [[nodiscard]] std::string Serialize() const override {
+        auto result = "&__struct@" + name_ + "<";
+        for (auto& field : fields_) {
+            result += field->Serialize();
+        }
+        result += ">";
+        return result;
     }
 };
 
 class Object {
 protected:
-    std::shared_ptr<Type> type_;
+    std::shared_ptr<Class> class_;
 
 public:
-    virtual std::shared_ptr<Type> GetType() {
-        return type_;
+    virtual std::shared_ptr<Class> GetClass() {
+        return class_;
     }
     virtual ~Object() = default;
     virtual size_t GetSize() const {
@@ -55,6 +91,44 @@ public:
     }
 };
 
+class ClassObject : public Object {
+    std::shared_ptr<Class> class_holder_;
+    std::string serialized_;
+
+    std::shared_ptr<Class> Deserialize(const std::string& str) {
+        return std::make_shared<StringClass>("");
+    }
+
+public:
+    ~ClassObject() = default;
+    ClassObject(){};
+    virtual std::shared_ptr<Class> GetClass() {
+        throw error::NotImplemented("Class Type");
+    }
+    ClassObject(const std::shared_ptr<Class>& holder) : class_holder_(holder) {
+        serialized_ = class_holder_->Serialize();
+    }
+    virtual size_t GetSize() const {
+        return serialized_.size() + 4;
+    }
+    [[nodiscard]] virtual std::string GetName() const {
+        throw error::NotImplemented("Class Type");
+    }
+    virtual mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const {
+        auto new_offset = file->Write<uint32_t>(serialized_.size(), offset) + 4;
+        return file->Write(serialized_, new_offset);
+    }
+    virtual void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) {
+        uint32_t size = file->Read<uint32_t>(offset);
+        serialized_ = file->ReadString(offset + 4, size);
+        class_holder_ = Deserialize(serialized_);
+    }
+    [[nodiscard]] virtual std::string ToString() const {
+        return "class: " + serialized_;
+    }
+};
+
+// TODO: make concept only to pass Standart layout types.
 template <typename T>
 class Primitive : public Object {
     T value_;
@@ -62,7 +136,7 @@ class Primitive : public Object {
 public:
     virtual ~Primitive() = default;
     explicit Primitive(const std::string& name, T value) : value_(value) {
-        this->type_ = std::make_shared<PrimitiveType<T>>(name);
+        this->class_ = std::make_shared<PrimitiveClass<T>>(name);
     }
     [[nodiscard]] size_t GetSize() const override {
         return sizeof(T);
@@ -80,21 +154,20 @@ public:
         value_ = file->Read<T>(offset);
     }
     [[nodiscard]] std::string ToString() const override {
-        return type_->name_ + ": " + std::to_string(value_);
+        return class_->name_ + ": " + std::to_string(value_);
     }
 };
 
-template <>
-class Primitive<std::string> : public Object {
+class String : public Object {
     std::string str_;
 
 public:
-    virtual ~Primitive() = default;
-    explicit Primitive(std::string name, std::string&& str) : str_(std::forward<std::string>(str)) {
-        this->type_ = std::make_shared<PrimitiveType<std::string>>(name);
+    virtual ~String() = default;
+    explicit String(std::string name, std::string&& str) : str_(std::forward<std::string>(str)) {
+        this->class_ = std::make_shared<StringClass>(name);
     }
-    explicit Primitive(std::string name, const std::string& str) : str_(str) {
-        this->type_ = std::make_shared<PrimitiveType<std::string>>(name);
+    explicit String(std::string name, const std::string& str) : str_(str) {
+        this->class_ = std::make_shared<StringClass>(name);
     }
     [[nodiscard]] size_t GetSize() const override {
         return str_.size() + 4;
@@ -114,7 +187,7 @@ public:
         str_ = file->ReadString(offset + 4, size);
     }
     [[nodiscard]] std::string ToString() const override {
-        return type_->name_ + ": \"" + str_ + "\"";
+        return class_->name_ + ": \"" + str_ + "\"";
     }
 };
 
@@ -127,9 +200,9 @@ class Struct : public Object {
 public:
     virtual ~Struct() = default;
     Struct(const std::string& name) {
-        this->type_ = std::make_shared<StructType>(name);
+        this->class_ = std::make_shared<StructClass>(name);
         for (auto& field : fields_) {
-            utils::As<StructType>(type_)->fields_.push_back(field->GetType());
+            utils::As<StructClass>(class_)->fields_.push_back(field->GetClass());
         }
     }
     [[nodiscard]] size_t GetSize() const override {
@@ -139,9 +212,9 @@ public:
         }
         return size;
     }
-    template <typename ActualType>
-    void AddFieldValue(ActualType value) requires std::derived_from<ActualType, Object> {
-        fields_.push_back(std::make_shared<ActualType>(value));
+    template <typename ActualObject>
+    void AddFieldValue(ActualObject value) requires std::derived_from<ActualObject, Object> {
+        fields_.push_back(std::make_shared<ActualObject>(value));
     }
     mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
         mem::Offset new_offset = offset;
@@ -159,7 +232,7 @@ public:
         }
     }
     [[nodiscard]] std::string ToString() const override {
-        std::string result = type_->name_ + ": { ";
+        std::string result = class_->name_ + ": { ";
         for (auto& field : fields_) {
             if (field != *fields_.begin()) {
                 result += ", ";

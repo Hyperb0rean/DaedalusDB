@@ -38,7 +38,7 @@ public:
 
 class BadCast : public Error {
 public:
-    explicit BadCast(std::string desc) : Error{"BadArgument | " + desc} {};
+    explicit BadCast(std::string desc) : Error{"BadCast | " + desc} {};
 };
 
 class NotImplemented : public Error {

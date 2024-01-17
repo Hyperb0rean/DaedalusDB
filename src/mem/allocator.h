@@ -9,6 +9,7 @@ class PageAllocator : public std::enable_shared_from_this<PageAllocator> {
 
     Offset cr3_;
     size_t pages_count_;
+    size_t freelist_index_;
     std::shared_ptr<mem::File> file_;
     Page current_metadata_page_;
 
@@ -31,13 +32,11 @@ public:
 
         void ToEnd() {
             if (curr_.index == curr_.next_page_index) {
-                curr_.index = alloc_->pages_count_ + 1;
+                curr_.index = alloc_->pages_count_;
             }
         }
 
     public:
-        PageIterator() {
-        }
         PageIterator(const std::shared_ptr<mem::PageAllocator>& alloc, size_t index)
             : alloc_(alloc) {
             curr_ = alloc_->ReadPage(index);
@@ -79,24 +78,17 @@ public:
         }
     };
 
-private:
-    PageIterator free_list_;
-
-public:
     [[nodiscard]] PageIterator GetFreeList() {
-        return free_list_;
+        return PageIterator(shared_from_this(), freelist_index_);
     }
 
     [[nodiscard]] size_t GetPagesCount() {
         return pages_count_;
     }
 
-    PageAllocator(std::shared_ptr<mem::File>& file, Offset cr3, size_t pages_count)
-        : cr3_(cr3), pages_count_(pages_count), file_(file) {
-    }
-
-    void InitFreeList(size_t free_list_head_index) {
-        free_list_ = PageIterator(shared_from_this(), free_list_head_index);
+    PageAllocator(std::shared_ptr<mem::File>& file, Offset cr3, size_t pages_count,
+                  size_t freelist_index)
+        : cr3_(cr3), pages_count_(pages_count), freelist_index_(freelist_index), file_(file) {
     }
 };
 

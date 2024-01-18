@@ -51,4 +51,9 @@ public:
     explicit StructureError(std::string desc) : Error{"StructureError | " + desc} {};
 };
 
+class TypeError : public Error {
+public:
+    explicit TypeError(std::string desc) : Error{"TypeError | " + desc} {};
+};
+
 }  // namespace error

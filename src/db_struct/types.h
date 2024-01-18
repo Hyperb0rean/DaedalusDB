@@ -1,4 +1,5 @@
 #pragma once
+#include <sstream>
 #include <typeinfo>
 
 #include "file.h"
@@ -30,21 +31,24 @@ struct PrimitiveClass : public Class {
         this->name_ = name;
     }
     [[nodiscard]] std::string Serialize() const override {
-        std::string result = "&__";
+        std::string result = "_";
         result += type_name<T>();
         result += "@";
         result += name_;
+        result += "_";
         return result;
     }
 };
+
 struct StringClass : public Class {
     explicit StringClass(std::string name) {
         this->name_ = name;
     }
     [[nodiscard]] std::string Serialize() const override {
-        return "&__string@" + name_;
+        return "_string@" + name_ + "_";
     }
 };
+
 struct StructClass : public Class {
     std::vector<std::shared_ptr<Class>> fields_;
 
@@ -55,8 +59,15 @@ struct StructClass : public Class {
     void AddField(ActualClass field) requires std::derived_from<ActualClass, Class> {
         fields_.push_back(std::make_shared<ActualClass>(field));
     }
+
+    template <typename ActualClass>
+    void AddField(
+        const std::shared_ptr<ActualClass>& field) requires std::derived_from<ActualClass, Class> {
+        fields_.push_back(field);
+    }
+
     [[nodiscard]] std::string Serialize() const override {
-        auto result = "&__struct@" + name_ + "<";
+        auto result = "_struct@" + name_ + "_<";
         for (auto& field : fields_) {
             result += field->Serialize();
         }
@@ -95,8 +106,54 @@ class ClassObject : public Object {
     std::shared_ptr<Class> class_holder_;
     std::string serialized_;
 
-    std::shared_ptr<Class> Deserialize(const std::string& str) {
-        return std::make_shared<StringClass>("");
+    std::string ReadString(std::stringstream& stream, char end) {
+        std::string result;
+        char c;
+        stream >> c;
+        while (c != end) {
+            result += c;
+            stream >> c;
+        }
+        return result;
+    }
+
+    std::shared_ptr<Class> Deserialize(std::stringstream& stream) {
+        char del;
+        stream >> del;
+        if (del == '>') {
+            return nullptr;
+        }
+        if (del != '_') {
+            throw error::TypeError("Can't read correct type by this address");
+        }
+
+        auto type = ReadString(stream, '@');
+        if (type == "struct") {
+            auto name = ReadString(stream, '_');
+            stream >> del;
+            if (del != '<') {
+                throw error::TypeError("Can't read correct type by this address");
+            }
+
+            auto result = std::make_shared<StructClass>(name);
+
+            auto field = Deserialize(stream);
+            while (field != nullptr) {
+                result->AddField(field);
+                field = Deserialize(stream);
+            }
+            return result;
+        } else if (type == "string") {
+            return std::make_shared<StringClass>(ReadString(stream, '_'));
+        } else if (type == "int") {
+            return std::make_shared<PrimitiveClass<int>>(ReadString(stream, '_'));
+        } else if (type == "double") {
+            return std::make_shared<PrimitiveClass<double>>(ReadString(stream, '_'));
+        } else if (type == "bool") {
+            return std::make_shared<PrimitiveClass<bool>>(ReadString(stream, '_'));
+        } else {
+            throw error::TypeError("Can't read correct type by this address");
+        }
     }
 
 public:
@@ -121,7 +178,8 @@ public:
     virtual void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) {
         uint32_t size = file->Read<uint32_t>(offset);
         serialized_ = file->ReadString(offset + 4, size);
-        class_holder_ = Deserialize(serialized_);
+        std::stringstream stream{serialized_};
+        class_holder_ = Deserialize(stream);
     }
     [[nodiscard]] virtual std::string ToString() const {
         return "class: " + serialized_;
@@ -216,6 +274,13 @@ public:
     void AddFieldValue(ActualObject value) requires std::derived_from<ActualObject, Object> {
         fields_.push_back(std::make_shared<ActualObject>(value));
     }
+
+    template <typename ActualObject>
+    void AddFieldValue(const std::shared_ptr<ActualObject>& value) requires
+        std::derived_from<ActualObject, Class> {
+        fields_.push_back(value);
+    }
+
     mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
         mem::Offset new_offset = offset;
         for (auto& field : fields_) {

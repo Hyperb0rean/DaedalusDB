@@ -31,11 +31,11 @@ TEST(TypeTests, TypeDump) {
 
     types::ClassObject(person_class).Write(file, 1488);
     ASSERT_EQ(types::ClassObject(person_class).ToString(),
-              "class: &__struct@person<&__string@name&__string@surname&__int@age>");
+              "class: _struct@person_<_string@name__string@surname__int@age_>");
 
     types::ClassObject read_class;
-    // read_class.Read(file, 1488);
-    // std::cerr << read_class->ToString() << std::endl;
+    read_class.Read(file, 1488);
+    ASSERT_EQ(read_class.ToString(), types::ClassObject(person_class).ToString());
 }
 
 TEST(PageIterator, SimpleIteration) {

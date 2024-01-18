@@ -36,7 +36,7 @@ struct PrimitiveClass : public Class {
         result += "@";
         result += name_;
         result += "_";
-        return result;
+        return {result.begin(), remove_if(result.begin(), result.end(), isspace)};
     }
 };
 
@@ -86,19 +86,19 @@ public:
     }
     virtual ~Object() = default;
     virtual size_t GetSize() const {
-        throw error::NotImplemented("Void Type");
+        throw error::NotImplemented("Void Class");
     }
     [[nodiscard]] virtual std::string GetName() const {
-        throw error::NotImplemented("Void Type");
+        throw error::NotImplemented("Void Class");
     }
     virtual mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const {
-        throw error::NotImplemented("Void Type");
+        throw error::NotImplemented("Void Class");
     }
     virtual void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) {
-        throw error::NotImplemented("Void Type");
+        throw error::NotImplemented("Void Class");
     }
     [[nodiscard]] virtual std::string ToString() const {
-        throw error::NotImplemented("Void Type");
+        throw error::NotImplemented("Void Class");
     }
 };
 
@@ -151,8 +151,10 @@ class ClassObject : public Object {
             return std::make_shared<PrimitiveClass<double>>(ReadString(stream, '_'));
         } else if (type == "bool") {
             return std::make_shared<PrimitiveClass<bool>>(ReadString(stream, '_'));
+        } else if (type == "longunsignedint") {
+            return std::make_shared<PrimitiveClass<uint64_t>>(ReadString(stream, '_'));
         } else {
-            throw error::TypeError("Can't read correct type by this address");
+            throw error::NotImplemented("Unsupported for deserialization type");
         }
     }
 
@@ -160,7 +162,7 @@ public:
     ~ClassObject() = default;
     ClassObject(){};
     virtual std::shared_ptr<Class> GetClass() {
-        throw error::NotImplemented("Class Type");
+        throw error::NotImplemented("Class Class");
     }
     ClassObject(const std::shared_ptr<Class>& holder) : class_holder_(holder) {
         serialized_ = class_holder_->Serialize();
@@ -169,7 +171,7 @@ public:
         return serialized_.size() + 4;
     }
     [[nodiscard]] virtual std::string GetName() const {
-        throw error::NotImplemented("Class Type");
+        throw error::NotImplemented("Class Class");
     }
     virtual mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const {
         auto new_offset = file->Write<uint32_t>(serialized_.size(), offset) + 4;
@@ -193,8 +195,9 @@ class Primitive : public Object {
 
 public:
     virtual ~Primitive() = default;
-    explicit Primitive(const std::string& name, T value) : value_(value) {
-        this->class_ = std::make_shared<PrimitiveClass<T>>(name);
+    explicit Primitive(const std::shared_ptr<PrimitiveClass<T>>& argclass, T value)
+        : value_(value) {
+        this->class_ = argclass;
     }
     [[nodiscard]] size_t GetSize() const override {
         return sizeof(T);
@@ -221,11 +224,13 @@ class String : public Object {
 
 public:
     virtual ~String() = default;
-    explicit String(std::string name, std::string&& str) : str_(std::forward<std::string>(str)) {
-        this->class_ = std::make_shared<StringClass>(name);
+    explicit String(const std::shared_ptr<StringClass>& argclass, std::string&& str)
+        : str_(std::move(str)) {
+        this->class_ = argclass;
     }
-    explicit String(std::string name, const std::string& str) : str_(str) {
-        this->class_ = std::make_shared<StringClass>(name);
+    explicit String(const std::shared_ptr<StringClass>& argclass, const std::string& str)
+        : str_(str) {
+        this->class_ = argclass;
     }
     [[nodiscard]] size_t GetSize() const override {
         return str_.size() + 4;
@@ -251,17 +256,12 @@ public:
 
 class Struct : public Object {
 
-    using Fields = std::vector<std::shared_ptr<Object>>;
-
-    Fields fields_;
+    std::vector<std::shared_ptr<Object>> fields_;
 
 public:
     virtual ~Struct() = default;
-    Struct(const std::string& name) {
-        this->class_ = std::make_shared<StructClass>(name);
-        for (auto& field : fields_) {
-            utils::As<StructClass>(class_)->fields_.push_back(field->GetClass());
-        }
+    Struct(const std::shared_ptr<StructClass>& argclass) {
+        this->class_ = argclass;
     }
     [[nodiscard]] size_t GetSize() const override {
         size_t size = 0;
@@ -270,15 +270,21 @@ public:
         }
         return size;
     }
-    template <typename ActualObject>
-    void AddFieldValue(ActualObject value) requires std::derived_from<ActualObject, Object> {
-        fields_.push_back(std::make_shared<ActualObject>(value));
-    }
 
     template <typename ActualObject>
     void AddFieldValue(const std::shared_ptr<ActualObject>& value) requires
-        std::derived_from<ActualObject, Class> {
+        std::derived_from<ActualObject, Object> {
         fields_.push_back(value);
+    }
+
+    // template <typename ActualClass, typename Value>
+    // void AddFieldValue(const std::shared_ptr<ActualClass>& argclass,
+    //                    Value value) requires std::derived_from<ActualClass, Class> {
+    //     fields_.push_back(value);
+    // }
+
+    [[nodiscard]] std::vector<std::shared_ptr<Object>> GetFields() const {
+        return fields_;
     }
 
     mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
@@ -308,5 +314,58 @@ public:
         return result;
     }
 };
+
+template <typename C, typename... Classes>
+[[nodiscard]] inline std::shared_ptr<C> DeclareClass(
+    std::string&& name, Classes&&... classes) requires std::derived_from<C, Class> {
+    if constexpr (std::is_same_v<C, StructClass>) {
+        auto new_class = std::make_shared<C>(std::move(name));
+        (new_class->AddField(classes), ...);
+        return new_class;
+    } else {
+        static_assert(sizeof...(classes) == 0);
+        return std::make_shared<C>(std::move(name));
+    }
+}
+
+template <typename O, typename C, typename... Args>
+[[nodiscard]] inline std::shared_ptr<O> New(const std::shared_ptr<C>& object_class,
+                                            Args&&... args) requires std::derived_from<O, Object> {
+
+    if constexpr (std::is_same_v<O, Struct>) {
+        auto new_object = std::make_shared<Struct>(object_class);
+        auto it = utils::As<StructClass>(object_class)->fields_.begin();
+
+        (
+            [&] {
+                auto class_ = *it++;
+                if (utils::Is<StructClass>(class_)) {
+                    new_object->AddFieldValue(New<Struct>(utils::As<StructClass>(class_), args));
+                } else if (utils::Is<StringClass>(class_)) {
+                    if constexpr (std::is_convertible_v<decltype(args), std::string_view>) {
+                        new_object->AddFieldValue(
+                            New<String>(utils::As<StringClass>(class_), args));
+                    }
+                } else {
+                    if constexpr (!std::is_convertible_v<decltype(args), std::string_view>) {
+                        auto holder = args;
+                        new_object->AddFieldValue(New<Primitive<decltype(holder)>>(
+                            utils::As<PrimitiveClass<decltype(holder)>>(class_), args));
+                    }
+                }
+            }(),
+            ...);
+        return new_object;
+    } else if constexpr (std::is_same_v<O, String>) {
+        return std::make_shared<String>(
+            object_class, std::forward<std::string>(std::get<0>(std::tuple(args...))));
+    } else if constexpr (!std::is_convertible_v<decltype(std::get<0>(std::tuple(args...))),
+                                                std::string_view>) {
+        return std::make_shared<
+            Primitive<std::remove_reference_t<decltype(std::get<0>(std::tuple(args...)))>>>(
+            object_class, std::get<0>(std::tuple(args...)));
+    }
+    throw error::TypeError("Can't create object");
+}
 
 }  // namespace types

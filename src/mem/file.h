@@ -27,7 +27,7 @@ class File {
     }
 
 public:
-    explicit File(std::string&& fileName) : fileName_(std::forward<std::string>(fileName)) {
+    explicit File(std::string&& fileName) : fileName_(std::move(fileName)) {
         fd_ = open(fileName_.c_str(), O_RDWR | O_CREAT, S_IRWXU | S_IRGRP | S_IROTH);
         if (fd_ == -1) {
             throw error::IoError("File could not be opened");

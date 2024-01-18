@@ -1,24 +1,44 @@
 #include <gtest/gtest.h>
 
 #include <iostream>
+#include <string>
 
 #include "database.h"
+
+TEST(TypeTests, NewTest) {
+    auto file = std::make_shared<mem::File>("test.data");
+    auto name = types::DeclareClass<types::StringClass>("name");
+    auto node = types::New<types::String>(name, "Greg");
+    node->Write(file, 0);
+    file->Write("Cool", 4, 0, 4);
+    // file->Write(20, 22);
+
+    ASSERT_EQ("name: \"Greg\"", node->ToString());
+    node->Read(file, 0);
+    ASSERT_EQ("name: \"Cool\"", node->ToString());
+}
 
 TEST(TypeTests, SimpleReadWrite) {
     auto file = std::make_shared<mem::File>("test.data");
 
-    auto node = types::Struct("person");
-    node.AddFieldValue(types::String("name", "Greg"));
-    node.AddFieldValue(types::String("surname", "Sosnovtsev"));
-    node.AddFieldValue(types::Primitive<int>("age", 19));
+    auto person_class = types::DeclareClass<types::StructClass>(
+        "person", types::DeclareClass<types::StringClass>("name"),
+        types::DeclareClass<types::StringClass>("surname"),
+        types::DeclareClass<types::PrimitiveClass<int>>("age"),
+        types::DeclareClass<types::PrimitiveClass<bool>>("male"));
 
-    node.Write(file, 0);
+    auto node = types::New<types::Struct>(person_class, std::string{"Greg"},
+                                          std::string{"Sosnovtsev"}, 19, true);
+
+    node->Write(file, 0);
     file->Write("Cool", 4, 0, 4);
     file->Write(20, 22);
 
-    ASSERT_EQ("person: { name: \"Greg\", surname: \"Sosnovtsev\", age: 19 }", node.ToString());
-    node.Read(file, 0);
-    ASSERT_EQ("person: { name: \"Cool\", surname: \"Sosnovtsev\", age: 20 }", node.ToString());
+    ASSERT_EQ("person: { name: \"Greg\", surname: \"Sosnovtsev\", age: 19, male: 1 }",
+              node->ToString());
+    node->Read(file, 0);
+    ASSERT_EQ("person: { name: \"Cool\", surname: \"Sosnovtsev\", age: 20, male: 1 }",
+              node->ToString());
 }
 
 TEST(TypeTests, TypeDump) {
@@ -28,10 +48,31 @@ TEST(TypeTests, TypeDump) {
     person_class->AddField(types::StringClass("name"));
     person_class->AddField(types::StringClass("surname"));
     person_class->AddField(types::PrimitiveClass<int>("age"));
+    person_class->AddField(types::PrimitiveClass<uint64_t>("money"));
 
     types::ClassObject(person_class).Write(file, 1488);
-    ASSERT_EQ(types::ClassObject(person_class).ToString(),
-              "class: _struct@person_<_string@name__string@surname__int@age_>");
+    ASSERT_EQ(
+        types::ClassObject(person_class).ToString(),
+        "class: _struct@person_<_string@name__string@surname__int@age__longunsignedint@money_>");
+
+    types::ClassObject read_class;
+    read_class.Read(file, 1488);
+    ASSERT_EQ(read_class.ToString(), types::ClassObject(person_class).ToString());
+}
+
+TEST(TypeTests, SyntaxSugarClasses) {
+    auto file = std::make_shared<mem::File>("test.data");
+
+    auto person_class = types::DeclareClass<types::StructClass>(
+        "person", types::DeclareClass<types::StringClass>("name"),
+        types::DeclareClass<types::StringClass>("surname"),
+        types::DeclareClass<types::PrimitiveClass<int>>("age"),
+        types::DeclareClass<types::PrimitiveClass<uint64_t>>("money"));
+
+    types::ClassObject(person_class).Write(file, 1337);
+    ASSERT_EQ(
+        types::ClassObject(person_class).ToString(),
+        "class: _struct@person_<_string@name__string@surname__int@age__longunsignedint@money_>");
 
     types::ClassObject read_class;
     read_class.Read(file, 1488);

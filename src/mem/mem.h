@@ -13,13 +13,10 @@ class Superblock {
         size_t types_;
         Offset cr3_;
         size_t pages_count;
-        size_t free_list_head_index_;
+        size_t free_pages_count;
+        size_t class_metadata_index;
+        size_t free_list_head_index;
     } header_;
-
-    struct TypeEntry {
-        Offset offset;
-    };
-    std::vector<TypeEntry> entries_;
 
     void CheckConsistency(std::shared_ptr<File>& file) {
         auto magic = file->Read<int64_t>();
@@ -37,18 +34,19 @@ public:
     void WriteSuperblock(std::shared_ptr<File>& file);
 };
 
-class TypeHeader : public Page {
+class ClassHeader : public Page {
     size_t nodes_;
-    Page current_page_;
     Page first_page_;
+    Page current_page_;
+    std::string serialized_class_;
 
 public:
-    TypeHeader() {
-        this->type = PageType::kTypeHeader;
+    ClassHeader() {
+        this->type = PageType::kClassHeader;
     }
 
-    void ReadTypeHeader(Offset start, std::shared_ptr<File>& file);
-    void WriteTypeHeader(Offset start, std::shared_ptr<File>& file);
+    void ReadClassHeader(Offset start, std::shared_ptr<File>& file);
+    void WriteClassHeader(Offset start, std::shared_ptr<File>& file);
 };
 
 }  // namespace mem

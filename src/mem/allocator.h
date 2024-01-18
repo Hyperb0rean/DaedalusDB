@@ -17,6 +17,10 @@ class PageAllocator : public std::enable_shared_from_this<PageAllocator> {
         return file_->Read<Page>(cr3_ + index * kPageSize);
     }
 
+    void WritePage(Page page, size_t index) {
+        file_->Write<Page>(page, cr3_ + index * kPageSize);
+    }
+
 public:
     [[nodiscard]] Offset GetPageAddress(Page page) {
         return cr3_ + page.index * kPageSize;
@@ -82,13 +86,20 @@ public:
         return PageIterator(shared_from_this(), freelist_index_);
     }
 
-    [[nodiscard]] size_t GetPagesCount() {
+    [[nodiscard]] size_t GetPagesCount() const {
         return pages_count_;
     }
 
     PageAllocator(std::shared_ptr<mem::File>& file, Offset cr3, size_t pages_count,
                   size_t freelist_index)
         : cr3_(cr3), pages_count_(pages_count), freelist_index_(freelist_index), file_(file) {
+    }
+
+    [[nodiscard]] PageIterator AllocatePage() {
+        return PageIterator(shared_from_this(), freelist_index_);
+    }
+
+    void FreePage(size_t index) {
     }
 };
 

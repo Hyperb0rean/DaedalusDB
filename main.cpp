@@ -1,9 +1,9 @@
 #include <iostream>
 
-#include "database.h"
+#include "database.hpp"
 
 int main() {
 
-    auto file = std::make_shared<mem::File>("database.data");   
+    auto file = std::make_shared<mem::File>("database.data");
     return 0;
 }

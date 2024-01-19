@@ -2,8 +2,8 @@
 #include <sstream>
 #include <typeinfo>
 
-#include "file.h"
-#include "utils.h"
+#include "file.hpp"
+#include "utils.hpp"
 
 namespace ts {
 

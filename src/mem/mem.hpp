@@ -1,8 +1,8 @@
 #include <memory>
 #include <vector>
 
-#include "file.h"
-#include "page.h"
+#include "file.hpp"
+#include "page.hpp"
 
 namespace mem {
 inline const int64_t kMagic = 0xDEADBEEF;

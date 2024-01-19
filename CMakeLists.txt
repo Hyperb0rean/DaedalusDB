@@ -19,15 +19,15 @@ add_subdirectory(googletest)
 
 
 set(SOURCES 
-  src/util/error.h 
-  src/util/utils.h
-  src/mem/file.h
-  src/mem/page.h 
-  src/mem/mem.h 
-  src/mem/allocator.h 
-  src/db_struct/database.h 
-  src/db_struct/class.h
-  src/db_struct/object.h)
+  src/util/error.hpp 
+  src/util/utils.hpp
+  src/mem/file.hpp
+  src/mem/page.hpp 
+  src/mem/mem.hpp 
+  src/mem/allocator.hpp 
+  src/db_struct/database.hpp 
+  src/db_struct/class.hpp
+  src/db_struct/object.hpp)
 add_executable(database main.cpp ${SOURCES})
 target_include_directories(database PRIVATE "./src/mem")
 target_include_directories(database PRIVATE "./src/db_struct")

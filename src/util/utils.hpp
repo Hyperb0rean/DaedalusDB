@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 
-#include "error.h"
+#include "error.hpp"
 
 namespace utils {
 

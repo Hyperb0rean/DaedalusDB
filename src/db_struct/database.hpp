@@ -2,8 +2,8 @@
 
 #include <unordered_map>
 
-#include "allocator.h"
-#include "object.h"
+#include "allocator.hpp"
+#include "object.hpp"
 
 namespace db {
 

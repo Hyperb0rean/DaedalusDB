@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string>
 
-#include "database.h"
+#include "database.hpp"
 
 TEST(TypeTests, NewTest) {
     auto file = std::make_shared<mem::File>("test.data");

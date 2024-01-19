@@ -1,6 +1,6 @@
 #pragma once
 
-#include "class.h"
+#include "class.hpp"
 
 namespace ts {
 class Object {

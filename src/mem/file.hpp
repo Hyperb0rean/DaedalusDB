@@ -7,7 +7,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "error.h"
+#include "error.hpp"
 
 namespace mem {
 

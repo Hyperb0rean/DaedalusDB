@@ -8,14 +8,14 @@ class PageAllocator : public std::enable_shared_from_this<PageAllocator> {
 
     Offset cr3_;
     size_t pages_count_;
-    size_t freelist_index_;
+    Offset free_list_dummy_offset_;
     std::shared_ptr<mem::File> file_;
     size_t current_metadata_page_;
 
 public:
     PageAllocator(std::shared_ptr<mem::File>& file, Offset cr3, size_t pages_count,
-                  size_t freelist_index)
-        : cr3_(cr3), pages_count_(pages_count), freelist_index_(freelist_index), file_(file) {
+                  Offset dummy_offset)
+        : cr3_(cr3), pages_count_(pages_count), free_list_dummy_offset_(dummy_offset), file_(file) {
     }
 
     [[nodiscard]] size_t GetPagesCount() const {

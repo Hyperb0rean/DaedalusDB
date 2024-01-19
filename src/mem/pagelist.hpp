@@ -30,7 +30,9 @@ public:
             curr_ = ReadPage(index);
         }
         PageIterator& operator++() {
+            std::cerr << curr_.index_ << " -> ";
             curr_ = ReadPage(curr_.next_page_index_);
+            std::cerr << curr_.index_ << "\n";
             return *this;
         }
         PageIterator operator++(int) {
@@ -64,7 +66,7 @@ public:
         }
 
         [[nodiscard]] Page ReadPage(size_t index) {
-            if (index < alloc_->GetPagesCount() && index > 0) {
+            if (index < alloc_->GetPagesCount()) {
                 return Page(index).ReadPage(alloc_->GetFile(), alloc_->GetCr3());
             } else {
                 return alloc_->GetFile()->Read<Page>(dummy_offset_);
@@ -72,7 +74,7 @@ public:
         }
 
         void WritePage() {
-            if (curr_.index_ < alloc_->GetPagesCount() && curr_.index_ > 0) {
+            if (curr_.index_ < alloc_->GetPagesCount()) {
                 curr_.WritePage(alloc_->GetFile(), alloc_->GetCr3());
             } else {
                 alloc_->GetFile()->Write<Page>(curr_, dummy_offset_);
@@ -83,7 +85,8 @@ public:
         : alloc_(alloc), dummy_offset_(dummy_offset) {
     }
 
-    void Unlink(PageIterator it) {
+    void Unlink(size_t index) {
+        auto it = PageIterator(alloc_, index, dummy_offset_);
         if (it->next_page_index_ == it->previous_page_index_) {
             return;
         }
@@ -95,27 +98,41 @@ public:
         it->previous_page_index_ = it->index_;
         it->next_page_index_ = it->index_;
 
-        it.WritePage();
-        prev.WritePage();
-        next.WritePage();
+        it.Write();
+        prev.Write();
+        next.Write();
     }
 
-    void LinkBefore(PageIterator other, PageIterator it) {
+    void LinkBefore(size_t other_index, size_t index) {
+        auto it = PageIterator(alloc_, index, dummy_offset_);
+        auto other = PageIterator(alloc_, other_index, dummy_offset_);
         auto prev = PageIterator(alloc_, other->previous_page_index_, dummy_offset_);
         it->next_page_index_ = other->index_;
         it->previous_page_index_ = prev->index_;
         prev->next_page_index_ = it->index_;
         other->previous_page_index_ = it->index_;
+
+        it.Write();
+        other.Write();
+        prev.Write();
     }
 
-    PageIterator begin() {
-        return PageIterator(alloc_,
-                            alloc_->GetFile()->Read<Page>(dummy_offset_).previous_page_index_,
+    PageIterator Begin() {
+        return PageIterator(alloc_, alloc_->GetFile()->Read<Page>(dummy_offset_).next_page_index_,
                             dummy_offset_);
     }
-    PageIterator end() {
+    PageIterator End() {
         return PageIterator(alloc_, alloc_->GetFile()->Read<Page>(dummy_offset_).index_,
                             dummy_offset_);
     }
 };
+
+PageList::PageIterator begin(PageList& list) {
+    return list.Begin();
+}
+
+PageList::PageIterator end(PageList& list) {
+    return list.End();
+}
+
 }  // namespace mem

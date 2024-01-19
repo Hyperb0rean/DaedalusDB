@@ -45,7 +45,7 @@ public:
     }
 
     void WritePage(const std::shared_ptr<File>& file, Offset cr3) {
-        file->Write<Page>(*this, GetPageAddress(index_));
+        file->Write<Page>(*this, GetPageAddress(cr3));
     }
 };
 

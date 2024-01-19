@@ -5,7 +5,7 @@
 #include "file.h"
 #include "utils.h"
 
-namespace types {
+namespace ts {
 
 // TODO: May be compiler dependent
 template <typename T>
@@ -40,6 +40,9 @@ struct PrimitiveClass : public Class {
     }
 };
 
+template <typename C>
+concept ClassLike = std::derived_from<C, Class>;
+
 struct StringClass : public Class {
     explicit StringClass(std::string name) {
         this->name_ = name;
@@ -55,14 +58,13 @@ struct StructClass : public Class {
     StructClass(std::string name) {
         this->name_ = name;
     }
-    template <typename ActualClass>
-    void AddField(ActualClass field) requires std::derived_from<ActualClass, Class> {
+    template <ClassLike ActualClass>
+    void AddField(ActualClass field) {
         fields_.push_back(std::make_shared<ActualClass>(field));
     }
 
-    template <typename ActualClass>
-    void AddField(
-        const std::shared_ptr<ActualClass>& field) requires std::derived_from<ActualClass, Class> {
+    template <ClassLike ActualClass>
+    void AddField(const std::shared_ptr<ActualClass>& field) {
         fields_.push_back(field);
     }
 
@@ -101,6 +103,9 @@ public:
         throw error::NotImplemented("Void Class");
     }
 };
+
+template <typename O>
+concept ObjectLike = std::derived_from<O, Object>;
 
 class ClassObject : public Object {
     std::shared_ptr<Class> class_holder_;
@@ -271,17 +276,10 @@ public:
         return size;
     }
 
-    template <typename ActualObject>
-    void AddFieldValue(const std::shared_ptr<ActualObject>& value) requires
-        std::derived_from<ActualObject, Object> {
+    template <ObjectLike ActualObject>
+    void AddFieldValue(const std::shared_ptr<ActualObject>& value) {
         fields_.push_back(value);
     }
-
-    // template <typename ActualClass, typename Value>
-    // void AddFieldValue(const std::shared_ptr<ActualClass>& argclass,
-    //                    Value value) requires std::derived_from<ActualClass, Class> {
-    //     fields_.push_back(value);
-    // }
 
     [[nodiscard]] std::vector<std::shared_ptr<Object>> GetFields() const {
         return fields_;
@@ -315,9 +313,8 @@ public:
     }
 };
 
-template <typename C, typename... Classes>
-[[nodiscard]] inline std::shared_ptr<C> DeclareClass(
-    std::string&& name, Classes&&... classes) requires std::derived_from<C, Class> {
+template <ClassLike C, typename... Classes>
+[[nodiscard]] inline std::shared_ptr<C> NewClass(std::string&& name, Classes&&... classes) {
     if constexpr (std::is_same_v<C, StructClass>) {
         auto new_class = std::make_shared<C>(std::move(name));
         (new_class->AddField(classes), ...);
@@ -328,14 +325,13 @@ template <typename C, typename... Classes>
     }
 }
 
-template <typename O, typename C, typename... Args>
+template <ObjectLike O, ClassLike C, typename... Args>
 [[nodiscard]] inline std::shared_ptr<O> New(const std::shared_ptr<C>& object_class,
-                                            Args&&... args) requires std::derived_from<O, Object> {
+                                            Args&&... args) {
 
     if constexpr (std::is_same_v<O, Struct>) {
         auto new_object = std::make_shared<Struct>(object_class);
         auto it = utils::As<StructClass>(object_class)->fields_.begin();
-
         (
             [&] {
                 auto class_ = *it++;
@@ -347,10 +343,13 @@ template <typename O, typename C, typename... Args>
                             New<String>(utils::As<StringClass>(class_), args));
                     }
                 } else {
-                    if constexpr (!std::is_convertible_v<decltype(args), std::string_view>) {
-                        auto holder = args;
-                        new_object->AddFieldValue(New<Primitive<decltype(holder)>>(
-                            utils::As<PrimitiveClass<decltype(holder)>>(class_), args));
+                    if constexpr (!std::is_convertible_v<std::remove_reference_t<decltype(args)>,
+                                                         std::string_view>) {
+                        new_object->AddFieldValue(
+                            New<Primitive<std::remove_reference_t<decltype(args)>>>(
+                                utils::As<PrimitiveClass<std::remove_reference_t<decltype(args)>>>(
+                                    class_),
+                                args));
                     }
                 }
             }(),
@@ -359,13 +358,13 @@ template <typename O, typename C, typename... Args>
     } else if constexpr (std::is_same_v<O, String>) {
         return std::make_shared<String>(
             object_class, std::forward<std::string>(std::get<0>(std::tuple(args...))));
-    } else if constexpr (!std::is_convertible_v<decltype(std::get<0>(std::tuple(args...))),
+    } else if constexpr (!std::is_convertible_v<std::tuple_element_t<0, std::tuple<Args...>>,
                                                 std::string_view>) {
         return std::make_shared<
-            Primitive<std::remove_reference_t<decltype(std::get<0>(std::tuple(args...)))>>>(
+            Primitive<std::remove_reference_t<std::tuple_element_t<0, std::tuple<Args...>>>>>(
             object_class, std::get<0>(std::tuple(args...)));
     }
     throw error::TypeError("Can't create object");
 }
 
-}  // namespace types
+}  // namespace ts

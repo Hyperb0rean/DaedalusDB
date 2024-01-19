@@ -32,13 +32,13 @@ public:
             } break;
         }
     }
-    void AddNode(types::Object node) {
+    void AddNode(ts::Object node) {
         (void)node;
     }
 
     template <typename ObjectType>
     [[nodiscard]] std::shared_ptr<ObjectType> GetNode(
-        size_t index) requires std::derived_from<ObjectType, types::Object> {
+        size_t index) requires std::derived_from<ObjectType, ts::Object> {
     }
 
     ~Database() {

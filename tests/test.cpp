@@ -7,11 +7,10 @@
 
 TEST(TypeTests, NewTest) {
     auto file = std::make_shared<mem::File>("test.data");
-    auto name = types::DeclareClass<types::StringClass>("name");
-    auto node = types::New<types::String>(name, "Greg");
+    auto name = ts::NewClass<ts::StringClass>("name");
+    auto node = ts::New<ts::String>(name, "Greg");
     node->Write(file, 0);
     file->Write("Cool", 4, 0, 4);
-    // file->Write(20, 22);
 
     ASSERT_EQ("name: \"Greg\"", node->ToString());
     node->Read(file, 0);
@@ -21,14 +20,13 @@ TEST(TypeTests, NewTest) {
 TEST(TypeTests, SimpleReadWrite) {
     auto file = std::make_shared<mem::File>("test.data");
 
-    auto person_class = types::DeclareClass<types::StructClass>(
-        "person", types::DeclareClass<types::StringClass>("name"),
-        types::DeclareClass<types::StringClass>("surname"),
-        types::DeclareClass<types::PrimitiveClass<int>>("age"),
-        types::DeclareClass<types::PrimitiveClass<bool>>("male"));
+    auto person_class = ts::NewClass<ts::StructClass>(
+        "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
+        ts::NewClass<ts::PrimitiveClass<int>>("age"),
+        ts::NewClass<ts::PrimitiveClass<bool>>("male"));
 
-    auto node = types::New<types::Struct>(person_class, std::string{"Greg"},
-                                          std::string{"Sosnovtsev"}, 19, true);
+    auto node =
+        ts::New<ts::Struct>(person_class, std::string{"Greg"}, std::string{"Sosnovtsev"}, 19, true);
 
     node->Write(file, 0);
     file->Write("Cool", 4, 0, 4);
@@ -44,39 +42,38 @@ TEST(TypeTests, SimpleReadWrite) {
 TEST(TypeTests, TypeDump) {
     auto file = std::make_shared<mem::File>("test.data");
 
-    auto person_class = std::make_shared<types::StructClass>("person");
-    person_class->AddField(types::StringClass("name"));
-    person_class->AddField(types::StringClass("surname"));
-    person_class->AddField(types::PrimitiveClass<int>("age"));
-    person_class->AddField(types::PrimitiveClass<uint64_t>("money"));
+    auto person_class = std::make_shared<ts::StructClass>("person");
+    person_class->AddField(ts::StringClass("name"));
+    person_class->AddField(ts::StringClass("surname"));
+    person_class->AddField(ts::PrimitiveClass<int>("age"));
+    person_class->AddField(ts::PrimitiveClass<uint64_t>("money"));
 
-    types::ClassObject(person_class).Write(file, 1488);
+    ts::ClassObject(person_class).Write(file, 1488);
     ASSERT_EQ(
-        types::ClassObject(person_class).ToString(),
+        ts::ClassObject(person_class).ToString(),
         "class: _struct@person_<_string@name__string@surname__int@age__longunsignedint@money_>");
 
-    types::ClassObject read_class;
+    ts::ClassObject read_class;
     read_class.Read(file, 1488);
-    ASSERT_EQ(read_class.ToString(), types::ClassObject(person_class).ToString());
+    ASSERT_EQ(read_class.ToString(), ts::ClassObject(person_class).ToString());
 }
 
 TEST(TypeTests, SyntaxSugarClasses) {
     auto file = std::make_shared<mem::File>("test.data");
 
-    auto person_class = types::DeclareClass<types::StructClass>(
-        "person", types::DeclareClass<types::StringClass>("name"),
-        types::DeclareClass<types::StringClass>("surname"),
-        types::DeclareClass<types::PrimitiveClass<int>>("age"),
-        types::DeclareClass<types::PrimitiveClass<uint64_t>>("money"));
+    auto person_class = ts::NewClass<ts::StructClass>(
+        "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
+        ts::NewClass<ts::PrimitiveClass<int>>("age"),
+        ts::NewClass<ts::PrimitiveClass<uint64_t>>("money"));
 
-    types::ClassObject(person_class).Write(file, 1337);
+    ts::ClassObject(person_class).Write(file, 1337);
     ASSERT_EQ(
-        types::ClassObject(person_class).ToString(),
+        ts::ClassObject(person_class).ToString(),
         "class: _struct@person_<_string@name__string@surname__int@age__longunsignedint@money_>");
 
-    types::ClassObject read_class;
+    ts::ClassObject read_class;
     read_class.Read(file, 1488);
-    ASSERT_EQ(read_class.ToString(), types::ClassObject(person_class).ToString());
+    ASSERT_EQ(read_class.ToString(), ts::ClassObject(person_class).ToString());
 }
 
 TEST(PageIterator, SimpleIteration) {

@@ -27,7 +27,8 @@ set(SOURCES
   src/mem/allocator.hpp 
   src/db_struct/database.hpp 
   src/db_struct/class.hpp
-  src/db_struct/object.hpp)
+  src/db_struct/object.hpp
+  src/mem/pagelist.hpp)
 add_executable(database main.cpp ${SOURCES})
 target_include_directories(database PRIVATE "./src/mem")
 target_include_directories(database PRIVATE "./src/db_struct")

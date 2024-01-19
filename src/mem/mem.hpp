@@ -5,17 +5,17 @@
 #include "page.hpp"
 
 namespace mem {
-inline const int64_t kMagic = 0xDEADBEEF;
+constexpr int64_t kMagic = 0xDEADBEEF;
 
 class Superblock {
 
     struct SuperblockHeader {
+        Page free_list_sentinel_;
         size_t types_;
         Offset cr3_;
         size_t pages_count;
         size_t free_pages_count;
         size_t class_metadata_index;
-        size_t free_list_head_index;
     } header_;
 
     void CheckConsistency(std::shared_ptr<File>& file) {
@@ -35,14 +35,13 @@ public:
 };
 
 class ClassHeader : public Page {
+    Page type_list_sentinel_;
     size_t nodes_;
-    Page first_page_;
-    Page current_page_;
     std::string serialized_class_;
 
 public:
     ClassHeader() {
-        this->type = PageType::kClassHeader;
+        this->type_ = PageType::kClassHeader;
     }
 
     void ReadClassHeader(Offset start, std::shared_ptr<File>& file);

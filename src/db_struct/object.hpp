@@ -244,23 +244,22 @@ template <ObjectLike O, ClassLike C, typename... Args>
 
     if constexpr (std::is_same_v<O, Struct>) {
         auto new_object = std::make_shared<Struct>(object_class);
-        auto it = utils::As<StructClass>(object_class)->fields_.begin();
+        auto it = util::As<StructClass>(object_class)->fields_.begin();
         (
-            [&] {
+            [&it, &args, &new_object] {
                 auto class_ = *it++;
-                if (utils::Is<StructClass>(class_)) {
-                    new_object->AddFieldValue(New<Struct>(utils::As<StructClass>(class_), args));
-                } else if (utils::Is<StringClass>(class_)) {
+                if (util::Is<StructClass>(class_)) {
+                    new_object->AddFieldValue(New<Struct>(util::As<StructClass>(class_), args));
+                } else if (util::Is<StringClass>(class_)) {
                     if constexpr (std::is_convertible_v<decltype(args), std::string_view>) {
-                        new_object->AddFieldValue(
-                            New<String>(utils::As<StringClass>(class_), args));
+                        new_object->AddFieldValue(New<String>(util::As<StringClass>(class_), args));
                     }
                 } else {
                     if constexpr (!std::is_convertible_v<std::remove_reference_t<decltype(args)>,
                                                          std::string_view>) {
                         new_object->AddFieldValue(
                             New<Primitive<std::remove_reference_t<decltype(args)>>>(
-                                utils::As<PrimitiveClass<std::remove_reference_t<decltype(args)>>>(
+                                util::As<PrimitiveClass<std::remove_reference_t<decltype(args)>>>(
                                     class_),
                                 args));
                     }
@@ -269,8 +268,7 @@ template <ObjectLike O, ClassLike C, typename... Args>
             ...);
         return new_object;
     } else if constexpr (std::is_same_v<O, String>) {
-        return std::make_shared<String>(
-            object_class, std::forward<std::string>(std::get<0>(std::tuple(args...))));
+        return std::make_shared<String>(object_class, std::move(std::get<0>(std::tuple(args...))));
     } else if constexpr (!std::is_convertible_v<std::tuple_element_t<0, std::tuple<Args...>>,
                                                 std::string_view>) {
         return std::make_shared<

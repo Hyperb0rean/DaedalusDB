@@ -5,7 +5,7 @@
 namespace mem {
 
 inline const size_t kPageSize = 4096;
-enum class PageType { kClassHeader, kData, kFree, kClassMetadata };
+enum class PageType { kClassHeader, kData, kFree, kMetadata };
 
 struct Page {
     PageType type;

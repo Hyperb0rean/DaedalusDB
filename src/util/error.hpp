@@ -2,7 +2,7 @@
 #include <cerrno>
 #include <stdexcept>
 
-namespace utils {
+namespace util {
 inline const std::string GetCurrentTime() {
     time_t now = time(0);
     struct tm tstruct;
@@ -11,7 +11,7 @@ inline const std::string GetCurrentTime() {
     strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
     return buf;
 }
-}  // namespace utils
+}  // namespace util
 
 namespace error {
 
@@ -20,7 +20,7 @@ private:
     std::string desc_;
 
 public:
-    explicit Error(std::string desc) : desc_{utils::GetCurrentTime() + " | " + desc} {
+    explicit Error(std::string desc) : desc_{util::GetCurrentTime() + " | " + desc} {
         perror(desc_.c_str());
         std::abort();
     }

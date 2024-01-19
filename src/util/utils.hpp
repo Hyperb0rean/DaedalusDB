@@ -7,7 +7,7 @@
 
 #include "error.hpp"
 
-namespace utils {
+namespace util {
 
 template <typename T, typename Base>
 inline bool Is(const std::shared_ptr<Base>& obj) {
@@ -23,4 +23,4 @@ inline std::shared_ptr<T> As(const std::shared_ptr<Base>& obj) {
     }
 }
 
-}  // namespace utils
+}  // namespace util

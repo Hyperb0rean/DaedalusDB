@@ -36,7 +36,8 @@ struct PrimitiveClass : public Class {
         result += "@";
         result += name_;
         result += "_";
-        return {result.begin(), remove_if(result.begin(), result.end(), isspace)};
+        return {result.begin(), std::remove_if(result.begin(), result.end(), isspace)};
+        // return result;
     }
 };
 

@@ -26,6 +26,7 @@ public:
                 try {
                     superblock_->ReadSuperblock(file_);
                 } catch (const error::StructureError& e) {
+                    std::cerr << "Can't open file in Read mode, rewriting..";
                     superblock_->WriteSuperblock(file_);
                 }
 
@@ -41,8 +42,7 @@ public:
         size_t index) requires std::derived_from<ObjectType, ts::Object> {
     }
 
-    ~Database() {
-    }
+    ~Database() = default;
 };
 
 }  // namespace db

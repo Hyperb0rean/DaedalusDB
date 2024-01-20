@@ -27,13 +27,37 @@ public:
         return file_;
     }
 
-    size_t AllocatePage() {
+    PageIndex AllocatePage() {
+        if ((file_->GetSize() - cr3_) % kPageSize != 0) {
+            throw error::StructureError("Unaligned file");
+        }
+        auto new_page_offset = file_->GetSize();
+        file_->Extend(kPageSize);
+        file_->Write<Page>(Page(pages_count_++), new_page_offset);
+        file_->Write<size_t>(pages_count_, kPagesCountOffset);
     }
 
-    void SwapPages(size_t first, size_t second) {
+    void SwapPages(PageIndex first, PageIndex second) {
+        if (first > pages_count_ || second > pages_count_) {
+            throw error::BadArgument("The page index exceedes pages count: " +
+                                     std::to_string(pages_count_));
+        }
+
+        auto first_data = file_->Read<PageData>(Page(first).GetPageAddress(cr3_));
+        auto second_data = file_->Read<PageData>(Page(second).GetPageAddress(cr3_));
+
+        std::swap(first_data.page_header.index_, second_data.page_header.index_);
+        std::swap(first_data.page_header.next_page_index_,
+                  second_data.page_header.next_page_index_);
+        std::swap(first_data.page_header.previous_page_index_,
+                  second_data.page_header.previous_page_index_);
+
+        file_->Write<PageData>(first_data, first_data.page_header.GetPageAddress(cr3_));
+        file_->Write<PageData>(second_data, second_data.page_header.GetPageAddress(cr3_));
     }
 
-    void FreePage(size_t index) {
+    void FreePage(PageIndex index) {
+        // TODO
     }
 };
 

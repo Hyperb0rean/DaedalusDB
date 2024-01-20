@@ -105,7 +105,7 @@ TEST(PageIterator, SimpleIteration) {
 
     PreInitPages(1000, file);
 
-    auto alloc = std::make_shared<mem::PageAllocator>(file, 60, 1000, 0);
+    auto alloc = std::make_shared<mem::PageAllocator>(file, 60, 1000);
     size_t index = 0;
     for (auto& page : mem::PageList(alloc, 0)) {
         ASSERT_EQ(page.index_, index++);
@@ -117,7 +117,7 @@ TEST(PageIterator, Unlink) {
 
     PreInitPages(6, file);
 
-    auto alloc = std::make_shared<mem::PageAllocator>(file, 60, 6, 0);
+    auto alloc = std::make_shared<mem::PageAllocator>(file, 60, 6);
     size_t index = 0;
     auto list = mem::PageList(alloc, 0);
     list.Unlink(3);
@@ -136,7 +136,7 @@ TEST(PageIterator, LinkBefore) {
 
     PreInitPages(10, file);
 
-    auto alloc = std::make_shared<mem::PageAllocator>(file, 60, 10, 0);
+    auto alloc = std::make_shared<mem::PageAllocator>(file, 60, 10);
     auto list = mem::PageList(alloc, 0);
     list.Unlink(3);
     list.Unlink(5);

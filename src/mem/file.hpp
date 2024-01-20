@@ -12,7 +12,7 @@
 namespace mem {
 
 using FileDescriptor = int32_t;
-using Offset = size_t;
+using Offset = loff_t;
 using StructOffset = size_t;
 
 class File {
@@ -56,6 +56,11 @@ public:
     }
 
     void Truncate(Offset size) {
+        ftruncate64(fd_, GetSize() - size);
+    }
+
+    void Extend(Offset size) {
+        ftruncate64(fd_, GetSize() + size);
     }
 
     template <typename T>

@@ -54,4 +54,9 @@ public:
     return (offset - cr3) / kPageSize;
 }
 
+struct PageData {
+    Page page_header;
+    char bytes[kPageSize - sizeof(Page)];
+};
+
 }  // namespace mem

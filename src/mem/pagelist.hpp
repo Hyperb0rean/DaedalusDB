@@ -7,12 +7,28 @@ namespace mem {
 class PageList {
     std::shared_ptr<PageAllocator> alloc_;
     Offset dummy_offset_;
+    size_t pages_count_;
+
+    void DecrementCount() {
+        alloc_->GetFile()->Write<size_t>(--pages_count_, GetCountFromSentinel(dummy_offset_));
+    }
+    void IncrementCount() {
+        alloc_->GetFile()->Write<size_t>(++pages_count_, GetCountFromSentinel(dummy_offset_));
+    }
 
 public:
+    [[nodiscard]] size_t GetPagesCount() const {
+        return pages_count_;
+    }
+
     class PageIterator {
         std::shared_ptr<PageAllocator> alloc_;
         Offset dummy_offset_;
         Page curr_;
+
+        [[nodiscard]] size_t GetMaxIndex() const {
+            return alloc_->GetFile()->Read<size_t>(GetSentinelIndex(dummy_offset_));
+        }
 
     public:
         using iterator_category = std::bidirectional_iterator_tag;
@@ -20,10 +36,6 @@ public:
         using difference_type = size_t;
         using pointer = Page*;
         using reference = Page&;
-
-        void Write() {
-            curr_.WritePage(alloc_->GetFile(), alloc_->GetCr3());
-        }
 
         PageIterator(const std::shared_ptr<PageAllocator>& alloc, PageIndex index,
                      Offset dummy_offset)
@@ -67,7 +79,7 @@ public:
         }
 
         [[nodiscard]] Page ReadPage(PageIndex index) {
-            if (index < alloc_->GetPagesCount()) {
+            if (index < GetMaxIndex()) {
                 return Page(index).ReadPage(alloc_->GetFile(), alloc_->GetCr3());
             } else {
                 return alloc_->GetFile()->Read<Page>(dummy_offset_);
@@ -75,15 +87,17 @@ public:
         }
 
         void WritePage() {
-            if (curr_.index_ < alloc_->GetPagesCount()) {
+            if (curr_.index_ < GetMaxIndex()) {
                 curr_.WritePage(alloc_->GetFile(), alloc_->GetCr3());
             } else {
                 alloc_->GetFile()->Write<Page>(curr_, dummy_offset_);
             }
         }
     };
+
     PageList(const std::shared_ptr<PageAllocator>& alloc, Offset dummy_offset)
         : alloc_(alloc), dummy_offset_(dummy_offset) {
+        pages_count_ = alloc_->GetFile()->Read<size_t>(GetCountFromSentinel(dummy_offset));
     }
 
     void Unlink(PageIndex index) {
@@ -99,12 +113,15 @@ public:
         it->previous_page_index_ = it->index_;
         it->next_page_index_ = it->index_;
 
-        it.Write();
-        prev.Write();
-        next.Write();
+        it.WritePage();
+        prev.WritePage();
+        next.WritePage();
+        DecrementCount();
     }
 
     void LinkBefore(PageIndex other_index, PageIndex index) {
+        // other_index must be from list, index must not be from list
+
         auto it = PageIterator(alloc_, index, dummy_offset_);
         auto other = PageIterator(alloc_, other_index, dummy_offset_);
         auto prev = PageIterator(alloc_, other->previous_page_index_, dummy_offset_);
@@ -113,9 +130,34 @@ public:
         prev->next_page_index_ = it->index_;
         other->previous_page_index_ = it->index_;
 
-        it.Write();
-        other.Write();
-        prev.Write();
+        it.WritePage();
+        other.WritePage();
+        prev.WritePage();
+        IncrementCount();
+    }
+
+    void PushBack(PageIndex index) {
+        LinkBefore(alloc_->GetFile()->Read<Page>(dummy_offset_).next_page_index_, index);
+    }
+
+    void PushFront(PageIndex index) {
+        LinkBefore(alloc_->GetFile()->Read<Page>(dummy_offset_).index_, index);
+    }
+
+    void PopBack() {
+        Unlink(alloc_->GetFile()->Read<Page>(dummy_offset_).next_page_index_);
+    }
+    void PopFront() {
+        Unlink(alloc_->GetFile()->Read<Page>(dummy_offset_).previous_page_index_);
+    }
+
+    bool IsEmpty() const {
+        return GetPagesCount() == 0;
+    }
+
+    // Index must be in the list
+    PageIterator IteratorTo(PageIndex index) {
+        return PageIterator(alloc_, index, dummy_offset_);
     }
 
     PageIterator Begin() {

@@ -11,11 +11,11 @@ class Superblock {
 
     struct SuperblockHeader {
         Page free_list_sentinel_;
-        size_t types_;
+        size_t types_count_;
         Offset cr3_;
         size_t pages_count;
         size_t free_pages_count;
-        size_t class_metadata_index;
+        PageIndex class_metadata_index;
     } header_;
 
     void CheckConsistency(std::shared_ptr<File>& file) {

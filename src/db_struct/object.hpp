@@ -229,11 +229,11 @@ public:
         std::string result = class_->name_ + ": { ";
         for (auto& field : fields_) {
             if (field != *fields_.begin()) {
-                result += ", ";
+                result.append(", ");
             }
-            result += field->ToString();
+            result.append(field->ToString());
         }
-        result += " }";
+        result.append(" }");
         return result;
     }
 };

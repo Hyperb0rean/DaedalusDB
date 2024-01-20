@@ -25,7 +25,8 @@ public:
             curr_.WritePage(alloc_->GetFile(), alloc_->GetCr3());
         }
 
-        PageIterator(const std::shared_ptr<PageAllocator>& alloc, size_t index, Offset dummy_offset)
+        PageIterator(const std::shared_ptr<PageAllocator>& alloc, PageIndex index,
+                     Offset dummy_offset)
             : alloc_(alloc), dummy_offset_(dummy_offset) {
             curr_ = ReadPage(index);
         }
@@ -65,7 +66,7 @@ public:
             return !(*this == other);
         }
 
-        [[nodiscard]] Page ReadPage(size_t index) {
+        [[nodiscard]] Page ReadPage(PageIndex index) {
             if (index < alloc_->GetPagesCount()) {
                 return Page(index).ReadPage(alloc_->GetFile(), alloc_->GetCr3());
             } else {
@@ -85,7 +86,7 @@ public:
         : alloc_(alloc), dummy_offset_(dummy_offset) {
     }
 
-    void Unlink(size_t index) {
+    void Unlink(PageIndex index) {
         auto it = PageIterator(alloc_, index, dummy_offset_);
         if (it->next_page_index_ == it->previous_page_index_) {
             return;
@@ -103,7 +104,7 @@ public:
         next.Write();
     }
 
-    void LinkBefore(size_t other_index, size_t index) {
+    void LinkBefore(PageIndex other_index, PageIndex index) {
         auto it = PageIterator(alloc_, index, dummy_offset_);
         auto other = PageIterator(alloc_, other_index, dummy_offset_);
         auto prev = PageIterator(alloc_, other->previous_page_index_, dummy_offset_);

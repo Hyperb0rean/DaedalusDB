@@ -13,6 +13,7 @@ namespace mem {
 
 using FileDescriptor = int32_t;
 using Offset = size_t;
+using StructOffset = size_t;
 
 class File {
     FileDescriptor fd_;
@@ -54,9 +55,12 @@ public:
         return file_stat.st_size;
     }
 
+    void Truncate(Offset size) {
+    }
+
     template <typename T>
-    Offset Write(const T& data, Offset offset = 0, size_t struct_offset = 0,
-                 size_t count = sizeof(T)) {
+    Offset Write(const T& data, Offset offset = 0, StructOffset struct_offset = 0,
+                 StructOffset count = sizeof(T)) {
         count = std::min(count, sizeof(T) - struct_offset);
         auto new_offset = Seek(offset);
         if (write(fd_, reinterpret_cast<const char*>(&data) + struct_offset, count) == -1) {
@@ -77,7 +81,7 @@ public:
 
     template <typename T>
     Offset Write(const std::vector<T>& vec, Offset offset = 0, size_t from = 0,
-                 size_t count = SIZE_MAX) {
+                 StructOffset count = SIZE_MAX) {
         count = std::min(count, vec.size() - from);
         auto new_offset = Seek(offset);
         if (write(fd_, vec.data(), count * sizeof(T)) == -1) {
@@ -87,8 +91,9 @@ public:
     }
 
     template <typename T>
-    [[nodiscard]] T Read(Offset offset = 0, size_t struct_offset = 0, size_t count = sizeof(T))
-        const requires std::is_default_constructible_v<T> {
+    [[nodiscard]] T Read(
+        Offset offset = 0, StructOffset struct_offset = 0,
+        StructOffset count = sizeof(T)) const requires std::is_default_constructible_v<T> {
         count = std::min(count, sizeof(T) - struct_offset);
         auto new_offset = Seek(offset);
         T data{};

@@ -5,6 +5,8 @@
 
 #include "database.hpp"
 
+using namespace std::string_literals;
+
 TEST(TypeTests, NewTest) {
     auto file = std::make_shared<mem::File>("test.data");
     auto name = ts::NewClass<ts::StringClass>("name");
@@ -25,8 +27,7 @@ TEST(TypeTests, SimpleReadWrite) {
         ts::NewClass<ts::PrimitiveClass<int>>("age"),
         ts::NewClass<ts::PrimitiveClass<bool>>("male"));
 
-    auto node =
-        ts::New<ts::Struct>(person_class, std::string{"Greg"}, std::string{"Sosnovtsev"}, 19, true);
+    auto node = ts::New<ts::Struct>(person_class, "Greg"s, "Sosnovtsev"s, 19, true);
 
     node->Write(file, 0);
     file->Write("Cool", 4, 0, 4);

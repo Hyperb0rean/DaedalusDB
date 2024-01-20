@@ -32,12 +32,8 @@ struct PrimitiveClass : public Class {
     }
     [[nodiscard]] std::string Serialize() const override {
         std::string result = "_";
-        result += type_name<T>();
-        result += "@";
-        result += name_;
-        result += "_";
+        result.append(type_name<T>()).append("@").append(name_).append("_");
         return {result.begin(), std::remove_if(result.begin(), result.end(), isspace)};
-        // return result;
     }
 };
 
@@ -72,9 +68,9 @@ struct StructClass : public Class {
     [[nodiscard]] std::string Serialize() const override {
         auto result = "_struct@" + name_ + "_<";
         for (auto& field : fields_) {
-            result += field->Serialize();
+            result.append(field->Serialize());
         }
-        result += ">";
+        result.append(">");
         return result;
     }
 };

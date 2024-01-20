@@ -8,17 +8,18 @@ inline const size_t kPageSize = 4096;
 enum class PageType { kClassHeader, kData, kFree, kMetadata };
 
 using PageOffset = uint32_t;
+using PageIndex = size_t;
 
 class Page {
 public:
     PageType type_;
-    size_t index_;
+    PageIndex index_;
     size_t actual_size_;
     PageOffset first_free_;
-    size_t previous_page_index_;
-    size_t next_page_index_;
+    PageIndex previous_page_index_;
+    PageIndex next_page_index_;
 
-    Page(size_t index)
+    Page(PageIndex index)
         : type_(PageType::kFree),
           index_(index),
           actual_size_(0),

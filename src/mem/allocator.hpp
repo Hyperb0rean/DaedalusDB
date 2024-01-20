@@ -35,6 +35,7 @@ public:
         file_->Extend(kPageSize);
         file_->Write<Page>(Page(pages_count_++), new_page_offset);
         file_->Write<size_t>(pages_count_, kPagesCountOffset);
+        return new_page_offset;
     }
 
     void SwapPages(PageIndex first, PageIndex second) {

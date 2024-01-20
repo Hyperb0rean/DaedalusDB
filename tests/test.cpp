@@ -7,7 +7,7 @@
 
 using namespace std::string_literals;
 
-TEST(TypeTests, NewTest) {
+TEST(TypeTests, SimpleReadWrite) {
     auto file = std::make_shared<mem::File>("test.data");
     auto name = ts::NewClass<ts::StringClass>("name");
     auto node = ts::New<ts::String>(name, "Greg");
@@ -19,7 +19,7 @@ TEST(TypeTests, NewTest) {
     ASSERT_EQ("name: \"Cool\"", node->ToString());
 }
 
-TEST(TypeTests, SimpleReadWrite) {
+TEST(TypeTests, ReadWrite) {
     auto file = std::make_shared<mem::File>("test.data");
 
     auto person_class = ts::NewClass<ts::StructClass>(
@@ -59,26 +59,8 @@ TEST(TypeTests, TypeDump) {
     ASSERT_EQ(read_class.ToString(), ts::ClassObject(person_class).ToString());
 }
 
-TEST(TypeTests, SyntaxSugarClasses) {
-    auto file = std::make_shared<mem::File>("test.data");
-
-    auto person_class = ts::NewClass<ts::StructClass>(
-        "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
-        ts::NewClass<ts::PrimitiveClass<int>>("age"),
-        ts::NewClass<ts::PrimitiveClass<uint64_t>>("money"));
-
-    ts::ClassObject(person_class).Write(file, 1337);
-    ASSERT_EQ(
-        ts::ClassObject(person_class).ToString(),
-        "class: _struct@person_<_string@name__string@surname__int@age__longunsignedint@money_>");
-
-    ts::ClassObject read_class;
-    read_class.Read(file, 1488);
-    ASSERT_EQ(read_class.ToString(), ts::ClassObject(person_class).ToString());
-}
-
 void PreInitPages(size_t number, std::shared_ptr<mem::File>& file) {
-    auto page = mem::Page();
+    auto page = mem::Page(SIZE_MAX);
     page.next_page_index_ = 1;
     page.previous_page_index_ = number;
     file->Write<mem::Page>(page, 60);

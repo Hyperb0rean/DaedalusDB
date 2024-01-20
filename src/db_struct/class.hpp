@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <sstream>
 #include <typeinfo>
 
@@ -32,7 +33,8 @@ struct PrimitiveClass : public Class {
     }
     [[nodiscard]] std::string Serialize() const override {
         std::string result = "_";
-        result.append(type_name<T>()).append("@").append(name_).append("_");
+        result += type_name<T>();
+        result.append("@").append(name_).append("_");
         return {result.begin(), std::remove_if(result.begin(), result.end(), isspace)};
     }
 };

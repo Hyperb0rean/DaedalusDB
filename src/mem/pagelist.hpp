@@ -1,5 +1,7 @@
 #pragma once
 
+#include <iostream>
+
 #include "allocator.hpp"
 
 namespace mem {

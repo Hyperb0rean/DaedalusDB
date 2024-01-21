@@ -40,14 +40,14 @@ public:
         }
         auto new_page_offset = file_->GetSize();
 
-        logger_->Verbose("Allocating page");
-        logger_->Verbose("Filesize: " + std::to_string(new_page_offset));
+        logger_->Debug("Allocating page");
+        logger_->Debug("Filesize: " + std::to_string(new_page_offset));
 
         file_->Extend(kPageSize);
         file_->Write<Page>(Page(pages_count_++), new_page_offset);
         file_->Write<size_t>(pages_count_, kPagesCountOffset);
 
-        logger_->Verbose("Successful Allocation");
+        logger_->Debug("Successful Allocation");
 
         return pages_count_ - 1;
     }
@@ -58,8 +58,8 @@ public:
                                      std::to_string(pages_count_));
         }
 
-        logger_->Verbose("Swapping pages with indecies" + std::to_string(first) + " " +
-                         std::to_string(second));
+        logger_->Debug("Swapping pages with indecies" + std::to_string(first) + " " +
+                       std::to_string(second));
 
         auto first_data = file_->Read<PageData>(Page(first).GetPageAddress(cr3_));
         auto second_data = file_->Read<PageData>(Page(second).GetPageAddress(cr3_));
@@ -73,7 +73,7 @@ public:
         file_->Write<PageData>(first_data, first_data.page_header.GetPageAddress(cr3_));
         file_->Write<PageData>(second_data, second_data.page_header.GetPageAddress(cr3_));
 
-        logger_->Verbose("Successfully swaped");
+        logger_->Debug("Successfully swaped");
     }
 };
 

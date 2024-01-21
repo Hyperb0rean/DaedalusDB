@@ -25,13 +25,13 @@ class Database {
     }
 
     void InitializeClassMap() {
-        logger_->Log("Initializing class map..");
+        logger_->Info("Initializing class map..");
 
         class_map_.clear();
         for (auto& class_it : class_list_) {
             ts::ClassObject class_object;
             class_object.Read(file_, GetOffset(class_it.index_, class_it.first_free_));
-            logger_->Verbose("Initialized: " + class_object.ToString());
+            logger_->Debug("Initialized: " + class_object.ToString());
             class_map_.emplace(class_object.ToString(), class_it.index_);
         }
     }
@@ -61,16 +61,16 @@ public:
 
         switch (mode) {
             case OpenMode::kRead: {
-                logger_->Verbose("OpenMode: Read");
+                logger_->Debug("OpenMode: Read");
                 superblock_.ReadSuperblock(file_);
             } break;
             case OpenMode::kWrite: {
-                logger_->Verbose("OpenMode: Write");
+                logger_->Debug("OpenMode: Write");
                 file->Clear();
                 superblock_.InitSuperblock(file_);
             } break;
             case OpenMode::kDefault: {
-                logger_->Verbose("OpenMode: Default");
+                logger_->Debug("OpenMode: Default");
                 try {
                     superblock_.ReadSuperblock(file_);
                 } catch (const error::StructureError& e) {
@@ -85,23 +85,22 @@ public:
         }
 
         alloc_ = std::make_shared<mem::PageAllocator>(file_, superblock_.cr3_, logger_);
-        logger_->Log("Alloc initialized");
-        logger->Verbose("Freelist sentinel offset: " +
-                        std::to_string(mem::kFreeListSentinelOffset));
+        logger_->Info("Alloc initialized");
+        logger->Debug("Freelist sentinel offset: " + std::to_string(mem::kFreeListSentinelOffset));
 
-        logger->Verbose("Free list count: " +
-                        std::to_string(file->Read<size_t>(mem::kFreePagesCountOffset)));
+        logger->Debug("Free list count: " +
+                      std::to_string(file->Read<size_t>(mem::kFreePagesCountOffset)));
 
         free_list_ = mem::PageList(alloc_, mem::kFreeListSentinelOffset, logger_);
 
-        logger_->Log("FreeList initialized");
-        logger->Verbose("Class list sentinel offset: " +
-                        std::to_string(mem::kClassListSentinelOffset));
-        logger->Verbose("Class list count: " +
-                        std::to_string(file->Read<size_t>(mem::kClassListCount)));
+        logger_->Info("FreeList initialized");
+        logger->Debug("Class list sentinel offset: " +
+                      std::to_string(mem::kClassListSentinelOffset));
+        logger->Debug("Class list count: " +
+                      std::to_string(file->Read<size_t>(mem::kClassListCount)));
 
         class_list_ = mem::PageList(alloc_, mem::kClassListSentinelOffset, logger_);
-        logger_->Log("ClassList initialized");
+        logger_->Info("ClassList initialized");
 
         InitializeClassMap();
     }
@@ -118,11 +117,11 @@ public:
             throw error::NotImplemented("Too complex class");
         }
 
-        logger_->Log("Adding class");
+        logger_->Info("Adding class");
         logger_->Verbose(class_object.ToString());
 
         mem::PageIndex index = AllocatePage();
-        logger_->Error("Index: " + std::to_string(index));
+        logger_->Debug("Index: " + std::to_string(index));
         class_list_.PushBack(index);
 
         mem::ClassHeader header(index);
@@ -153,7 +152,7 @@ public:
     }
 
     ~Database() {
-        logger_->Log("Closing database");
+        logger_->Info("Closing database");
         superblock_.WriteSuperblock(file_);
     };
 };

@@ -7,12 +7,14 @@ class Logger {
 public:
     Logger() = default;
     virtual ~Logger(){};
-    virtual void Log(std::string_view) = 0;
+    virtual void Debug(std::string_view) = 0;
+    virtual void Info(std::string_view) = 0;
+    virtual void Warn(std::string_view) = 0;
     virtual void Error(std::string_view) = 0;
-    virtual void Verbose(std::string_view) = 0;
 };
 
 class ConsoleLogger : public Logger {
+protected:
     std::ostream& cout_;
     std::ostream& cerr_;
 
@@ -23,35 +25,26 @@ public:
         : cout_(cout), cerr_(cerr) {
     }
 
-    void Log(std::string_view message) override {
-        cout_ << GetCurrentTime() << " | LOG | " << message << std::endl;
+    void Debug(std::string_view message) override {
+    }
+    void Info(std::string_view message) override {
+        cout_ << GetCurrentTime() << " | INFO  | " << message << std::endl;
+    }
+    void Warn(std::string_view message) override {
+        cout_ << GetCurrentTime() << " | WARN  | " << message << std::endl;
     }
     void Error(std::string_view message) override {
-        cout_ << GetCurrentTime() << " | ERR | " << message << std::endl;
-    }
-    void Verbose(std::string_view message) override {
+        cerr_ << GetCurrentTime() << " | ERROR | " << message << std::endl;
     }
 };
 
-class VerboseConsoleLogger : public Logger {
-    std::ostream& cout_;
-    std::ostream& cerr_;
-
+class DebugLogger : public ConsoleLogger {
 public:
-    ~VerboseConsoleLogger(){};
-
-    VerboseConsoleLogger(std::ostream& cout = std::cout, std::ostream& cerr = std::cerr)
-        : cout_(cout), cerr_(cerr) {
+    DebugLogger(std::ostream& cout = std::cout, std::ostream& cerr = std::cerr)
+        : ConsoleLogger(cout, cerr) {
     }
-
-    void Log(std::string_view message) override {
-        cout_ << GetCurrentTime() << " | LOG | " << message << std::endl;
-    }
-    void Error(std::string_view message) override {
-        cout_ << GetCurrentTime() << " | ERR | " << message << std::endl;
-    }
-    void Verbose(std::string_view message) override {
-        cout_ << GetCurrentTime() << " | LOG | " << message << std::endl;
+    void Debug(std::string_view message) override {
+        this->cout_ << GetCurrentTime() << " | DEBUG | " << message << std::endl;
     }
 };
 
@@ -63,11 +56,13 @@ public:
     EmptyLogger() {
     }
 
-    void Log(std::string_view) override {
+    void Debug(std::string_view) override {
+    }
+    void Info(std::string_view) override {
+    }
+    void Warn(std::string_view) override {
     }
     void Error(std::string_view) override {
-    }
-    void Verbose(std::string_view) override {
     }
 };
 }  // namespace util

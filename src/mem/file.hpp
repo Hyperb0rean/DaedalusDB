@@ -63,20 +63,20 @@ public:
     }
 
     void Truncate(Offset size) {
-        logger_->Verbose("Truncating, current size: " + std::to_string(GetSize()));
+        logger_->Debug("Truncating, current size: " + std::to_string(GetSize()));
         if (ftruncate64(fd_, GetSize() - size) != 0) {
             throw error::IoError("Can't truncate file " + fileName_);
         }
     }
 
     void Extend(Offset size) {
-        logger_->Verbose("Extending, current size: " + std::to_string(GetSize()));
+        logger_->Debug("Extending, current size: " + std::to_string(GetSize()));
         if (ftruncate64(fd_, GetSize() + size) != 0) {
             throw error::IoError("Can't extend file " + fileName_);
         }
     }
     void Clear() {
-        logger_->Verbose("Clear");
+        logger_->Debug("Clear");
         if (ftruncate64(fd_, 0) != 0) {
             throw error::IoError("Can't clear file " + fileName_);
         }

@@ -144,8 +144,7 @@ TEST(PageList, LinkBefore) {
 }
 
 TEST(PageList, LargePush) {
-    auto file =
-        std::make_shared<mem::File>("test.data", std::make_shared<util::VerboseConsoleLogger>());
+    auto file = std::make_shared<mem::File>("test.data");
     file->Clear();
     file->Write<uint64_t>(mem::kMagic);
     file->Write<mem::Page>(mem::Page(mem::kDummyIndex), mem::kFreeListSentinelOffset);
@@ -211,8 +210,7 @@ TEST(PageList, Pop) {
 }
 
 TEST(Database, TypeAddition) {
-    auto file =
-        std::make_shared<mem::File>("test.data", std::make_shared<util::VerboseConsoleLogger>());
+    auto file = std::make_shared<mem::File>("test.data", std::make_shared<util::ConsoleLogger>());
     file->Clear();
 
     auto person_class = ts::NewClass<ts::StructClass>(
@@ -221,7 +219,7 @@ TEST(Database, TypeAddition) {
         ts::NewClass<ts::PrimitiveClass<bool>>("male"));
 
     auto database =
-        db::Database(file, db::OpenMode::kWrite, std::make_shared<util::VerboseConsoleLogger>());
+        db::Database(file, db::OpenMode::kWrite, std::make_shared<util::ConsoleLogger>());
     database.AddClass(person_class);
 
     database.PrintAllClasses(db::PrintMode::kCache, std::cout);

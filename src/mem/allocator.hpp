@@ -9,12 +9,15 @@ class PageAllocator : public std::enable_shared_from_this<PageAllocator> {
     Offset cr3_;
     size_t pages_count_;
     std::shared_ptr<mem::File> file_;
+    std::shared_ptr<util::Logger> logger_;
 
 public:
     PageAllocator() {
     }
 
-    PageAllocator(std::shared_ptr<mem::File>& file, Offset cr3) : cr3_(cr3), file_(file) {
+    PageAllocator(std::shared_ptr<mem::File>& file, Offset cr3,
+                  std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+        : cr3_(cr3), file_(file), logger_(logger) {
         pages_count_ = file_->Read<size_t>(kPagesCountOffset);
     }
 

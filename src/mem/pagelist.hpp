@@ -11,6 +11,7 @@ class PageList {
     std::shared_ptr<PageAllocator> alloc_;
     Offset dummy_offset_;
     size_t pages_count_;
+    std::shared_ptr<util::Logger> logger_;
 
     void DecrementCount() {
         alloc_->GetFile()->Write<size_t>(--pages_count_, GetCountFromSentinel(dummy_offset_));
@@ -29,10 +30,6 @@ public:
         Offset dummy_offset_;
         Page curr_;
 
-        // [[nodiscard]] size_t GetMaxIndex() const {
-        //     return alloc_->GetFile()->Read<size_t>(GetSentinelIndex(dummy_offset_));
-        // }
-
     public:
         using iterator_category = std::bidirectional_iterator_tag;
         using value_type = Page;
@@ -46,9 +43,7 @@ public:
             curr_ = ReadPage(index);
         }
         PageIterator& operator++() {
-            std::cerr << curr_.index_ << " -> ";
             curr_ = ReadPage(curr_.previous_page_index_);
-            std::cerr << curr_.index_ << "\n";
             return *this;
         }
         PageIterator operator++(int) {
@@ -101,8 +96,9 @@ public:
     PageList() {
     }
 
-    PageList(const std::shared_ptr<PageAllocator>& alloc, Offset dummy_offset)
-        : alloc_(alloc), dummy_offset_(dummy_offset) {
+    PageList(const std::shared_ptr<PageAllocator>& alloc, Offset dummy_offset,
+             std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+        : alloc_(alloc), dummy_offset_(dummy_offset), logger_(logger) {
         pages_count_ = alloc_->GetFile()->Read<size_t>(GetCountFromSentinel(dummy_offset));
     }
 

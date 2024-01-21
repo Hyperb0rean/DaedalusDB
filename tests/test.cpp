@@ -9,6 +9,7 @@ using namespace std::string_literals;
 
 TEST(TypeTests, SimpleReadWrite) {
     auto file = std::make_shared<mem::File>("test.data");
+    file->Clear();
     auto name = ts::NewClass<ts::StringClass>("name");
     auto node = ts::New<ts::String>(name, "Greg");
     node->Write(file, 0);
@@ -21,7 +22,7 @@ TEST(TypeTests, SimpleReadWrite) {
 
 TEST(TypeTests, ReadWrite) {
     auto file = std::make_shared<mem::File>("test.data");
-
+    file->Clear();
     auto person_class = ts::NewClass<ts::StructClass>(
         "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
         ts::NewClass<ts::PrimitiveClass<int>>("age"),
@@ -42,7 +43,7 @@ TEST(TypeTests, ReadWrite) {
 
 TEST(TypeTests, TypeDump) {
     auto file = std::make_shared<mem::File>("test.data");
-
+    file->Clear();
     auto person_class = std::make_shared<ts::StructClass>("person");
     person_class->AddField(ts::StringClass("name"));
     person_class->AddField(ts::StringClass("surname"));
@@ -85,6 +86,7 @@ void PreInitPages(size_t number, std::shared_ptr<mem::File>& file) {
 
 TEST(PageList, SimpleIteration) {
     auto file = std::make_shared<mem::File>("test.data");
+    file->Clear();
 
     PreInitPages(1000, file);
 
@@ -97,6 +99,7 @@ TEST(PageList, SimpleIteration) {
 
 TEST(PageList, Unlink) {
     auto file = std::make_shared<mem::File>("test.data");
+    file->Clear();
 
     PreInitPages(6, file);
 
@@ -116,6 +119,7 @@ TEST(PageList, Unlink) {
 
 TEST(PageList, LinkBefore) {
     auto file = std::make_shared<mem::File>("test.data");
+    file->Clear();
 
     PreInitPages(10, file);
 
@@ -140,22 +144,45 @@ TEST(PageList, LinkBefore) {
     }
 }
 
-TEST(PageList, Push) {
-    auto file = std::make_shared<mem::File>("test1.data");
+TEST(PageList, LargePush) {
+    auto file = std::make_shared<mem::File>("test.data");
+    file->Clear();
+
     file->Write<mem::Page>(mem::Page(mem::kDummyIndex));
     file->Write<size_t>(0, mem::kFreePagesCountOffset);
     file->Write<size_t>(0, mem::kPagesCountOffset);
-    std::cerr << file->GetSize() << '\n';
 
     auto alloc = std::make_shared<mem::PageAllocator>(file, 72);
     auto list = mem::PageList(alloc, 0);
 
-    for (size_t i = 0; i < 1; ++i) {
+    for (size_t i = 0; i < 1000; ++i) {
+        list.PushBack(alloc->AllocatePage());
+    }
+    ASSERT_EQ(1000, list.GetPagesCount());
+    size_t index = 0;
+    for (auto& page : list) {
+        ASSERT_EQ(page.index_, index++);
+    }
+}
+
+TEST(PageList, CornerCase) {
+    auto file = std::make_shared<mem::File>("test.data");
+    file->Clear();
+
+    file->Write<mem::Page>(mem::Page(mem::kDummyIndex));
+    file->Write<size_t>(0, mem::kFreePagesCountOffset);
+    file->Write<size_t>(0, mem::kPagesCountOffset);
+
+    auto alloc = std::make_shared<mem::PageAllocator>(file, 72);
+    auto list = mem::PageList(alloc, 0);
+
+    for (size_t i = 0; i < 4; ++i) {
         list.PushBack(alloc->AllocatePage());
         if (i % 2 == 0) {
             list.Unlink(i);
         }
     }
+    ASSERT_EQ(2, list.GetPagesCount());
 
     size_t index = 1;
     for (auto& page : list) {

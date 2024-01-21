@@ -56,11 +56,20 @@ public:
     }
 
     void Truncate(Offset size) {
-        ftruncate64(fd_, GetSize() - size);
+        if (ftruncate64(fd_, GetSize() - size) != 0) {
+            throw error::IoError("Can't truncate file " + fileName_);
+        }
     }
 
     void Extend(Offset size) {
-        ftruncate64(fd_, GetSize() + size);
+        if (ftruncate64(fd_, GetSize() + size) != 0) {
+            throw error::IoError("Can't extend file " + fileName_);
+        }
+    }
+    void Clear() {
+        if (ftruncate64(fd_, 0) != 0) {
+            throw error::IoError("Can't clear file " + fileName_);
+        }
     }
 
     template <typename T>

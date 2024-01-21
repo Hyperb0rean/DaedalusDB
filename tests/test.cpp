@@ -219,7 +219,7 @@ TEST(Database, TypeAddition) {
         ts::NewClass<ts::PrimitiveClass<int>>("age"),
         ts::NewClass<ts::PrimitiveClass<bool>>("male"));
 
-    auto database = db::Database(file);
+    auto database = db::Database(file, db::OpenMode::kWrite);
     database.AddClass(person_class);
 
     database.PrintAllClasses(db::PrintMode::kCache, std::cout);

@@ -8,7 +8,7 @@
 
 namespace db {
 
-enum class OpenMode { kDefault, kOpen, kWrite };
+enum class OpenMode { kDefault, kRead, kWrite };
 enum class PrintMode { kCache, kFile };
 
 class Database {
@@ -18,6 +18,7 @@ class Database {
     std::unordered_map<std::string, mem::PageIndex> class_map_;
     std::shared_ptr<mem::PageAllocator> alloc_;
     std::shared_ptr<mem::File> file_;
+    std::shared_ptr<util::Logger> logger_;
 
     mem::Offset GetOffset(mem::PageIndex index, mem::PageOffset virt_offset) {
         return superblock_.cr3_ + index * mem::kPageSize + virt_offset;
@@ -51,32 +52,41 @@ class Database {
     }
 
 public:
-    Database(const std::shared_ptr<mem::File>& file, OpenMode mode = OpenMode::kDefault)
-        : file_(file) {
+    Database(const std::shared_ptr<mem::File>& file, OpenMode mode = OpenMode::kDefault,
+             std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+        : file_(file), logger_(logger) {
+
         switch (mode) {
-            case OpenMode::kOpen: {
+            case OpenMode::kRead: {
+                logger_->Verbose("OpenMode: Read");
                 superblock_.ReadSuperblock(file_);
             } break;
             case OpenMode::kWrite: {
+                logger_->Verbose("OpenMode: Write");
+                file->Clear();
                 superblock_.InitSuperblock(file_);
             } break;
             case OpenMode::kDefault: {
+                logger_->Verbose("OpenMode: Default");
                 try {
                     superblock_.ReadSuperblock(file_);
                 } catch (const error::StructureError& e) {
-                    std::cerr << "Can't open file in Read mode, rewriting..";
+                    logger_->Error("Can't open file in Read mode, rewriting..");
                     superblock_.InitSuperblock(file_);
                 } catch (const error::BadArgument& e) {
-                    std::cerr << "Can't open file in Read mode, rewriting..";
+                    logger_->Error("Can't open file in Read mode, rewriting..");
                     superblock_.InitSuperblock(file_);
                 }
 
             } break;
         }
 
-        alloc_ = std::make_shared<mem::PageAllocator>(file_, superblock_.cr3_);
-        free_list_ = mem::PageList(alloc_, mem::kFreeListSentinelOffset);
-        class_list_ = mem::PageList(alloc_, mem::kClassListSentinelOffset);
+        alloc_ = std::make_shared<mem::PageAllocator>(file_, superblock_.cr3_, logger_);
+        logger_->Log("Alloc initialized");
+        free_list_ = mem::PageList(alloc_, mem::kFreeListSentinelOffset, logger_);
+        logger_->Log("FreeList initialized");
+        class_list_ = mem::PageList(alloc_, mem::kClassListSentinelOffset, logger_);
+        logger_->Log("ClassList initialized");
 
         InitializeTypeMap();
     }

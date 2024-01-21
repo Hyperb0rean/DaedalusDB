@@ -3,11 +3,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <vector>
 
 #include "error.hpp"
+#include "logger.hpp"
 
 namespace mem {
 
@@ -18,6 +20,7 @@ using StructOffset = size_t;
 class File {
     FileDescriptor fd_;
     std::string fileName_;
+    std::shared_ptr<util::Logger> logger_;
 
     Offset Seek(Offset offset) const {
         Offset new_offset = lseek(fd_, offset, SEEK_SET);
@@ -28,13 +31,17 @@ class File {
     }
 
 public:
-    explicit File(std::string&& fileName) : fileName_(std::move(fileName)) {
+    explicit File(std::string&& fileName,
+                  std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+        : fileName_(std::move(fileName)), logger_(logger) {
         fd_ = open(fileName_.c_str(), O_RDWR | O_CREAT, S_IRWXU | S_IRGRP | S_IROTH);
         if (fd_ == -1) {
             throw error::IoError("File could not be opened");
         }
     }
-    explicit File(const std::string& fileName) : File(std::string(fileName)) {
+    explicit File(const std::string& fileName,
+                  std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+        : File(std::string(fileName), logger) {
     }
     ~File() {
         close(fd_);
@@ -116,7 +123,7 @@ public:
             throw error::IoError("Failed to read from file " + fileName_);
         }
         if (result == 0) {
-            throw error::BadArgument("Reached EOF");
+            throw error::IoError("Reached EOF");
         }
         return data;
     }
@@ -130,7 +137,7 @@ public:
             throw error::IoError("Failed to read from file " + fileName_);
         }
         if (result == 0) {
-            throw error::BadArgument("Reached EOF");
+            throw error::IoError("Reached EOF");
         }
         return str;
     }
@@ -145,7 +152,7 @@ public:
             throw error::IoError("Failed to read from file " + fileName_);
         }
         if (result == 0) {
-            throw error::BadArgument("Reached EOF");
+            throw error::IoError("Reached EOF");
         }
         return vec;
     }

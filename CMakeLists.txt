@@ -21,6 +21,7 @@ add_subdirectory(googletest)
 set(SOURCES 
   src/util/error.hpp 
   src/util/utils.hpp
+  src/util/logger.hpp
   src/mem/file.hpp
   src/mem/page.hpp 
   src/mem/mem.hpp 

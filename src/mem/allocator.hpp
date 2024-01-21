@@ -35,12 +35,13 @@ public:
 
     PageIndex AllocatePage() {
         if ((file_->GetSize() - cr3_) % kPageSize != 0) {
+            logger_->Error("Filesize: " + std::to_string(file_->GetSize()));
             throw error::StructureError("Unaligned file");
         }
         auto new_page_offset = file_->GetSize();
 
         logger_->Verbose("Allocating page");
-        logger_->Verbose("Filesize: " + std::to_string(file_->GetSize()));
+        logger_->Verbose("Filesize: " + std::to_string(new_page_offset));
 
         file_->Extend(kPageSize);
         file_->Write<Page>(Page(pages_count_++), new_page_offset);

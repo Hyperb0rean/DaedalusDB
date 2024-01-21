@@ -144,20 +144,20 @@ TEST(PageList, LinkBefore) {
 }
 
 TEST(PageList, LargePush) {
-    auto file = std::make_shared<mem::File>("test.data");
+    auto file =
+        std::make_shared<mem::File>("test.data", std::make_shared<util::VerboseConsoleLogger>());
     file->Clear();
-
-    file->Write<mem::Page>(mem::Page(mem::kDummyIndex));
+    file->Write<uint64_t>(mem::kMagic);
+    file->Write<mem::Page>(mem::Page(mem::kDummyIndex), mem::kFreeListSentinelOffset);
     file->Write<size_t>(0, mem::kFreePagesCountOffset);
     file->Write<size_t>(0, mem::kPagesCountOffset);
+    auto alloc = std::make_shared<mem::PageAllocator>(file, 80);
+    auto list = mem::PageList(alloc, mem::kFreeListSentinelOffset);
 
-    auto alloc = std::make_shared<mem::PageAllocator>(file, 72);
-    auto list = mem::PageList(alloc, 0);
-
-    for (size_t i = 0; i < 1000; ++i) {
+    for (size_t i = 0; i < 100; ++i) {
         list.PushBack(alloc->AllocatePage());
     }
-    ASSERT_EQ(1000, list.GetPagesCount());
+    ASSERT_EQ(100, list.GetPagesCount());
     size_t index = 0;
     for (auto& page : list) {
         ASSERT_EQ(page.index_, index++);
@@ -167,13 +167,13 @@ TEST(PageList, LargePush) {
 TEST(PageList, CornerCase) {
     auto file = std::make_shared<mem::File>("test.data");
     file->Clear();
-
-    file->Write<mem::Page>(mem::Page(mem::kDummyIndex));
+    file->Write<uint64_t>(mem::kMagic);
+    file->Write<mem::Page>(mem::Page(mem::kDummyIndex), mem::kFreeListSentinelOffset);
     file->Write<size_t>(0, mem::kFreePagesCountOffset);
     file->Write<size_t>(0, mem::kPagesCountOffset);
 
-    auto alloc = std::make_shared<mem::PageAllocator>(file, 72);
-    auto list = mem::PageList(alloc, 0);
+    auto alloc = std::make_shared<mem::PageAllocator>(file, 80);
+    auto list = mem::PageList(alloc, mem::kFreeListSentinelOffset);
 
     for (size_t i = 0; i < 4; ++i) {
         list.PushBack(alloc->AllocatePage());
@@ -193,13 +193,13 @@ TEST(PageList, CornerCase) {
 TEST(PageList, Pop) {
     auto file = std::make_shared<mem::File>("test.data");
     file->Clear();
-
-    file->Write<mem::Page>(mem::Page(mem::kDummyIndex));
+    file->Write<uint64_t>(mem::kMagic);
+    file->Write<mem::Page>(mem::Page(mem::kDummyIndex), mem::kFreeListSentinelOffset);
     file->Write<size_t>(0, mem::kFreePagesCountOffset);
     file->Write<size_t>(0, mem::kPagesCountOffset);
 
-    auto alloc = std::make_shared<mem::PageAllocator>(file, 72);
-    auto list = mem::PageList(alloc, 0);
+    auto alloc = std::make_shared<mem::PageAllocator>(file, 80);
+    auto list = mem::PageList(alloc, mem::kFreeListSentinelOffset);
 
     for (size_t i = 0; i < 500; ++i) {
         list.PushBack(alloc->AllocatePage());

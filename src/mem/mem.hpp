@@ -8,12 +8,11 @@ namespace mem {
 constexpr int64_t kMagic = 0xDEADBEEF;
 
 // Constant offsets of some data in superblock for more precise changes
-constexpr Offset kFreeListSentinelOffset = 0;
+constexpr Offset kFreeListSentinelOffset = sizeof(kMagic);
 constexpr Offset kFreePagesCountOffset = kFreeListSentinelOffset + sizeof(Page);
 constexpr Offset kCr3Offset = kFreePagesCountOffset + sizeof(size_t);
 constexpr Offset kPagesCountOffset = kCr3Offset + sizeof(Offset);
-constexpr Offset kTypesCountOffset = kPagesCountOffset + sizeof(size_t);
-constexpr Offset kClassListSentinelOffset = kTypesCountOffset + sizeof(size_t);
+constexpr Offset kClassListSentinelOffset = kPagesCountOffset + sizeof(size_t);
 constexpr Offset kClassListCount = kClassListSentinelOffset + sizeof(Page);
 
 constexpr PageIndex kDummyIndex = SIZE_MAX;
@@ -24,7 +23,6 @@ public:
     size_t free_pages_count_;
     Offset cr3_;
     size_t pages_count;
-    size_t types_count_;
     Page class_list_sentinel_;
     size_t class_list_count_;
 
@@ -46,9 +44,9 @@ public:
         file->Write<int64_t>(kMagic);
         free_list_sentinel_ = Page(kDummyIndex);
         free_list_sentinel_.type_ = PageType::kSentinel;
+        free_pages_count_ = 0;
         cr3_ = sizeof(kMagic) + sizeof(Superblock);
         pages_count = 0;
-        types_count_ = 0;
         class_list_sentinel_ = Page(kDummyIndex);
         class_list_count_ = 0;
         class_list_sentinel_.type_ = PageType::kSentinel;

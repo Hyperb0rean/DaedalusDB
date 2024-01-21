@@ -24,6 +24,7 @@ class PageList {
 
 public:
     [[nodiscard]] size_t GetPagesCount() const {
+        logger_->Verbose("Pages in list: " + std::to_string(pages_count_));
         return pages_count_;
     }
 

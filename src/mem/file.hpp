@@ -118,7 +118,6 @@ public:
     [[nodiscard]] T Read(
         Offset offset = 0, StructOffset struct_offset = 0,
         StructOffset count = sizeof(T)) const requires std::is_default_constructible_v<T> {
-        logger_->Error("Cuurent size " + std::to_string(GetSize()));
         count = std::min(count, sizeof(T) - struct_offset);
         auto new_offset = Seek(offset);
         T data{};

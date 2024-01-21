@@ -86,8 +86,20 @@ public:
 
         alloc_ = std::make_shared<mem::PageAllocator>(file_, superblock_.cr3_, logger_);
         logger_->Log("Alloc initialized");
+        logger->Verbose("Freelist sentinel offset: " +
+                        std::to_string(mem::kFreeListSentinelOffset));
+
+        logger->Verbose("Free list count: " +
+                        std::to_string(file->Read<size_t>(mem::kFreePagesCountOffset)));
+
         free_list_ = mem::PageList(alloc_, mem::kFreeListSentinelOffset, logger_);
+
         logger_->Log("FreeList initialized");
+        logger->Verbose("Class list sentinel offset: " +
+                        std::to_string(mem::kClassListSentinelOffset));
+        logger->Verbose("Class list count: " +
+                        std::to_string(file->Read<size_t>(mem::kClassListCount)));
+
         class_list_ = mem::PageList(alloc_, mem::kClassListSentinelOffset, logger_);
         logger_->Log("ClassList initialized");
 
@@ -110,6 +122,7 @@ public:
         logger_->Verbose(class_object.ToString());
 
         mem::PageIndex index = AllocatePage();
+        logger_->Error("Index: " + std::to_string(index));
         class_list_.PushBack(index);
 
         mem::ClassHeader header(index);

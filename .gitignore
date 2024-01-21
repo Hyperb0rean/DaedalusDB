@@ -1,6 +1,7 @@
 .vscode*
 build*
-test.data*
+test.data
 database.data
 peda-session-database.txt
 .gdb_history
+test*.data

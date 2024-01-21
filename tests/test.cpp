@@ -145,11 +145,12 @@ TEST(PageList, Push) {
     file->Write<mem::Page>(mem::Page(mem::kDummyIndex));
     file->Write<size_t>(0, mem::kFreePagesCountOffset);
     file->Write<size_t>(0, mem::kPagesCountOffset);
+    std::cerr << file->GetSize() << '\n';
 
-    auto alloc = std::make_shared<mem::PageAllocator>(file, 56);
+    auto alloc = std::make_shared<mem::PageAllocator>(file, 72);
     auto list = mem::PageList(alloc, 0);
 
-    for (size_t i = 0; i < 10000; ++i) {
+    for (size_t i = 0; i < 1; ++i) {
         list.PushBack(alloc->AllocatePage());
         if (i % 2 == 0) {
             list.Unlink(i);

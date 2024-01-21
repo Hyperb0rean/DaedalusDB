@@ -56,4 +56,9 @@ public:
     explicit TypeError(std::string desc) : Error{"TypeError | " + desc} {};
 };
 
+class RuntimeError : public Error {
+public:
+    explicit RuntimeError(std::string desc) : Error{"RuntimeError | " + desc} {};
+};
+
 }  // namespace error

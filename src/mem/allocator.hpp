@@ -11,6 +11,9 @@ class PageAllocator : public std::enable_shared_from_this<PageAllocator> {
     std::shared_ptr<mem::File> file_;
 
 public:
+    PageAllocator() {
+    }
+
     PageAllocator(std::shared_ptr<mem::File>& file, Offset cr3) : cr3_(cr3), file_(file) {
         pages_count_ = file_->Read<size_t>(kPagesCountOffset);
     }
@@ -55,10 +58,6 @@ public:
 
         file_->Write<PageData>(first_data, first_data.page_header.GetPageAddress(cr3_));
         file_->Write<PageData>(second_data, second_data.page_header.GetPageAddress(cr3_));
-    }
-
-    void FreePage(PageIndex index) {
-        // TODO
     }
 };
 

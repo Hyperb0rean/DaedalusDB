@@ -51,9 +51,8 @@ TEST(TypeTests, TypeDump) {
     person_class->AddField(ts::PrimitiveClass<uint64_t>("money"));
 
     ts::ClassObject(person_class).Write(file, 1488);
-    ASSERT_EQ(
-        ts::ClassObject(person_class).ToString(),
-        "class: _struct@person_<_string@name__string@surname__int@age__longunsignedint@money_>");
+    ASSERT_EQ(ts::ClassObject(person_class).ToString(),
+              "_struct@person_<_string@name__string@surname__int@age__longunsignedint@money_>");
 
     ts::ClassObject read_class;
     read_class.Read(file, 1488);
@@ -189,6 +188,42 @@ TEST(PageList, CornerCase) {
         ASSERT_EQ(page.index_, index);
         index += 2;
     }
+}
+
+TEST(PageList, Pop) {
+    auto file = std::make_shared<mem::File>("test.data");
+    file->Clear();
+
+    file->Write<mem::Page>(mem::Page(mem::kDummyIndex));
+    file->Write<size_t>(0, mem::kFreePagesCountOffset);
+    file->Write<size_t>(0, mem::kPagesCountOffset);
+
+    auto alloc = std::make_shared<mem::PageAllocator>(file, 72);
+    auto list = mem::PageList(alloc, 0);
+
+    for (size_t i = 0; i < 500; ++i) {
+        list.PushBack(alloc->AllocatePage());
+        list.PopBack();
+        list.PushFront(i);
+        list.PopFront();
+    }
+    ASSERT_EQ(0, list.GetPagesCount());
+}
+
+TEST(Database, TypeAddition) {
+    auto file = std::make_shared<mem::File>("test.data");
+    file->Clear();
+
+    auto person_class = ts::NewClass<ts::StructClass>(
+        "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
+        ts::NewClass<ts::PrimitiveClass<int>>("age"),
+        ts::NewClass<ts::PrimitiveClass<bool>>("male"));
+
+    auto database = db::Database(file);
+    database.AddClass(person_class);
+
+    database.PrintAllClasses(db::PrintMode::kCache, std::cout);
+    database.PrintAllClasses(db::PrintMode::kFile, std::cout);
 }
 
 int main(int argc, char** argv) {

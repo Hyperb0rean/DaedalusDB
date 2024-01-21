@@ -5,7 +5,7 @@
 namespace mem {
 
 inline const size_t kPageSize = 4096;
-enum class PageType { kClassHeader, kData, kFree, kMetadata };
+enum class PageType { kClassHeader, kData, kFree, kSentinel };
 
 using PageOffset = uint32_t;
 using PageIndex = size_t;
@@ -37,11 +37,7 @@ public:
 
     [[nodiscard]] Page ReadPage(const std::shared_ptr<File>& file, Offset cr3) {
         auto page = file->Read<Page>(GetPageAddress(cr3));
-        type_ = page.type_;
-        actual_size_ = page.actual_size_;
-        first_free_ = page.first_free_;
-        previous_page_index_ = page.previous_page_index_;
-        next_page_index_ = page.next_page_index_;
+        std::swap(page, *this);
         return *this;
     }
 

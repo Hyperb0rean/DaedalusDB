@@ -98,6 +98,9 @@ public:
         }
     };
 
+    PageList() {
+    }
+
     PageList(const std::shared_ptr<PageAllocator>& alloc, Offset dummy_offset)
         : alloc_(alloc), dummy_offset_(dummy_offset) {
         pages_count_ = alloc_->GetFile()->Read<size_t>(GetCountFromSentinel(dummy_offset));
@@ -182,6 +185,14 @@ public:
     PageIterator End() {
         return PageIterator(alloc_, alloc_->GetFile()->Read<Page>(dummy_offset_).index_,
                             dummy_offset_);
+    }
+
+    PageIndex Front() {
+        return alloc_->GetFile()->Read<Page>(dummy_offset_).previous_page_index_;
+    }
+
+    PageIndex Back() {
+        return alloc_->GetFile()->Read<Page>(dummy_offset_).next_page_index_;
     }
 };
 

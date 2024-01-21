@@ -114,7 +114,7 @@ public:
         class_holder_ = Deserialize(stream);
     }
     [[nodiscard]] virtual std::string ToString() const {
-        return "class: " + serialized_;
+        return serialized_;
     }
 };
 

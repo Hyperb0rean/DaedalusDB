@@ -7,9 +7,9 @@ class Logger {
 public:
     Logger() = default;
     virtual ~Logger(){};
-    virtual void Log(std::string_view);
-    virtual void Error(std::string_view);
-    virtual void Verbose(std::string_view);
+    virtual void Log(std::string_view) = 0;
+    virtual void Error(std::string_view) = 0;
+    virtual void Verbose(std::string_view) = 0;
 };
 
 class ConsoleLogger : public Logger {

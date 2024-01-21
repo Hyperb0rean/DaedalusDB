@@ -60,9 +60,9 @@ TEST(TypeTests, TypeDump) {
 }
 
 void PreInitPages(size_t number, std::shared_ptr<mem::File>& file) {
-    auto page = mem::Page(SIZE_MAX);
+    auto page = mem::Page();
     page.next_page_index_ = 1;
-    page.previous_page_index_ = number;
+    page.previous_page_index_ = mem::kDummyIndex;
     file->Write<mem::Page>(page, 60);
     for (size_t i = 1; i < number - 1; ++i) {
         auto page = mem::Page(i);
@@ -71,71 +71,95 @@ void PreInitPages(size_t number, std::shared_ptr<mem::File>& file) {
         file->Write<mem::Page>(page, 60 + mem::kPageSize * i);
     }
     page = mem::Page(number - 1);
-    page.next_page_index_ = number;
+    page.next_page_index_ = mem::kDummyIndex;
     page.previous_page_index_ = number - 2;
 
     file->Write<mem::Page>(page, 60 + mem::kPageSize * (number - 1));
 
-    page = mem::Page(number);
+    page = mem::Page(mem::kDummyIndex);
     page.previous_page_index_ = number - 1;
     page.next_page_index_ = 0;
     file->Write<mem::Page>(page);
+    file->Write<size_t>(number, mem::kFreePagesCountOffset);
 }
 
-TEST(PageIterator, SimpleIteration) {
+TEST(PageList, SimpleIteration) {
     auto file = std::make_shared<mem::File>("test.data");
 
     PreInitPages(1000, file);
 
-    auto alloc = std::make_shared<mem::PageAllocator>(file, 60, 1000);
-    size_t index = 0;
+    auto alloc = std::make_shared<mem::PageAllocator>(file, 60);
+    size_t index = 999;
     for (auto& page : mem::PageList(alloc, 0)) {
-        ASSERT_EQ(page.index_, index++);
+        ASSERT_EQ(page.index_, index--);
     }
 }
 
-TEST(PageIterator, Unlink) {
+TEST(PageList, Unlink) {
     auto file = std::make_shared<mem::File>("test.data");
 
     PreInitPages(6, file);
 
-    auto alloc = std::make_shared<mem::PageAllocator>(file, 60, 6);
-    size_t index = 0;
+    auto alloc = std::make_shared<mem::PageAllocator>(file, 60);
+    size_t index = 4;
     auto list = mem::PageList(alloc, 0);
     list.Unlink(3);
     list.Unlink(5);
     for (auto& page : list) {
         std::cerr << page.index_ << ' ';
         if (index == 3) {
-            index++;
+            index--;
         }
-        ASSERT_EQ(page.index_, index++);
+        ASSERT_EQ(page.index_, index--);
     }
 }
 
-TEST(PageIterator, LinkBefore) {
+TEST(PageList, LinkBefore) {
     auto file = std::make_shared<mem::File>("test.data");
 
     PreInitPages(10, file);
 
-    auto alloc = std::make_shared<mem::PageAllocator>(file, 60, 10);
+    auto alloc = std::make_shared<mem::PageAllocator>(file, 60);
     auto list = mem::PageList(alloc, 0);
     list.Unlink(3);
     list.Unlink(5);
     list.LinkBefore(6, 3);
 
-    size_t index = 0;
+    size_t index = 9;
     for (auto& page : list) {
         std::cerr << page.index_ << ' ';
         if (index == 3) {
-            index++;
-            ASSERT_EQ(page.index_, index++);
+            index--;
+            ASSERT_EQ(page.index_, index--);
         } else if (index == 5) {
             ASSERT_EQ(page.index_, 3);
-            index++;
+            index--;
         } else {
-            ASSERT_EQ(page.index_, index++);
+            ASSERT_EQ(page.index_, index--);
         }
+    }
+}
+
+TEST(PageList, Push) {
+    auto file = std::make_shared<mem::File>("test1.data");
+    file->Write<mem::Page>(mem::Page(mem::kDummyIndex));
+    file->Write<size_t>(0, mem::kFreePagesCountOffset);
+    file->Write<size_t>(0, mem::kPagesCountOffset);
+
+    auto alloc = std::make_shared<mem::PageAllocator>(file, 56);
+    auto list = mem::PageList(alloc, 0);
+
+    for (size_t i = 0; i < 10000; ++i) {
+        list.PushBack(alloc->AllocatePage());
+        if (i % 2 == 0) {
+            list.Unlink(i);
+        }
+    }
+
+    size_t index = 1;
+    for (auto& page : list) {
+        ASSERT_EQ(page.index_, index);
+        index += 2;
     }
 }
 

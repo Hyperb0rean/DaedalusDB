@@ -15,6 +15,8 @@ constexpr Offset kPagesCountOffset = kCr3Offset + sizeof(Offset);
 constexpr Offset kTypesCountOffset = kPagesCountOffset + sizeof(size_t);
 constexpr Offset kClassMetadataOffset = kTypesCountOffset + sizeof(size_t);
 
+constexpr PageIndex kDummyIndex = SIZE_MAX;
+
 class Superblock {
 
     struct SuperblockHeader {

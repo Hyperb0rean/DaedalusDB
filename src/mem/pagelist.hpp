@@ -7,6 +7,7 @@
 namespace mem {
 
 class PageList {
+
     std::shared_ptr<PageAllocator> alloc_;
     Offset dummy_offset_;
     size_t pages_count_;
@@ -28,9 +29,9 @@ public:
         Offset dummy_offset_;
         Page curr_;
 
-        [[nodiscard]] size_t GetMaxIndex() const {
-            return alloc_->GetFile()->Read<size_t>(GetSentinelIndex(dummy_offset_));
-        }
+        // [[nodiscard]] size_t GetMaxIndex() const {
+        //     return alloc_->GetFile()->Read<size_t>(GetSentinelIndex(dummy_offset_));
+        // }
 
     public:
         using iterator_category = std::bidirectional_iterator_tag;
@@ -46,23 +47,23 @@ public:
         }
         PageIterator& operator++() {
             std::cerr << curr_.index_ << " -> ";
-            curr_ = ReadPage(curr_.next_page_index_);
+            curr_ = ReadPage(curr_.previous_page_index_);
             std::cerr << curr_.index_ << "\n";
             return *this;
         }
         PageIterator operator++(int) {
             auto temp = *this;
-            curr_ = ReadPage(curr_.next_page_index_);
+            curr_ = ReadPage(curr_.previous_page_index_);
             return temp;
         }
 
         PageIterator& operator--() {
-            curr_ = ReadPage(curr_.previous_page_index_);
+            curr_ = ReadPage(curr_.next_page_index_);
             return *this;
         }
         PageIterator operator--(int) {
             auto temp = *this;
-            curr_ = ReadPage(curr_.previous_page_index_);
+            curr_ = ReadPage(curr_.next_page_index_);
             return temp;
         }
 
@@ -81,7 +82,7 @@ public:
         }
 
         [[nodiscard]] Page ReadPage(PageIndex index) {
-            if (index < GetMaxIndex()) {
+            if (index < kDummyIndex) {
                 return Page(index).ReadPage(alloc_->GetFile(), alloc_->GetCr3());
             } else {
                 return alloc_->GetFile()->Read<Page>(dummy_offset_);
@@ -89,7 +90,7 @@ public:
         }
 
         void WritePage() {
-            if (curr_.index_ < GetMaxIndex()) {
+            if (curr_.index_ < kDummyIndex) {
                 curr_.WritePage(alloc_->GetFile(), alloc_->GetCr3());
             } else {
                 alloc_->GetFile()->Write<Page>(curr_, dummy_offset_);
@@ -104,7 +105,7 @@ public:
 
     void Unlink(PageIndex index) {
         auto it = PageIterator(alloc_, index, dummy_offset_);
-        if (it->next_page_index_ == it->previous_page_index_) {
+        if (it->next_page_index_ == it->index_ && it->previous_page_index_ == it->index_) {
             return;
         }
 
@@ -114,6 +115,11 @@ public:
         next->previous_page_index_ = prev->index_;
         it->previous_page_index_ = it->index_;
         it->next_page_index_ = it->index_;
+
+        if (GetPagesCount() == 1) {
+            next->next_page_index_ = next->index_;
+            next->previous_page_index_ = next->index_;
+        }
 
         it.WritePage();
         prev.WritePage();
@@ -127,34 +133,21 @@ public:
         auto it = PageIterator(alloc_, index, dummy_offset_);
         auto other = PageIterator(alloc_, other_index, dummy_offset_);
         auto prev = PageIterator(alloc_, other->previous_page_index_, dummy_offset_);
+
         it->next_page_index_ = other->index_;
         it->previous_page_index_ = prev->index_;
         prev->next_page_index_ = it->index_;
         other->previous_page_index_ = it->index_;
 
+        if (GetPagesCount() == 0) {
+            other->next_page_index_ = it->index_;
+        }
+
         it.WritePage();
-        other.WritePage();
         prev.WritePage();
+        other.WritePage();
+
         IncrementCount();
-    }
-
-    void PushBack(PageIndex index) {
-        LinkBefore(alloc_->GetFile()->Read<Page>(dummy_offset_).next_page_index_, index);
-    }
-
-    void PushFront(PageIndex index) {
-        LinkBefore(alloc_->GetFile()->Read<Page>(dummy_offset_).index_, index);
-    }
-
-    void PopBack() {
-        Unlink(alloc_->GetFile()->Read<Page>(dummy_offset_).next_page_index_);
-    }
-    void PopFront() {
-        Unlink(alloc_->GetFile()->Read<Page>(dummy_offset_).previous_page_index_);
-    }
-
-    bool IsEmpty() const {
-        return GetPagesCount() == 0;
     }
 
     // Index must be in the list
@@ -162,8 +155,28 @@ public:
         return PageIterator(alloc_, index, dummy_offset_);
     }
 
+    void PushBack(PageIndex index) {
+        LinkBefore(IteratorTo(mem::kDummyIndex)->next_page_index_, index);
+    }
+
+    void PushFront(PageIndex index) {
+        LinkBefore(mem::kDummyIndex, index);
+    }
+
+    void PopBack() {
+        Unlink(IteratorTo(mem::kDummyIndex)->next_page_index_);
+    }
+    void PopFront() {
+        Unlink(IteratorTo(mem::kDummyIndex)->previous_page_index_);
+    }
+
+    bool IsEmpty() const {
+        return GetPagesCount() == 0;
+    }
+
     PageIterator Begin() {
-        return PageIterator(alloc_, alloc_->GetFile()->Read<Page>(dummy_offset_).next_page_index_,
+        return PageIterator(alloc_,
+                            alloc_->GetFile()->Read<Page>(dummy_offset_).previous_page_index_,
                             dummy_offset_);
     }
     PageIterator End() {

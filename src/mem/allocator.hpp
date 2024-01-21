@@ -11,8 +11,8 @@ class PageAllocator : public std::enable_shared_from_this<PageAllocator> {
     std::shared_ptr<mem::File> file_;
 
 public:
-    PageAllocator(std::shared_ptr<mem::File>& file, Offset cr3, size_t pages_count)
-        : cr3_(cr3), pages_count_(pages_count), file_(file) {
+    PageAllocator(std::shared_ptr<mem::File>& file, Offset cr3) : cr3_(cr3), file_(file) {
+        pages_count_ = file_->Read<size_t>(kPagesCountOffset);
     }
 
     [[nodiscard]] size_t GetPagesCount() const {
@@ -29,13 +29,14 @@ public:
 
     PageIndex AllocatePage() {
         if ((file_->GetSize() - cr3_) % kPageSize != 0) {
+            std::cerr << file_->GetSize() << '\n';
             throw error::StructureError("Unaligned file");
         }
         auto new_page_offset = file_->GetSize();
         file_->Extend(kPageSize);
         file_->Write<Page>(Page(pages_count_++), new_page_offset);
         file_->Write<size_t>(pages_count_, kPagesCountOffset);
-        return new_page_offset;
+        return pages_count_ - 1;
     }
 
     void SwapPages(PageIndex first, PageIndex second) {

@@ -118,7 +118,7 @@ public:
         }
 
         logger_->Info("Adding class");
-        logger_->Verbose(class_object.ToString());
+        logger_->Debug(class_object.ToString());
 
         mem::PageIndex index = AllocatePage();
         logger_->Debug("Index: " + std::to_string(index));

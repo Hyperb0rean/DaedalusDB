@@ -3,6 +3,7 @@
 #include "class.hpp"
 
 namespace ts {
+
 class Object {
 protected:
     std::shared_ptr<Class> class_;
@@ -48,6 +49,17 @@ class ClassObject : public Object {
     }
 
     std::shared_ptr<Class> Deserialize(std::stringstream& stream) {
+
+        auto remove_spaces = [](const char* str) -> std::string {
+            std::string s = str;
+            return {s.begin(), remove_if(s.begin(), s.end(), isspace)};
+        };
+
+#define DESERIALIZE_PRIMITIVE(P)                                             \
+    else if (type == remove_spaces(#P)) {                                    \
+        return std::make_shared<PrimitiveClass<P>>(ReadString(stream, '_')); \
+    }
+
         char del;
         stream >> del;
         if (del == '>') {
@@ -75,17 +87,26 @@ class ClassObject : public Object {
             return result;
         } else if (type == "string") {
             return std::make_shared<StringClass>(ReadString(stream, '_'));
-        } else if (type == "int") {
-            return std::make_shared<PrimitiveClass<int>>(ReadString(stream, '_'));
-        } else if (type == "double") {
-            return std::make_shared<PrimitiveClass<double>>(ReadString(stream, '_'));
-        } else if (type == "bool") {
-            return std::make_shared<PrimitiveClass<bool>>(ReadString(stream, '_'));
-        } else if (type == "longunsignedint") {
-            return std::make_shared<PrimitiveClass<uint64_t>>(ReadString(stream, '_'));
-        } else {
+        }
+        DESERIALIZE_PRIMITIVE(int)
+        DESERIALIZE_PRIMITIVE(double)
+        DESERIALIZE_PRIMITIVE(float)
+        DESERIALIZE_PRIMITIVE(bool)
+        DESERIALIZE_PRIMITIVE(unsigned int)
+        DESERIALIZE_PRIMITIVE(short int)
+        DESERIALIZE_PRIMITIVE(short unsigned int)
+        DESERIALIZE_PRIMITIVE(long long int)
+        DESERIALIZE_PRIMITIVE(long long unsigned int)
+        DESERIALIZE_PRIMITIVE(long unsigned int)
+        DESERIALIZE_PRIMITIVE(long int)
+        DESERIALIZE_PRIMITIVE(char)
+        DESERIALIZE_PRIMITIVE(unsigned char)
+        DESERIALIZE_PRIMITIVE(wchar_t)
+        else {
             throw error::NotImplemented("Unsupported for deserialization type");
         }
+
+#undef DESERIALIZE_PRIMITIVE
     }
 
 public:
@@ -116,7 +137,7 @@ public:
     [[nodiscard]] virtual std::string ToString() const {
         return serialized_;
     }
-};
+};  // namespace ts
 
 // TODO: make concept only to pass Standart layout types.
 template <typename T>

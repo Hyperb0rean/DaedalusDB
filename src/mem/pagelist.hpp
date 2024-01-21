@@ -15,9 +15,11 @@ class PageList {
 
     void DecrementCount() {
         alloc_->GetFile()->Write<size_t>(--pages_count_, GetCountFromSentinel(dummy_offset_));
+        logger_->Verbose("Decremented page count, current: " + std::to_string(pages_count_));
     }
     void IncrementCount() {
         alloc_->GetFile()->Write<size_t>(++pages_count_, GetCountFromSentinel(dummy_offset_));
+        logger_->Verbose("Incremented page count, current: " + std::to_string(pages_count_));
     }
 
 public:
@@ -108,6 +110,8 @@ public:
             return;
         }
 
+        logger_->Verbose("Unlinking page " + std::to_string(index));
+
         auto prev = PageIterator(alloc_, it->previous_page_index_, dummy_offset_);
         auto next = PageIterator(alloc_, it->next_page_index_, dummy_offset_);
         prev->next_page_index_ = next->index_;
@@ -128,6 +132,8 @@ public:
 
     void LinkBefore(PageIndex other_index, PageIndex index) {
         // other_index must be from list, index must not be from list
+        logger_->Verbose("Linking page " + std::to_string(index) + " before " +
+                         std::to_string(other_index));
 
         auto it = PageIterator(alloc_, index, dummy_offset_);
         auto other = PageIterator(alloc_, other_index, dummy_offset_);
@@ -155,17 +161,21 @@ public:
     }
 
     void PushBack(PageIndex index) {
+        logger_->Verbose("Push back");
         LinkBefore(IteratorTo(mem::kDummyIndex)->next_page_index_, index);
     }
 
     void PushFront(PageIndex index) {
+        logger_->Verbose("Push front");
         LinkBefore(mem::kDummyIndex, index);
     }
 
     void PopBack() {
+        logger_->Verbose("Pop back");
         Unlink(IteratorTo(mem::kDummyIndex)->next_page_index_);
     }
     void PopFront() {
+        logger_->Verbose("Pop front");
         Unlink(IteratorTo(mem::kDummyIndex)->previous_page_index_);
     }
 

@@ -63,17 +63,20 @@ public:
     }
 
     void Truncate(Offset size) {
+        logger_->Verbose("Truncating, current size: " + std::to_string(GetSize()));
         if (ftruncate64(fd_, GetSize() - size) != 0) {
             throw error::IoError("Can't truncate file " + fileName_);
         }
     }
 
     void Extend(Offset size) {
+        logger_->Verbose("Extending, current size: " + std::to_string(GetSize()));
         if (ftruncate64(fd_, GetSize() + size) != 0) {
             throw error::IoError("Can't extend file " + fileName_);
         }
     }
     void Clear() {
+        logger_->Verbose("Clear");
         if (ftruncate64(fd_, 0) != 0) {
             throw error::IoError("Can't clear file " + fileName_);
         }
@@ -115,6 +118,7 @@ public:
     [[nodiscard]] T Read(
         Offset offset = 0, StructOffset struct_offset = 0,
         StructOffset count = sizeof(T)) const requires std::is_default_constructible_v<T> {
+        logger_->Error("Cuurent size " + std::to_string(GetSize()));
         count = std::min(count, sizeof(T) - struct_offset);
         auto new_offset = Seek(offset);
         T data{};

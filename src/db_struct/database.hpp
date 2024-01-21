@@ -24,11 +24,14 @@ class Database {
         return superblock_.cr3_ + index * mem::kPageSize + virt_offset;
     }
 
-    void InitializeTypeMap() {
+    void InitializeClassMap() {
+        logger_->Log("Initializing class map..");
+
         class_map_.clear();
         for (auto& class_it : class_list_) {
             ts::ClassObject class_object;
             class_object.Read(file_, GetOffset(class_it.index_, class_it.first_free_));
+            logger_->Verbose("Initialized: " + class_object.ToString());
             class_map_.emplace(class_object.ToString(), class_it.index_);
         }
     }
@@ -88,7 +91,7 @@ public:
         class_list_ = mem::PageList(alloc_, mem::kClassListSentinelOffset, logger_);
         logger_->Log("ClassList initialized");
 
-        InitializeTypeMap();
+        InitializeClassMap();
     }
 
     template <ts::ClassLike C>
@@ -102,6 +105,9 @@ public:
         if (class_object.GetSize() > mem::kPageSize - sizeof(mem::ClassHeader)) {
             throw error::NotImplemented("Too complex class");
         }
+
+        logger_->Log("Adding class");
+        logger_->Verbose(class_object.ToString());
 
         mem::PageIndex index = AllocatePage();
         class_list_.PushBack(index);
@@ -134,6 +140,7 @@ public:
     }
 
     ~Database() {
+        logger_->Log("Closing database");
         superblock_.WriteSuperblock(file_);
     };
 };

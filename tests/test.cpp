@@ -211,7 +211,8 @@ TEST(PageList, Pop) {
 }
 
 TEST(Database, TypeAddition) {
-    auto file = std::make_shared<mem::File>("test.data");
+    auto file =
+        std::make_shared<mem::File>("test.data", std::make_shared<util::VerboseConsoleLogger>());
     file->Clear();
 
     auto person_class = ts::NewClass<ts::StructClass>(
@@ -219,7 +220,8 @@ TEST(Database, TypeAddition) {
         ts::NewClass<ts::PrimitiveClass<int>>("age"),
         ts::NewClass<ts::PrimitiveClass<bool>>("male"));
 
-    auto database = db::Database(file, db::OpenMode::kWrite);
+    auto database =
+        db::Database(file, db::OpenMode::kWrite, std::make_shared<util::VerboseConsoleLogger>());
     database.AddClass(person_class);
 
     database.PrintAllClasses(db::PrintMode::kCache, std::cout);

@@ -10,8 +10,8 @@ constexpr int64_t kMagic = 0xDEADBEEF;
 // Constant offsets of some data in superblock for more precise changes
 constexpr Offset kFreeListSentinelOffset = sizeof(kMagic);
 constexpr Offset kFreePagesCountOffset = kFreeListSentinelOffset + sizeof(Page);
-constexpr Offset kCr3Offset = kFreePagesCountOffset + sizeof(size_t);
-constexpr Offset kPagesCountOffset = kCr3Offset + sizeof(Offset);
+constexpr Offset kPagetableOffset = kFreePagesCountOffset + sizeof(size_t);
+constexpr Offset kPagesCountOffset = kPagetableOffset + sizeof(Offset);
 constexpr Offset kClassListSentinelOffset = kPagesCountOffset + sizeof(size_t);
 constexpr Offset kClassListCount = kClassListSentinelOffset + sizeof(Page);
 
@@ -21,7 +21,7 @@ class Superblock {
 public:
     Page free_list_sentinel_;
     size_t free_pages_count_;
-    Offset cr3_;
+    Offset pagetable_offset_;
     size_t pages_count;
     Page class_list_sentinel_;
     size_t class_list_count_;
@@ -45,7 +45,7 @@ public:
         free_list_sentinel_ = Page(kDummyIndex);
         free_list_sentinel_.type_ = PageType::kSentinel;
         free_pages_count_ = 0;
-        cr3_ = sizeof(kMagic) + sizeof(Superblock);
+        pagetable_offset_ = sizeof(kMagic) + sizeof(Superblock);
         pages_count = 0;
         class_list_sentinel_ = Page(kDummyIndex);
         class_list_count_ = 0;
@@ -81,11 +81,11 @@ public:
         this->type_ = PageType::kClassHeader;
     }
 
-    void ReadClassHeader(Offset cr3, std::shared_ptr<File>& file) {
-        auto header = file->Read<ClassHeader>(this->GetPageAddress(cr3));
+    void ReadClassHeader(Offset pagetable_offset, std::shared_ptr<File>& file) {
+        auto header = file->Read<ClassHeader>(this->GetPageAddress(pagetable_offset));
         std::swap(header, *this);
     }
-    void InitClassHeader(Offset cr3, std::shared_ptr<File>& file) {
+    void InitClassHeader(Offset pagetable_offset, std::shared_ptr<File>& file) {
         this->type_ = PageType::kClassHeader;
         this->actual_size_ = 0;
         this->first_free_ = sizeof(ClassHeader);
@@ -93,10 +93,10 @@ public:
         node_list_sentinel_.type_ = PageType::kSentinel;
         node_pages_count_ = 0;
         nodes_ = 0;
-        file->Write<ClassHeader>(*this, this->GetPageAddress(cr3));
+        file->Write<ClassHeader>(*this, this->GetPageAddress(pagetable_offset));
     }
-    void WriteClassHeader(Offset cr3, std::shared_ptr<File>& file) {
-        file->Write<ClassHeader>(*this, this->GetPageAddress(cr3));
+    void WriteClassHeader(Offset pagetable_offset, std::shared_ptr<File>& file) {
+        file->Write<ClassHeader>(*this, this->GetPageAddress(pagetable_offset));
     }
 };
 

@@ -21,7 +21,7 @@ class Database {
     std::shared_ptr<util::Logger> logger_;
 
     mem::Offset GetOffset(mem::PageIndex index, mem::PageOffset virt_offset) {
-        return superblock_.cr3_ + index * mem::kPageSize + virt_offset;
+        return superblock_.pagetable_offset_ + index * mem::kPageSize + virt_offset;
     }
 
     void InitializeClassMap() {
@@ -84,7 +84,8 @@ public:
             } break;
         }
 
-        alloc_ = std::make_shared<mem::PageAllocator>(file_, superblock_.cr3_, logger_);
+        alloc_ =
+            std::make_shared<mem::PageAllocator>(file_, superblock_.pagetable_offset_, logger_);
         logger_->Info("Alloc initialized");
         logger->Debug("Freelist sentinel offset: " + std::to_string(mem::kFreeListSentinelOffset));
 
@@ -125,10 +126,10 @@ public:
         class_list_.PushBack(index);
 
         mem::ClassHeader header(index);
-        header.ReadClassHeader(superblock_.cr3_, file_);
-        header.InitClassHeader(superblock_.cr3_, file_);
+        header.ReadClassHeader(superblock_.pagetable_offset_, file_);
+        header.InitClassHeader(superblock_.pagetable_offset_, file_);
         header.actual_size_ = class_object.GetSize();
-        header.WriteClassHeader(superblock_.cr3_, file_);
+        header.WriteClassHeader(superblock_.pagetable_offset_, file_);
 
         class_object.Write(file_, GetOffset(header.index_, header.first_free_));
         class_map_.emplace(class_object.ToString(), header.index_);

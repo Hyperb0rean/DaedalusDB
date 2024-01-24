@@ -31,23 +31,23 @@ public:
     Page() : Page(0) {
     }
 
-    [[nodiscard]] Offset GetPageAddress(Offset cr3) {
-        return cr3 + index_ * kPageSize;
+    [[nodiscard]] Offset GetPageAddress(Offset pagetable_offset) {
+        return pagetable_offset + index_ * kPageSize;
     }
 
-    [[nodiscard]] Page ReadPage(const std::shared_ptr<File>& file, Offset cr3) {
-        auto page = file->Read<Page>(GetPageAddress(cr3));
+    [[nodiscard]] Page ReadPage(const std::shared_ptr<File>& file, Offset pagetable_offset) {
+        auto page = file->Read<Page>(GetPageAddress(pagetable_offset));
         std::swap(page, *this);
         return *this;
     }
 
-    void WritePage(const std::shared_ptr<File>& file, Offset cr3) {
-        file->Write<Page>(*this, GetPageAddress(cr3));
+    void WritePage(const std::shared_ptr<File>& file, Offset pagetable_offset) {
+        file->Write<Page>(*this, GetPageAddress(pagetable_offset));
     }
 };
 
-[[nodiscard]] inline size_t GetIndex(Offset cr3, Offset offset) {
-    return (offset - cr3) / kPageSize;
+[[nodiscard]] inline size_t GetIndex(Offset pagetable_offset, Offset offset) {
+    return (offset - pagetable_offset) / kPageSize;
 }
 
 struct PageData {

@@ -81,7 +81,7 @@ public:
 
         [[nodiscard]] Page ReadPage(PageIndex index) {
             if (index < kDummyIndex) {
-                return Page(index).ReadPage(alloc_->GetFile(), alloc_->GetCr3());
+                return Page(index).ReadPage(alloc_->GetFile(), alloc_->GetPagetableOffset());
             } else {
                 return alloc_->GetFile()->Read<Page>(dummy_offset_);
             }
@@ -89,7 +89,7 @@ public:
 
         void WritePage() {
             if (curr_.index_ < kDummyIndex) {
-                curr_.WritePage(alloc_->GetFile(), alloc_->GetCr3());
+                curr_.WritePage(alloc_->GetFile(), alloc_->GetPagetableOffset());
             } else {
                 alloc_->GetFile()->Write<Page>(curr_, dummy_offset_);
             }

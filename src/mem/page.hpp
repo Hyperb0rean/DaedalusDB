@@ -35,14 +35,15 @@ public:
         return pagetable_offset + index_ * kPageSize;
     }
 
-    [[nodiscard]] Page ReadPage(const std::shared_ptr<File>& file, Offset pagetable_offset) {
+    [[nodiscard]] Page& ReadPage(const std::shared_ptr<File>& file, Offset pagetable_offset) {
         auto page = file->Read<Page>(GetPageAddress(pagetable_offset));
         std::swap(page, *this);
         return *this;
     }
 
-    void WritePage(const std::shared_ptr<File>& file, Offset pagetable_offset) {
+    Page& WritePage(const std::shared_ptr<File>& file, Offset pagetable_offset) {
         file->Write<Page>(*this, GetPageAddress(pagetable_offset));
+        return *this;
     }
 };
 

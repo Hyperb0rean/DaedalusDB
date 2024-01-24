@@ -78,7 +78,7 @@ struct StructClass : public Class {
 };
 
 template <ClassLike C, typename... Classes>
-[[nodiscard]] inline std::shared_ptr<C> NewClass(std::string&& name, Classes&&... classes) {
+[[nodiscard]] std::shared_ptr<C> NewClass(std::string&& name, Classes&&... classes) {
     if constexpr (std::is_same_v<C, StructClass>) {
         auto new_class = std::make_shared<C>(std::move(name));
         (new_class->AddField(classes), ...);

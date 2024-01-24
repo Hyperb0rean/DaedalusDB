@@ -27,20 +27,27 @@ public:
     size_t class_list_count_;
 
     void CheckConsistency(std::shared_ptr<File>& file) {
-        auto magic = file->Read<int64_t>();
-        if (magic != kMagic) {
+        try {
+            auto magic = file->Read<int64_t>();
+            if (magic != kMagic) {
+                throw error::StructureError("Can't open database from this file: " +
+                                            file->GetFilename());
+            }
+
+        } catch (...) {
             throw error::StructureError("Can't open database from this file: " +
                                         file->GetFilename());
         }
     }
 
-    void ReadSuperblock(std::shared_ptr<File>& file) {
+    Superblock& ReadSuperblock(std::shared_ptr<File>& file) {
         CheckConsistency(file);
         auto header = file->Read<Superblock>(sizeof(kMagic));
         std::swap(header, *this);
+        return *this;
     }
 
-    void InitSuperblock(std::shared_ptr<File>& file) {
+    Superblock& InitSuperblock(std::shared_ptr<File>& file) {
         file->Write<int64_t>(kMagic);
         free_list_sentinel_ = Page(kDummyIndex);
         free_list_sentinel_.type_ = PageType::kSentinel;
@@ -52,10 +59,12 @@ public:
         class_list_sentinel_.type_ = PageType::kSentinel;
 
         file->Write<Superblock>(*this, sizeof(kMagic));
+        return *this;
     }
-    void WriteSuperblock(std::shared_ptr<File>& file) {
+    Superblock& WriteSuperblock(std::shared_ptr<File>& file) {
         CheckConsistency(file);
         file->Write<Superblock>(*this, sizeof(kMagic));
+        return *this;
     }
 };
 
@@ -81,23 +90,31 @@ public:
         this->type_ = PageType::kClassHeader;
     }
 
-    void ReadClassHeader(Offset pagetable_offset, std::shared_ptr<File>& file) {
+    ClassHeader& ReadClassHeader(Offset pagetable_offset, std::shared_ptr<File>& file) {
         auto header = file->Read<ClassHeader>(this->GetPageAddress(pagetable_offset));
         std::swap(header, *this);
+        return *this;
     }
-    void InitClassHeader(Offset pagetable_offset, std::shared_ptr<File>& file) {
+    ClassHeader& InitClassHeader(Offset pagetable_offset, std::shared_ptr<File>& file,
+                                 size_t size = 0) {
         this->type_ = PageType::kClassHeader;
-        this->actual_size_ = 0;
+        this->actual_size_ = size;
         this->first_free_ = sizeof(ClassHeader);
         node_list_sentinel_ = Page(kDummyIndex);
         node_list_sentinel_.type_ = PageType::kSentinel;
         node_pages_count_ = 0;
         nodes_ = 0;
         file->Write<ClassHeader>(*this, this->GetPageAddress(pagetable_offset));
+        return *this;
     }
-    void WriteClassHeader(Offset pagetable_offset, std::shared_ptr<File>& file) {
+    ClassHeader& WriteClassHeader(Offset pagetable_offset, std::shared_ptr<File>& file) {
         file->Write<ClassHeader>(*this, this->GetPageAddress(pagetable_offset));
+        return *this;
     }
 };
+
+inline Offset GetOffset(Offset pagetable_offset, PageIndex index, PageOffset virt_offset) {
+    return pagetable_offset + index * mem::kPageSize + virt_offset;
+}
 
 }  // namespace mem

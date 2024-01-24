@@ -16,13 +16,14 @@ inline const std::string GetCurrentTime() {
 namespace error {
 
 class Error : public std::exception {
-private:
+protected:
     std::string desc_;
 
 public:
     explicit Error(std::string desc) : desc_{util::GetCurrentTime() + " | " + desc} {
-        perror(desc_.c_str());
-        std::abort();
+    }
+    const char* what() const noexcept override {
+        return desc_.data();
     }
 };
 

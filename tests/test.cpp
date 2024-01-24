@@ -209,10 +209,9 @@ TEST(PageList, Pop) {
     ASSERT_EQ(0, list.GetPagesCount());
 }
 
-TEST(Database, TypeAddition) {
+TEST(Database, ClassAddition) {
     auto file = std::make_shared<mem::File>("test.data", std::make_shared<util::ConsoleLogger>());
     file->Clear();
-
     auto person_class = ts::NewClass<ts::StructClass>(
         "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
         ts::NewClass<ts::PrimitiveClass<int>>("age"),
@@ -225,8 +224,7 @@ TEST(Database, TypeAddition) {
     auto city_class = ts::NewClass<ts::StructClass>("city", ts::NewClass<ts::StringClass>("name"),
                                                     coordinates_class);
 
-    auto database =
-        db::Database(file, db::OpenMode::kWrite, std::make_shared<util::ConsoleLogger>());
+    auto database = db::Database(file, db::OpenMode::kWrite, std::make_shared<util::DebugLogger>());
     database.AddClass(person_class);
     database.AddClass(coordinates_class);
     database.AddClass(city_class);

@@ -118,6 +118,10 @@ public:
     ClassObject(const std::shared_ptr<Class>& holder) : class_holder_(holder) {
         serialized_ = class_holder_->Serialize();
     }
+    ClassObject(std::string string) : serialized_(string) {
+        std::stringstream stream(serialized_);
+        class_holder_ = Deserialize(stream);
+    }
     virtual size_t GetSize() const {
         return serialized_.size() + 4;
     }
@@ -260,8 +264,7 @@ public:
 };
 
 template <ObjectLike O, ClassLike C, typename... Args>
-[[nodiscard]] inline std::shared_ptr<O> New(const std::shared_ptr<C>& object_class,
-                                            Args&&... args) {
+[[nodiscard]] std::shared_ptr<O> New(const std::shared_ptr<C>& object_class, Args&&... args) {
 
     if constexpr (std::is_same_v<O, Struct>) {
         auto new_object = std::make_shared<Struct>(object_class);

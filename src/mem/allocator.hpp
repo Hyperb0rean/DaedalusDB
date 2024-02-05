@@ -57,9 +57,6 @@ private:
     }
 
 public:
-    PageAllocator() {
-    }
-
     PageAllocator(std::shared_ptr<mem::File>& file,
                   std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
         : file_(file), logger_(logger) {
@@ -78,6 +75,10 @@ public:
 
     [[nodiscard]] size_t GetPagesCount() const {
         return pages_count_;
+    }
+
+    [[nodiscard]] std::shared_ptr<mem::File>& GetFile() {
+        return file_;
     }
 
     mem::PageIndex AllocatePage() {

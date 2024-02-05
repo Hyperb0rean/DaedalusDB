@@ -20,7 +20,7 @@ int main() {
 
     auto database =
         db::Database(file, db::OpenMode::kDefault, std::make_shared<util::DebugLogger>());
-    database.AddClass(person_class);
+    // database.AddClass(person_class);
     // database.AddClass(coordinates_class);
     // database.AddClass(city_class);
     return 0;

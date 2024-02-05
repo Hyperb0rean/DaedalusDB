@@ -79,8 +79,8 @@ TEST(Database, ClassAddition) {
     database.AddClass(coordinates_class);
     database.AddClass(city_class);
 
-    database.PrintAllClasses(db::PrintMode::kCache, std::cout);
-    database.PrintAllClasses(db::PrintMode::kFile, std::cout);
+    // database.PrintAllClasses(db::PrintMode::kCache, std::cout);
+    // database.PrintAllClasses(db::PrintMode::kFile, std::cout);
 }
 
 int main(int argc, char** argv) {

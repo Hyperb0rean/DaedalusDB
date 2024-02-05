@@ -23,13 +23,15 @@ constexpr std::string_view type_name() {
 
 struct Class {
     std::string name_;
+    explicit Class(std::string name) : name_(std::move(name)) {
+    }
     virtual ~Class() = default;
     [[nodiscard]] virtual std::string Serialize() const = 0;
 };
 template <typename T>
+requires std::is_fundamental_v<T>
 struct PrimitiveClass : public Class {
-    explicit PrimitiveClass(std::string name) {
-        this->name_ = name;
+    explicit PrimitiveClass(std::string name) : Class(std::move(name)) {
     }
     [[nodiscard]] std::string Serialize() const override {
         std::string result = "_";
@@ -43,8 +45,7 @@ template <typename C>
 concept ClassLike = std::derived_from<C, Class>;
 
 struct StringClass : public Class {
-    explicit StringClass(std::string name) {
-        this->name_ = name;
+    explicit StringClass(std::string name) : Class(std::move(name)) {
     }
     [[nodiscard]] std::string Serialize() const override {
         return "_string@" + name_ + "_";
@@ -54,8 +55,7 @@ struct StringClass : public Class {
 struct StructClass : public Class {
     std::vector<std::shared_ptr<Class>> fields_;
 
-    StructClass(std::string name) {
-        this->name_ = name;
+    StructClass(std::string name) : Class(std::move(name)) {
     }
     template <ClassLike ActualClass>
     void AddField(ActualClass field) {

@@ -143,8 +143,8 @@ public:
     }
 };  // namespace ts
 
-// TODO: make concept only to pass Standart layout types.
 template <typename T>
+requires std::is_fundamental_v<T>
 class Primitive : public Object {
     T value_;
 
@@ -179,12 +179,8 @@ class String : public Object {
 
 public:
     virtual ~String() = default;
-    explicit String(const std::shared_ptr<StringClass>& argclass, std::string&& str)
+    explicit String(const std::shared_ptr<StringClass>& argclass, std::string str)
         : str_(std::move(str)) {
-        this->class_ = argclass;
-    }
-    explicit String(const std::shared_ptr<StringClass>& argclass, const std::string& str)
-        : str_(str) {
         this->class_ = argclass;
     }
     [[nodiscard]] size_t GetSize() const override {

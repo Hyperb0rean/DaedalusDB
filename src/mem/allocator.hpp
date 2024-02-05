@@ -1,34 +1,18 @@
 #pragma once
 
-#include "mem.hpp"
+#include "pagelist.hpp"
 
 namespace mem {
 
-class PageAllocator : public std::enable_shared_from_this<PageAllocator> {
+class PageAllocator {
 
+private:
     size_t pages_count_;
-    std::shared_ptr<mem::File> file_;
+    std::shared_ptr<File> file_;
+    PageList free_list_;
     std::shared_ptr<util::Logger> logger_;
 
-public:
-    PageAllocator() {
-    }
-
-    PageAllocator(std::shared_ptr<mem::File>& file,
-                  std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
-        : file_(file), logger_(logger) {
-        pages_count_ = file_->Read<size_t>(kPagesCountOffset);
-    }
-
-    [[nodiscard]] size_t GetPagesCount() const {
-        return pages_count_;
-    }
-
-    [[nodiscard]] const std::shared_ptr<mem::File>& GetFile() const {
-        return file_;
-    }
-
-    PageIndex AllocatePage() {
+    PageIndex AllocateNewPage() {
         if ((file_->GetSize() - kPagetableOffset) % kPageSize != 0) {
             logger_->Error("Filesize: " + std::to_string(file_->GetSize()));
             throw error::StructureError("Unaligned file");
@@ -70,6 +54,48 @@ public:
                                second_data.page_header.GetPageAddress(kPagetableOffset));
 
         logger_->Debug("Successfully swaped");
+    }
+
+public:
+    PageAllocator() {
+    }
+
+    PageAllocator(std::shared_ptr<mem::File>& file,
+                  std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+        : file_(file), logger_(logger) {
+
+        logger->Debug("Free list count: " + std::to_string(file->Read<size_t>(kPagesCountOffset)));
+        pages_count_ = file_->Read<size_t>(kPagesCountOffset);
+
+        logger->Debug("Freelist sentinel offset: " + std::to_string(kFreeListSentinelOffset));
+        logger->Debug("Free list count: " +
+                      std::to_string(file->Read<size_t>(kFreePagesCountOffset)));
+
+        free_list_ = PageList(file_, kFreeListSentinelOffset, logger_);
+
+        logger_->Info("FreeList initialized");
+    }
+
+    [[nodiscard]] size_t GetPagesCount() const {
+        return pages_count_;
+    }
+
+    mem::PageIndex AllocatePage() {
+        if (free_list_.IsEmpty()) {
+            return AllocateNewPage();
+        }
+        auto index = free_list_.Back();
+        free_list_.PopBack();
+        return index;
+    }
+
+    void FreePage(mem::PageIndex index) {
+        if (free_list_.IteratorTo(index)->type_ == mem::PageType::kFree) {
+            throw error::RuntimeError("Double free");
+        }
+        free_list_.PushBack(index);
+
+        // Rearranding list;
     }
 };
 

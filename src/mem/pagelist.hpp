@@ -2,13 +2,12 @@
 
 #include <iostream>
 
-#include "allocator.hpp"
+#include "mem.hpp"
 
 namespace mem {
 
 class PageList {
 
-    // std::shared_ptr<PageAllocator> alloc_;
     std::shared_ptr<File> file_;
     Offset dummy_offset_;
     size_t pages_count_;
@@ -30,7 +29,6 @@ public:
     }
 
     class PageIterator {
-        // std::shared_ptr<PageAllocator> alloc_;
         std::shared_ptr<File> file_;
         Offset dummy_offset_;
         Page curr_;

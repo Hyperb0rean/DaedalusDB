@@ -3,8 +3,8 @@
 #include <iostream>
 #include <unordered_map>
 
+#include "allocator.hpp"
 #include "object.hpp"
-#include "pagelist.hpp"
 
 namespace db {
 
@@ -13,7 +13,6 @@ enum class PrintMode { kCache, kFile };
 
 class Database {
     mem::Superblock superblock_;
-    mem::PageList free_list_;
     mem::PageList class_list_;
     std::unordered_map<std::string, mem::ClassHeader> class_cache_;
     std::shared_ptr<mem::PageAllocator> alloc_;
@@ -35,24 +34,6 @@ class Database {
             class_cache_.emplace(class_object.ToString(),
                                  mem::ClassHeader(class_it.index_).ReadClassHeader(file_));
         }
-    }
-
-    mem::PageIndex AllocatePage() {
-        if (free_list_.IsEmpty()) {
-            return alloc_->AllocatePage();
-        }
-        auto index = free_list_.Back();
-        free_list_.PopBack();
-        return index;
-    }
-
-    void FreePage(mem::PageIndex index) {
-        if (free_list_.IteratorTo(index)->type_ == mem::PageType::kFree) {
-            throw error::RuntimeError("Double free");
-        }
-        free_list_.PushBack(index);
-
-        // Rearranding list;
     }
 
     mem::ClassHeader InitializeClassHeader(mem::PageIndex index, size_t size) {
@@ -97,12 +78,6 @@ public:
         alloc_ = std::make_shared<mem::PageAllocator>(file_, logger_);
         logger_->Info("Alloc initialized");
 
-        logger->Debug("Freelist sentinel offset: " + std::to_string(mem::kFreeListSentinelOffset));
-        logger->Debug("Free list count: " +
-                      std::to_string(file->Read<size_t>(mem::kFreePagesCountOffset)));
-        free_list_ = mem::PageList(file_, mem::kFreeListSentinelOffset, logger_);
-        logger_->Info("FreeList initialized");
-
         logger->Debug("Class list sentinel offset: " +
                       std::to_string(mem::kClassListSentinelOffset));
         logger->Debug("Class list count: " +
@@ -128,7 +103,7 @@ public:
         logger_->Info("Adding class");
         logger_->Debug(class_object.ToString());
 
-        auto header = InitializeClassHeader(AllocatePage(), class_object.GetSize());
+        auto header = InitializeClassHeader(alloc_->AllocatePage(), class_object.GetSize());
         logger_->Debug("Index: " + std::to_string(header.index_));
         class_list_.PushBack(header.index_);
         class_object.Write(file_, GetOffset(header.index_, header.first_free_));

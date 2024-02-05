@@ -8,17 +8,18 @@ namespace mem {
 
 class PageList {
 
-    std::shared_ptr<PageAllocator> alloc_;
+    // std::shared_ptr<PageAllocator> alloc_;
+    std::shared_ptr<File> file_;
     Offset dummy_offset_;
     size_t pages_count_;
     std::shared_ptr<util::Logger> logger_;
 
     void DecrementCount() {
-        alloc_->GetFile()->Write<size_t>(--pages_count_, GetCountFromSentinel(dummy_offset_));
+        file_->Write<size_t>(--pages_count_, GetCountFromSentinel(dummy_offset_));
         logger_->Debug("Decremented page count, current: " + std::to_string(pages_count_));
     }
     void IncrementCount() {
-        alloc_->GetFile()->Write<size_t>(++pages_count_, GetCountFromSentinel(dummy_offset_));
+        file_->Write<size_t>(++pages_count_, GetCountFromSentinel(dummy_offset_));
         logger_->Debug("Incremented page count, current: " + std::to_string(pages_count_));
     }
 
@@ -29,7 +30,8 @@ public:
     }
 
     class PageIterator {
-        std::shared_ptr<PageAllocator> alloc_;
+        // std::shared_ptr<PageAllocator> alloc_;
+        std::shared_ptr<File> file_;
         Offset dummy_offset_;
         Page curr_;
 
@@ -40,9 +42,8 @@ public:
         using pointer = Page*;
         using reference = Page&;
 
-        PageIterator(const std::shared_ptr<PageAllocator>& alloc, PageIndex index,
-                     Offset dummy_offset)
-            : alloc_(alloc), dummy_offset_(dummy_offset) {
+        PageIterator(const std::shared_ptr<File>& file, PageIndex index, Offset dummy_offset)
+            : file_(file), dummy_offset_(dummy_offset) {
             curr_ = ReadPage(index);
         }
         PageIterator& operator++() {
@@ -81,17 +82,17 @@ public:
 
         [[nodiscard]] Page ReadPage(PageIndex index) {
             if (index < kDummyIndex) {
-                return Page(index).ReadPage(alloc_->GetFile(), alloc_->GetPagetableOffset());
+                return Page(index).ReadPage(file_, kPagetableOffset);
             } else {
-                return alloc_->GetFile()->Read<Page>(dummy_offset_);
+                return file_->Read<Page>(dummy_offset_);
             }
         }
 
         void WritePage() {
             if (curr_.index_ < kDummyIndex) {
-                curr_.WritePage(alloc_->GetFile(), alloc_->GetPagetableOffset());
+                curr_.WritePage(file_, kPagetableOffset);
             } else {
-                alloc_->GetFile()->Write<Page>(curr_, dummy_offset_);
+                file_->Write<Page>(curr_, dummy_offset_);
             }
         }
     };
@@ -99,22 +100,22 @@ public:
     PageList() {
     }
 
-    PageList(const std::shared_ptr<PageAllocator>& alloc, Offset dummy_offset,
+    PageList(const std::shared_ptr<File>& file, Offset dummy_offset,
              std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
-        : alloc_(alloc), dummy_offset_(dummy_offset), logger_(logger) {
-        pages_count_ = alloc_->GetFile()->Read<size_t>(GetCountFromSentinel(dummy_offset));
+        : file_(file), dummy_offset_(dummy_offset), logger_(logger) {
+        pages_count_ = file_->Read<size_t>(GetCountFromSentinel(dummy_offset));
     }
 
     void Unlink(PageIndex index) {
-        auto it = PageIterator(alloc_, index, dummy_offset_);
+        auto it = PageIterator(file_, index, dummy_offset_);
         if (it->next_page_index_ == it->index_ && it->previous_page_index_ == it->index_) {
             return;
         }
 
         logger_->Debug("Unlinking page " + std::to_string(index));
 
-        auto prev = PageIterator(alloc_, it->previous_page_index_, dummy_offset_);
-        auto next = PageIterator(alloc_, it->next_page_index_, dummy_offset_);
+        auto prev = PageIterator(file_, it->previous_page_index_, dummy_offset_);
+        auto next = PageIterator(file_, it->next_page_index_, dummy_offset_);
         prev->next_page_index_ = next->index_;
         next->previous_page_index_ = prev->index_;
         it->previous_page_index_ = it->index_;
@@ -136,9 +137,9 @@ public:
         logger_->Debug("Linking page " + std::to_string(index) + " before " +
                        std::to_string(other_index));
 
-        auto it = PageIterator(alloc_, index, dummy_offset_);
-        auto other = PageIterator(alloc_, other_index, dummy_offset_);
-        auto prev = PageIterator(alloc_, other->previous_page_index_, dummy_offset_);
+        auto it = PageIterator(file_, index, dummy_offset_);
+        auto other = PageIterator(file_, other_index, dummy_offset_);
+        auto prev = PageIterator(file_, other->previous_page_index_, dummy_offset_);
 
         it->next_page_index_ = other->index_;
         it->previous_page_index_ = prev->index_;
@@ -158,7 +159,7 @@ public:
 
     // Index must be in the list
     PageIterator IteratorTo(PageIndex index) {
-        return PageIterator(alloc_, index, dummy_offset_);
+        return PageIterator(file_, index, dummy_offset_);
     }
 
     void PushBack(PageIndex index) {
@@ -185,21 +186,19 @@ public:
     }
 
     PageIterator Begin() {
-        return PageIterator(alloc_,
-                            alloc_->GetFile()->Read<Page>(dummy_offset_).previous_page_index_,
+        return PageIterator(file_, file_->Read<Page>(dummy_offset_).previous_page_index_,
                             dummy_offset_);
     }
     PageIterator End() {
-        return PageIterator(alloc_, alloc_->GetFile()->Read<Page>(dummy_offset_).index_,
-                            dummy_offset_);
+        return PageIterator(file_, file_->Read<Page>(dummy_offset_).index_, dummy_offset_);
     }
 
     PageIndex Front() {
-        return alloc_->GetFile()->Read<Page>(dummy_offset_).previous_page_index_;
+        return file_->Read<Page>(dummy_offset_).previous_page_index_;
     }
 
     PageIndex Back() {
-        return alloc_->GetFile()->Read<Page>(dummy_offset_).next_page_index_;
+        return file_->Read<Page>(dummy_offset_).next_page_index_;
     }
 };
 

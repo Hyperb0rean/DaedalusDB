@@ -6,7 +6,6 @@ namespace mem {
 
 class PageAllocator : public std::enable_shared_from_this<PageAllocator> {
 
-    Offset pagetable_offset_;
     size_t pages_count_;
     std::shared_ptr<mem::File> file_;
     std::shared_ptr<util::Logger> logger_;
@@ -15,9 +14,9 @@ public:
     PageAllocator() {
     }
 
-    PageAllocator(std::shared_ptr<mem::File>& file, Offset pagetable_offset,
+    PageAllocator(std::shared_ptr<mem::File>& file,
                   std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
-        : pagetable_offset_(pagetable_offset), file_(file), logger_(logger) {
+        : file_(file), logger_(logger) {
         pages_count_ = file_->Read<size_t>(kPagesCountOffset);
     }
 
@@ -25,16 +24,12 @@ public:
         return pages_count_;
     }
 
-    [[nodiscard]] Offset GetPagetableOffset() const {
-        return pagetable_offset_;
-    }
-
     [[nodiscard]] const std::shared_ptr<mem::File>& GetFile() const {
         return file_;
     }
 
     PageIndex AllocatePage() {
-        if ((file_->GetSize() - pagetable_offset_) % kPageSize != 0) {
+        if ((file_->GetSize() - kPagetableOffset) % kPageSize != 0) {
             logger_->Error("Filesize: " + std::to_string(file_->GetSize()));
             throw error::StructureError("Unaligned file");
         }
@@ -61,8 +56,8 @@ public:
         logger_->Debug("Swapping pages with indecies" + std::to_string(first) + " " +
                        std::to_string(second));
 
-        auto first_data = file_->Read<PageData>(Page(first).GetPageAddress(pagetable_offset_));
-        auto second_data = file_->Read<PageData>(Page(second).GetPageAddress(pagetable_offset_));
+        auto first_data = file_->Read<PageData>(Page(first).GetPageAddress(kPagetableOffset));
+        auto second_data = file_->Read<PageData>(Page(second).GetPageAddress(kPagetableOffset));
 
         std::swap(first_data.page_header.index_, second_data.page_header.index_);
         std::swap(first_data.page_header.next_page_index_,
@@ -70,10 +65,9 @@ public:
         std::swap(first_data.page_header.previous_page_index_,
                   second_data.page_header.previous_page_index_);
 
-        file_->Write<PageData>(first_data,
-                               first_data.page_header.GetPageAddress(pagetable_offset_));
+        file_->Write<PageData>(first_data, first_data.page_header.GetPageAddress(kPagetableOffset));
         file_->Write<PageData>(second_data,
-                               second_data.page_header.GetPageAddress(pagetable_offset_));
+                               second_data.page_header.GetPageAddress(kPagetableOffset));
 
         logger_->Debug("Successfully swaped");
     }

@@ -21,7 +21,7 @@ class Database {
     std::shared_ptr<util::Logger> logger_;
 
     mem::Offset GetOffset(mem::PageIndex index, mem::PageOffset virt_offset) {
-        return superblock_.pagetable_offset_ + index * mem::kPageSize + virt_offset;
+        return mem::kPagetableOffset + index * mem::kPageSize + virt_offset;
     }
 
     void InitializeClassCache() {
@@ -33,8 +33,7 @@ class Database {
             class_object.Read(file_, GetOffset(class_it.index_, class_it.first_free_));
             logger_->Debug("Initialized: " + class_object.ToString());
             class_cache_.emplace(class_object.ToString(),
-                                 mem::ClassHeader(class_it.index_)
-                                     .ReadClassHeader(superblock_.pagetable_offset_, file_));
+                                 mem::ClassHeader(class_it.index_).ReadClassHeader(file_));
         }
     }
 
@@ -58,9 +57,9 @@ class Database {
 
     mem::ClassHeader InitializeClassHeader(mem::PageIndex index, size_t size) {
         return mem::ClassHeader(index)
-            .ReadClassHeader(superblock_.pagetable_offset_, file_)
-            .InitClassHeader(superblock_.pagetable_offset_, file_, size)
-            .WriteClassHeader(superblock_.pagetable_offset_, file_);
+            .ReadClassHeader(file_)
+            .InitClassHeader(file_, size)
+            .WriteClassHeader(file_);
     }
 
     void InitializeSuperblock(OpenMode mode) {
@@ -95,21 +94,20 @@ public:
 
         InitializeSuperblock(mode);
 
-        alloc_ =
-            std::make_shared<mem::PageAllocator>(file_, superblock_.pagetable_offset_, logger_);
+        alloc_ = std::make_shared<mem::PageAllocator>(file_, logger_);
         logger_->Info("Alloc initialized");
 
         logger->Debug("Freelist sentinel offset: " + std::to_string(mem::kFreeListSentinelOffset));
         logger->Debug("Free list count: " +
                       std::to_string(file->Read<size_t>(mem::kFreePagesCountOffset)));
-        free_list_ = mem::PageList(alloc_, mem::kFreeListSentinelOffset, logger_);
+        free_list_ = mem::PageList(file_, mem::kFreeListSentinelOffset, logger_);
         logger_->Info("FreeList initialized");
 
         logger->Debug("Class list sentinel offset: " +
                       std::to_string(mem::kClassListSentinelOffset));
         logger->Debug("Class list count: " +
                       std::to_string(file->Read<size_t>(mem::kClassListCount)));
-        class_list_ = mem::PageList(alloc_, mem::kClassListSentinelOffset, logger_);
+        class_list_ = mem::PageList(file_, mem::kClassListSentinelOffset, logger_);
         logger_->Info("ClassList initialized");
 
         InitializeClassCache();
@@ -137,6 +135,7 @@ public:
         class_cache_.emplace(class_object.ToString(), header.index_);
     }
 
+    // Rewrite to visitor
     void PrintAllClasses(PrintMode mode, std::ostream& cout = std::cout) {
         switch (mode) {
             case PrintMode::kCache: {

@@ -5,7 +5,6 @@
 namespace db {
 
 enum class OpenMode { kDefault, kRead, kWrite };
-enum class PrintMode { kCache, kFile };
 
 class Database {
     mem::Superblock superblock_;

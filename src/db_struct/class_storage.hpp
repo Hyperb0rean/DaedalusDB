@@ -33,13 +33,13 @@ class ClassStorage {
     }
 
     void InitializeClassCache() {
-        logger_->Info("Initializing class cache..");
+        INFO("Initializing class cache..");
 
         class_cache_.clear();
 
         for (auto& class_it : class_list_) {
             auto serialized = GetSerializedClass(class_it.index_);
-            logger_->Debug("Initialized: " + serialized);
+            DEBUG("Initialized: " + serialized);
             class_cache_.emplace(serialized, class_it.index_);
         }
     }
@@ -74,9 +74,11 @@ class ClassStorage {
             }
         }
 
-        for (auto& page : class_list_) {
-            if (GetSerializedClass(page.index_) == serialized) {
-                return page.index_;
+        if (mode == DataMode::kFile) {
+            for (auto& page : class_list_) {
+                if (GetSerializedClass(page.index_) == serialized) {
+                    return page.index_;
+                }
             }
         }
 
@@ -88,14 +90,13 @@ public:
                  std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
         : alloc_(alloc), logger_(logger) {
 
-        logger_->Debug("Class list sentinel offset: " +
-                       std::to_string(mem::kClassListSentinelOffset));
-        logger_->Debug("Class list count: " +
-                       std::to_string(alloc_->GetFile()->Read<size_t>(mem::kClassListCount)));
+        DEBUG("Class list sentinel offset: " + std::to_string(mem::kClassListSentinelOffset));
+        DEBUG("Class list count: " +
+              std::to_string(alloc_->GetFile()->Read<size_t>(mem::kClassListCount)));
 
         class_list_ = mem::PageList(alloc_->GetFile(), mem::kClassListSentinelOffset, logger_);
 
-        logger_->Info("ClassList initialized");
+        INFO("ClassList initialized");
 
         InitializeClassCache();
     }
@@ -107,25 +108,32 @@ public:
         if (class_object->GetSize() > mem::kPageSize - sizeof(mem::ClassHeader)) {
             throw error::NotImplemented("Too complex class");
         }
-        auto found = FindClass(class_object, DataMode::kFile);
-        if (std::holds_alternative<std::monostate>(found)) {
-            logger_->Info("Adding class");
-            logger_->Debug(class_object->ToString());
+        if (std::holds_alternative<std::monostate>(FindClass(class_object, DataMode::kCache))) {
 
-            auto header = InitializeClassHeader(alloc_->AllocatePage(), class_object->GetSize());
-            logger_->Debug("Index: " + std::to_string(header.index_));
+            auto found = FindClass(class_object, DataMode::kFile);
 
-            class_list_.PushBack(header.index_);
-            class_object->Write(alloc_->GetFile(),
-                                mem::GetOffset(header.index_, header.first_free_));
-            class_cache_.emplace(class_object->ToString(), header.index_);
-        } else {
-            logger_->Debug(class_object->ToString());
-            if (std::holds_alternative<ClassCache::iterator>(found)) {
-                logger_->Debug(std::get<0>(found)->first);
+            if (std::holds_alternative<std::monostate>(found)) {
+                INFO("Adding new class");
+                DEBUG(class_object->ToString());
+
+                auto header =
+                    InitializeClassHeader(alloc_->AllocatePage(), class_object->GetSize());
+                DEBUG("Index: " + std::to_string(header.index_));
+
+                class_list_.PushBack(header.index_);
+                class_object->Write(alloc_->GetFile(),
+                                    mem::GetOffset(header.index_, header.first_free_));
+                class_cache_.emplace(class_object->ToString(), header.index_);
+            } else if (std::holds_alternative<mem::PageIndex>(found)) {
+                INFO("Adding class to cache");
+                DEBUG(class_object->ToString());
+                class_cache_.emplace(class_object->ToString(), std::get<mem::PageIndex>(found));
             } else {
-                logger_->Debug(std::to_string(std::get<mem::PageIndex>(found)));
+                throw error::RuntimeError("Cache miss");
             }
+
+        } else {
+            ERROR(class_object->ToString());
             throw error::RuntimeError("Class already present");
         }
     }

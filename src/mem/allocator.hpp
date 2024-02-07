@@ -14,19 +14,19 @@ private:
 
     PageIndex AllocateNewPage() {
         if ((file_->GetSize() - kPagetableOffset) % kPageSize != 0) {
-            logger_->Error("Filesize: " + std::to_string(file_->GetSize()));
+            ERROR("Filesize: " + std::to_string(file_->GetSize()));
             throw error::StructureError("Unaligned file");
         }
         auto new_page_offset = file_->GetSize();
 
-        logger_->Debug("Allocating page");
-        logger_->Debug("Filesize: " + std::to_string(new_page_offset));
+        DEBUG("Allocating page");
+        DEBUG("Filesize: " + std::to_string(new_page_offset));
 
         file_->Extend(kPageSize);
         file_->Write<Page>(Page(pages_count_++), new_page_offset);
         file_->Write<size_t>(pages_count_, kPagesCountOffset);
 
-        logger_->Debug("Successful Allocation");
+        DEBUG("Successful Allocation");
 
         return pages_count_ - 1;
     }
@@ -37,8 +37,8 @@ private:
                                      std::to_string(pages_count_));
         }
 
-        logger_->Debug("Swapping pages with indecies" + std::to_string(first) + " " +
-                       std::to_string(second));
+        DEBUG("Swapping pages with indecies" + std::to_string(first) + " " +
+              std::to_string(second));
 
         auto first_data = file_->Read<PageData>(Page(first).GetPageAddress(kPagetableOffset));
         auto second_data = file_->Read<PageData>(Page(second).GetPageAddress(kPagetableOffset));
@@ -53,7 +53,7 @@ private:
         file_->Write<PageData>(second_data,
                                second_data.page_header.GetPageAddress(kPagetableOffset));
 
-        logger_->Debug("Successfully swaped");
+        DEBUG("Successfully swaped");
     }
 
 public:
@@ -61,16 +61,15 @@ public:
                   std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
         : file_(file), logger_(logger) {
 
-        logger->Debug("Free list count: " + std::to_string(file->Read<size_t>(kPagesCountOffset)));
+        DEBUG("Free list count: " + std::to_string(file->Read<size_t>(kPagesCountOffset)));
         pages_count_ = file_->Read<size_t>(kPagesCountOffset);
 
-        logger->Debug("Freelist sentinel offset: " + std::to_string(kFreeListSentinelOffset));
-        logger->Debug("Free list count: " +
-                      std::to_string(file->Read<size_t>(kFreePagesCountOffset)));
+        DEBUG("Freelist sentinel offset: " + std::to_string(kFreeListSentinelOffset));
+        DEBUG("Free list count: " + std::to_string(file->Read<size_t>(kFreePagesCountOffset)));
 
         free_list_ = PageList(file_, kFreeListSentinelOffset, logger_);
 
-        logger_->Info("FreeList initialized");
+        INFO("FreeList initialized");
     }
 
     [[nodiscard]] size_t GetPagesCount() const {

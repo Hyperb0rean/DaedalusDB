@@ -16,22 +16,22 @@ class Database {
     void InitializeSuperblock(OpenMode mode) {
         switch (mode) {
             case OpenMode::kRead: {
-                logger_->Debug("OpenMode: Read");
+                DEBUG("OpenMode: Read");
                 superblock_.ReadSuperblock(file_);
             } break;
             case OpenMode::kDefault: {
-                logger_->Debug("OpenMode: Default");
+                DEBUG("OpenMode: Default");
                 try {
                     superblock_.ReadSuperblock(file_);
                     break;
                 } catch (const error::StructureError& e) {
-                    logger_->Error("Can't open file in Read mode, rewriting..");
+                    ERROR("Can't open file in Read mode, rewriting..");
                 } catch (const error::BadArgument& e) {
-                    logger_->Error("Can't open file in Read mode, rewriting..");
+                    ERROR("Can't open file in Read mode, rewriting..");
                 }
             }
             case OpenMode::kWrite: {
-                logger_->Debug("OpenMode: Write");
+                DEBUG("OpenMode: Write");
                 file_->Clear();
                 superblock_.InitSuperblock(file_);
             } break;
@@ -46,12 +46,13 @@ public:
         InitializeSuperblock(mode);
 
         alloc_ = std::make_shared<mem::PageAllocator>(file_, logger_);
-        logger_->Info("Alloc initialized");
+        INFO("Allocator initialized");
         class_storage_ = std::make_shared<ClassStorage>(alloc_, logger_);
+        INFO("Class storage");
     }
 
     ~Database() {
-        logger_->Info("Closing database");
+        INFO("Closing database");
     };
 
     template <ts::ClassLike C>

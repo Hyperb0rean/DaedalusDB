@@ -2,11 +2,28 @@
 #include <iostream>
 #include <string>
 
+#ifndef DEBUG
+#define DEBUG(...) logger_->Debug(__VA_ARGS__)
+#endif
+
+#ifndef INFO
+#define INFO(...) logger_->Info(__VA_ARGS__)
+#endif
+
+#ifndef WARN
+#define WARN(...) logger_->Warn(__VA_ARGS__)
+#endif
+
+#ifndef ERROR
+#define ERROR(...) logger_->Error(__VA_ARGS__)
+#endif
+
 namespace util {
 class Logger {
 public:
     Logger() = default;
     virtual ~Logger(){};
+
     virtual void Debug(std::string_view) = 0;
     virtual void Info(std::string_view) = 0;
     virtual void Warn(std::string_view) = 0;

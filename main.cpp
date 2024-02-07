@@ -19,7 +19,7 @@ int main() {
                                                     coordinates_class);
 
     auto database =
-        db::Database(file, db::OpenMode::kDefault, std::make_shared<util::DebugLogger>());
+        db::Database(file, db::OpenMode::kDefault, std::make_shared<util::ConsoleLogger>());
     database.AddClass(person_class);
     // database.AddClass(coordinates_class);
     // database.AddClass(city_class);

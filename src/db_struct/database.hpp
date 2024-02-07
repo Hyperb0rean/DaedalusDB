@@ -7,11 +7,12 @@ namespace db {
 enum class OpenMode { kDefault, kRead, kWrite };
 
 class Database {
+
+    DECLARE_LOGGER;
     mem::Superblock superblock_;
     std::shared_ptr<mem::File> file_;
     std::shared_ptr<mem::PageAllocator> alloc_;
     std::shared_ptr<ClassStorage> class_storage_;
-    std::shared_ptr<util::Logger> logger_;
 
     void InitializeSuperblock(OpenMode mode) {
         switch (mode) {
@@ -41,13 +42,13 @@ class Database {
 public:
     Database(const std::shared_ptr<mem::File>& file, OpenMode mode = OpenMode::kDefault,
              std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
-        : file_(file), logger_(logger) {
+        : LOGGER(logger), file_(file) {
 
         InitializeSuperblock(mode);
 
-        alloc_ = std::make_shared<mem::PageAllocator>(file_, logger_);
+        alloc_ = std::make_shared<mem::PageAllocator>(file_, LOGGER);
         INFO("Allocator initialized");
-        class_storage_ = std::make_shared<ClassStorage>(alloc_, logger_);
+        class_storage_ = std::make_shared<ClassStorage>(alloc_, LOGGER);
         INFO("Class storage");
     }
 

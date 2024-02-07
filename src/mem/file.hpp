@@ -18,9 +18,10 @@ using Offset = loff_t;
 using StructOffset = size_t;
 
 class File {
+
+    DECLARE_LOGGER;
     FileDescriptor fd_;
     std::string fileName_;
-    std::shared_ptr<util::Logger> logger_;
 
     Offset Seek(Offset offset) const {
         Offset new_offset = lseek(fd_, offset, SEEK_SET);
@@ -33,7 +34,7 @@ class File {
 public:
     explicit File(std::string&& fileName,
                   std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
-        : fileName_(std::move(fileName)), logger_(logger) {
+        : LOGGER(logger), fileName_(std::move(fileName)) {
         fd_ = open(fileName_.c_str(), O_RDWR | O_CREAT, S_IRWXU | S_IRGRP | S_IROTH);
         if (fd_ == -1) {
             throw error::IoError("File could not be opened");
@@ -63,20 +64,20 @@ public:
     }
 
     void Truncate(Offset size) {
-        logger_->Debug("Truncating, current size: " + std::to_string(GetSize()));
+        DEBUG("Truncating, current size: ", GetSize());
         if (ftruncate64(fd_, GetSize() - size) != 0) {
             throw error::IoError("Can't truncate file " + fileName_);
         }
     }
 
     void Extend(Offset size) {
-        logger_->Debug("Extending, current size: " + std::to_string(GetSize()));
+        DEBUG("Extending, current size: ", GetSize());
         if (ftruncate64(fd_, GetSize() + size) != 0) {
             throw error::IoError("Can't extend file " + fileName_);
         }
     }
     void Clear() {
-        logger_->Debug("Clear");
+        DEBUG("Clear");
         if (ftruncate64(fd_, 0) != 0) {
             throw error::IoError("Can't clear file " + fileName_);
         }

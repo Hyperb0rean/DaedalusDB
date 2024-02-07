@@ -8,23 +8,23 @@ namespace mem {
 
 class PageList {
 
+    DECLARE_LOGGER;
     std::shared_ptr<File> file_;
     Offset dummy_offset_;
     size_t pages_count_;
-    std::shared_ptr<util::Logger> logger_;
 
     void DecrementCount() {
         file_->Write<size_t>(--pages_count_, GetCountFromSentinel(dummy_offset_));
-        DEBUG("Decremented page count, current: " + std::to_string(pages_count_));
+        DEBUG("Decremented page count, current: ", pages_count_);
     }
     void IncrementCount() {
         file_->Write<size_t>(++pages_count_, GetCountFromSentinel(dummy_offset_));
-        DEBUG("Incremented page count, current: " + std::to_string(pages_count_));
+        DEBUG("Incremented page count, current: ", pages_count_);
     }
 
 public:
     [[nodiscard]] size_t GetPagesCount() const {
-        DEBUG("Pages in list: " + std::to_string(pages_count_));
+        DEBUG("Pages in list: ", pages_count_);
         return pages_count_;
     }
 
@@ -100,7 +100,7 @@ public:
 
     PageList(const std::shared_ptr<File>& file, Offset dummy_offset,
              std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
-        : file_(file), dummy_offset_(dummy_offset), logger_(logger) {
+        : LOGGER(logger), file_(file), dummy_offset_(dummy_offset) {
         pages_count_ = file_->Read<size_t>(GetCountFromSentinel(dummy_offset));
     }
 
@@ -110,7 +110,7 @@ public:
             return;
         }
 
-        DEBUG("Unlinking page " + std::to_string(index));
+        DEBUG("Unlinking page ", index);
 
         auto prev = PageIterator(file_, it->previous_page_index_, dummy_offset_);
         auto next = PageIterator(file_, it->next_page_index_, dummy_offset_);
@@ -132,7 +132,7 @@ public:
 
     void LinkBefore(PageIndex other_index, PageIndex index) {
         // other_index must be from list, index must not be from list
-        DEBUG("Linking page " + std::to_string(index) + " before " + std::to_string(other_index));
+        DEBUG("Linking page ", index, " before ", other_index);
 
         auto it = PageIterator(file_, index, dummy_offset_);
         auto other = PageIterator(file_, other_index, dummy_offset_);

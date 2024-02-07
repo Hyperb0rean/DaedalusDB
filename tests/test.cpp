@@ -74,7 +74,8 @@ TEST(Database, ClassAddition) {
     auto city_class = ts::NewClass<ts::StructClass>("city", ts::NewClass<ts::StringClass>("name"),
                                                     coordinates_class);
 
-    auto database = db::Database(file, db::OpenMode::kWrite, std::make_shared<util::DebugLogger>());
+    auto database =
+        db::Database(file, db::OpenMode::kWrite, std::make_shared<util::ConsoleLogger>());
     database.AddClass(person_class);
     database.AddClass(coordinates_class);
     database.AddClass(city_class);

@@ -12,8 +12,8 @@ enum class DataMode { kCache, kFile };
 
 class ClassStorage {
 
+    DECLARE_LOGGER;
     std::shared_ptr<mem::PageAllocator> alloc_;
-    std::shared_ptr<util::Logger> logger_;
     mem::PageList class_list_;
 
     using ClassCache = std::unordered_map<std::string, mem::PageIndex>;
@@ -39,7 +39,7 @@ class ClassStorage {
 
         for (auto& class_it : class_list_) {
             auto serialized = GetSerializedClass(class_it.index_);
-            DEBUG("Initialized: " + serialized);
+            DEBUG("Initialized:", serialized);
             class_cache_.emplace(serialized, class_it.index_);
         }
     }
@@ -88,13 +88,12 @@ class ClassStorage {
 public:
     ClassStorage(std::shared_ptr<mem::PageAllocator>& alloc,
                  std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
-        : alloc_(alloc), logger_(logger) {
+        : LOGGER(logger), alloc_(alloc) {
 
-        DEBUG("Class list sentinel offset: " + std::to_string(mem::kClassListSentinelOffset));
-        DEBUG("Class list count: " +
-              std::to_string(alloc_->GetFile()->Read<size_t>(mem::kClassListCount)));
+        DEBUG("Class list sentinel offset:", mem::kClassListSentinelOffset);
+        DEBUG("Class list count:", alloc_->GetFile()->Read<size_t>(mem::kClassListCount));
 
-        class_list_ = mem::PageList(alloc_->GetFile(), mem::kClassListSentinelOffset, logger_);
+        class_list_ = mem::PageList(alloc_->GetFile(), mem::kClassListSentinelOffset, LOGGER);
 
         INFO("ClassList initialized");
 
@@ -118,7 +117,7 @@ public:
 
                 auto header =
                     InitializeClassHeader(alloc_->AllocatePage(), class_object->GetSize());
-                DEBUG("Index: " + std::to_string(header.index_));
+                DEBUG("Index: ", header.index_);
 
                 class_list_.PushBack(header.index_);
                 class_object->Write(alloc_->GetFile(),

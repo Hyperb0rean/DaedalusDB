@@ -7,20 +7,20 @@ namespace mem {
 class PageAllocator {
 
 private:
+    DECLARE_LOGGER;
     size_t pages_count_;
     std::shared_ptr<File> file_;
     PageList free_list_;
-    std::shared_ptr<util::Logger> logger_;
 
     PageIndex AllocateNewPage() {
         if ((file_->GetSize() - kPagetableOffset) % kPageSize != 0) {
-            ERROR("Filesize: " + std::to_string(file_->GetSize()));
+            ERROR("Filesize: ", file_->GetSize());
             throw error::StructureError("Unaligned file");
         }
         auto new_page_offset = file_->GetSize();
 
         DEBUG("Allocating page");
-        DEBUG("Filesize: " + std::to_string(new_page_offset));
+        DEBUG("Filesize: ", new_page_offset);
 
         file_->Extend(kPageSize);
         file_->Write<Page>(Page(pages_count_++), new_page_offset);
@@ -37,8 +37,7 @@ private:
                                      std::to_string(pages_count_));
         }
 
-        DEBUG("Swapping pages with indecies" + std::to_string(first) + " " +
-              std::to_string(second));
+        DEBUG("Swapping pages with indecies", first, " ", second);
 
         auto first_data = file_->Read<PageData>(Page(first).GetPageAddress(kPagetableOffset));
         auto second_data = file_->Read<PageData>(Page(second).GetPageAddress(kPagetableOffset));
@@ -59,15 +58,15 @@ private:
 public:
     PageAllocator(std::shared_ptr<mem::File>& file,
                   std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
-        : file_(file), logger_(logger) {
+        : LOGGER(logger), file_(file) {
 
-        DEBUG("Free list count: " + std::to_string(file->Read<size_t>(kPagesCountOffset)));
+        DEBUG("Free list count: ", file->Read<size_t>(kPagesCountOffset));
         pages_count_ = file_->Read<size_t>(kPagesCountOffset);
 
-        DEBUG("Freelist sentinel offset: " + std::to_string(kFreeListSentinelOffset));
-        DEBUG("Free list count: " + std::to_string(file->Read<size_t>(kFreePagesCountOffset)));
+        DEBUG("Freelist sentinel offset: ", kFreeListSentinelOffset);
+        DEBUG("Free list count: ", file->Read<size_t>(kFreePagesCountOffset));
 
-        free_list_ = PageList(file_, kFreeListSentinelOffset, logger_);
+        free_list_ = PageList(file_, kFreeListSentinelOffset, LOGGER);
 
         INFO("FreeList initialized");
     }

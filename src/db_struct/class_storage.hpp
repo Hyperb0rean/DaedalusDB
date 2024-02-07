@@ -104,11 +104,11 @@ public:
     void AddClass(std::shared_ptr<C>& new_class) {
         auto class_object = MakeClassHolder(new_class);
 
-        if (class_object.GetSize() > mem::kPageSize - sizeof(mem::ClassHeader)) {
+        if (class_object->GetSize() > mem::kPageSize - sizeof(mem::ClassHeader)) {
             throw error::NotImplemented("Too complex class");
         }
         auto found = FindClass(class_object, DataMode::kFile);
-        if (!std::holds_alternative<std::monostate>(found)) {
+        if (std::holds_alternative<std::monostate>(found)) {
             logger_->Info("Adding class");
             logger_->Debug(class_object->ToString());
 
@@ -116,10 +116,16 @@ public:
             logger_->Debug("Index: " + std::to_string(header.index_));
 
             class_list_.PushBack(header.index_);
-            class_object.Write(alloc_->GetFile(),
-                               mem::GetOffset(header.index_, header.first_free_));
+            class_object->Write(alloc_->GetFile(),
+                                mem::GetOffset(header.index_, header.first_free_));
             class_cache_.emplace(class_object->ToString(), header.index_);
         } else {
+            logger_->Debug(class_object->ToString());
+            if (std::holds_alternative<ClassCache::iterator>(found)) {
+                logger_->Debug(std::get<0>(found)->first);
+            } else {
+                logger_->Debug(std::to_string(std::get<mem::PageIndex>(found)));
+            }
             throw error::RuntimeError("Class already present");
         }
     }

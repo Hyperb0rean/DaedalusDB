@@ -134,16 +134,58 @@ public:
 
         } else {
             ERROR(class_object->ToString());
-            throw error::RuntimeError("Class already present");
+            ERROR("Class already present");
+            return;
         }
     }
 
     template <ts::ClassLike C>
     void RemoveClass(std::shared_ptr<C>& new_class) {
+        INFO("Removing class..");
         auto class_object = MakeClassHolder(new_class);
+
+        auto found = FindClass(class_object, DataMode::kFile);
+        auto cache_found = FindClass(class_object, DataMode::kCache);
+        mem::PageIndex index;
+
+        if (!std::holds_alternative<std::monostate>(cache_found)) {
+            index = std::get<ClassCache::iterator>(cache_found)->second;
+            class_cache_.erase(std::get<ClassCache::iterator>(cache_found));
+            if (std::holds_alternative<std::monostate>(found)) {
+                DEBUG("Removing from cache");
+                return;
+            }
+        }
+
+        if (std::holds_alternative<std::monostate>(found)) {
+            ERROR("Class not present");
+            return;
+        } else if (std::holds_alternative<mem::PageIndex>(found)) {
+            index = std::get<mem::PageIndex>(found);
+        }
+
+        // TODO: REMOVE ALL NODES OF CLASS
+        class_list_.Unlink(index);
+        alloc_->FreePage(index);
     }
 
-    void VisitClasses() {
+    template <typename F>
+    requires std::invocable<F, mem::ClassHeader>
+    void VisitClasses(F functor) {
+        for (auto& class_header : class_list_) {
+            functor(mem::ClassHeader(class_header.index_).ReadClassHeader(alloc_->GetFile()));
+        }
+    }
+
+    template <typename F>
+    requires std::invocable<F, ts::ClassObject>
+    void VisitClasses(F functor) {
+        for (auto& class_header : class_list_) {
+            ts::ClassObject class_object;
+            class_object.Read(alloc_->GetFile(),
+                              mem::GetOffset(class_header.index_, class_header.first_free_));
+            functor(class_object);
+        }
     }
 };
 }  // namespace db

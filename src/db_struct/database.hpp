@@ -59,6 +59,22 @@ public:
     void AddClass(std::shared_ptr<C>& new_class) {
         class_storage_->AddClass(new_class);
     }
+
+    template <ts::ClassLike C>
+    void RemoveClass(std::shared_ptr<C>& new_class) {
+        class_storage_->RemoveClass(new_class);
+    }
+
+    void PrintClasses() {
+        auto& alloc = alloc_;
+        class_storage_->VisitClasses([alloc](mem::ClassHeader class_header) -> void {
+            ts::ClassObject class_object;
+            class_object.Read(alloc->GetFile(),
+                              mem::GetOffset(class_header.index_, class_header.first_free_));
+            std::cout << " [ " << class_header.index_ << " ] " << class_object.ToString()
+                      << std::endl;
+        });
+    }
 };
 
 }  // namespace db

@@ -49,7 +49,6 @@ public:
         alloc_ = std::make_shared<mem::PageAllocator>(file_, LOGGER);
         INFO("Allocator initialized");
         class_storage_ = std::make_shared<ClassStorage>(alloc_, LOGGER);
-        INFO("Class storage");
     }
 
     ~Database() {

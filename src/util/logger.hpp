@@ -9,29 +9,29 @@
 #define LOGGER logger_
 #define DECLARE_LOGGER std::shared_ptr<::util::Logger> LOGGER
 
-#define DEBUG(...) LOGGER->Log(::util::LogType::kDebug, __VA_ARGS__)
-#define INFO(...) LOGGER->Log(::util::LogType::kInfo, __VA_ARGS__)
-#define WARN(...) LOGGER->Log(::util::LogType::kWarn, __VA_ARGS__)
-#define ERROR(...) LOGGER->Log(::util::LogType::kError, __VA_ARGS__)
+#define DEBUG(...) LOGGER->Log(::util::LogLevel::kDebug, __VA_ARGS__)
+#define INFO(...) LOGGER->Log(::util::LogLevel::kInfo, __VA_ARGS__)
+#define WARN(...) LOGGER->Log(::util::LogLevel::kWarn, __VA_ARGS__)
+#define ERROR(...) LOGGER->Log(::util::LogLevel::kError, __VA_ARGS__)
 
 namespace util {
 
-enum class LogType {
+enum class LogLevel {
     kDebug,
     kInfo,
     kWarn,
     kError,
 };
 
-inline std::string_view ModeToString(LogType mode) noexcept {
-    switch (mode) {
-        case LogType::kDebug:
+inline std::string_view LevelToString(LogLevel level) noexcept {
+    switch (level) {
+        case LogLevel::kDebug:
             return "D";
-        case LogType::kInfo:
+        case LogLevel::kInfo:
             return "I";
-        case LogType::kWarn:
+        case LogLevel::kWarn:
             return "W";
-        case LogType::kError:
+        case LogLevel::kError:
             return "E";
     }
     return "";
@@ -39,29 +39,18 @@ inline std::string_view ModeToString(LogType mode) noexcept {
 
 class Logger {
 protected:
-    virtual void LogImpl(LogType, PrintableAny&&) = 0;
-    virtual void LogHeader(LogType) = 0;
-    virtual void LogFooter(LogType) = 0;
-
-    template <typename Arg>
-    void IteratePack(LogType mode, Arg&& arg) {
-        LogImpl(mode, PrintableAny{std::forward<Arg>(arg)});
-    }
-
-    template <typename Arg, typename... Args>
-    void IteratePack(LogType mode, Arg&& arg, Args&&... args) {
-        LogImpl(mode, PrintableAny{std::forward<Arg>(arg)});
-        IteratePack(mode, std::forward<Args>(args)...);
-    }
+    virtual void LogImpl(LogLevel, PrintableAny&&) = 0;
+    virtual void LogHeader(LogLevel) = 0;
+    virtual void LogFooter(LogLevel) = 0;
 
 public:
     Logger() = default;
 
     template <typename... Args>
-    void Log(LogType mode, Args&&... args) {
-        LogHeader(mode);
-        IteratePack(mode, std::forward<Args>(args)...);
-        LogFooter(mode);
+    void Log(LogLevel level, Args&&... args) {
+        LogHeader(level);
+        (LogImpl(level, PrintableAny(std::forward<Args>(args))), ...);
+        LogFooter(level);
     }
 
     virtual ~Logger(){};
@@ -79,15 +68,15 @@ public:
         : cout_(cout), cerr_(cerr) {
     }
 
-    void LogFooter(LogType mode) override {
+    void LogFooter(LogLevel level) override {
         cout_ << std::endl;
     }
 
-    void LogHeader(LogType mode) override {
-        cout_ << GetCurrentTime() << " | " << ModeToString(mode) << " | ";
+    void LogHeader(LogLevel level) override {
+        cout_ << GetCurrentTime() << " | " << LevelToString(level) << " | ";
     }
 
-    void LogImpl(LogType mode, PrintableAny&& data) override {
+    void LogImpl(LogLevel level, PrintableAny&& data) override {
         cout_ << data;
     }
 };
@@ -98,20 +87,20 @@ public:
         : ConsoleLogger(cout, cerr) {
     }
 
-    void LogFooter(LogType mode) override {
-        if (mode != LogType::kDebug) {
+    void LogFooter(LogLevel level) override {
+        if (level != LogLevel::kDebug) {
             cout_ << std::endl;
         }
     }
 
-    void LogHeader(LogType mode) override {
-        if (mode != LogType::kDebug) {
-            cout_ << GetCurrentTime() << " | " << ModeToString(mode) << " | ";
+    void LogHeader(LogLevel level) override {
+        if (level != LogLevel::kDebug) {
+            cout_ << GetCurrentTime() << " | " << LevelToString(level) << " | ";
         }
     }
 
-    void LogImpl(LogType mode, PrintableAny&& data) override {
-        if (mode != LogType::kDebug) {
+    void LogImpl(LogLevel level, PrintableAny&& data) override {
+        if (level != LogLevel::kDebug) {
             cout_ << data;
         }
     }
@@ -125,13 +114,13 @@ public:
     EmptyLogger() {
     }
 
-    void LogFooter(LogType mode) override {
+    void LogFooter(LogLevel level) override {
     }
 
-    void LogHeader(LogType mode) override {
+    void LogHeader(LogLevel level) override {
     }
 
-    void LogImpl(LogType mode, PrintableAny&& data) override {
+    void LogImpl(LogLevel level, PrintableAny&& data) override {
     }
 };
 }  // namespace util

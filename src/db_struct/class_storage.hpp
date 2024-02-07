@@ -102,6 +102,8 @@ public:
 
     template <ts::ClassLike C>
     void AddClass(std::shared_ptr<C>& new_class) {
+        INFO("Adding new class..");
+
         auto class_object = MakeClassHolder(new_class);
 
         if (class_object->GetSize() > mem::kPageSize - sizeof(mem::ClassHeader)) {
@@ -112,7 +114,6 @@ public:
             auto found = FindClass(class_object, DataMode::kFile);
 
             if (std::holds_alternative<std::monostate>(found)) {
-                INFO("Adding new class");
                 DEBUG(class_object->ToString());
 
                 auto header =

@@ -111,8 +111,12 @@ public:
     }
 };
 
-inline Offset GetOffset(PageIndex index, PageOffset virt_offset) {
+constexpr inline Offset GetOffset(PageIndex index, PageOffset virt_offset) {
     return kPagetableOffset + index * mem::kPageSize + virt_offset;
+}
+
+constexpr inline Offset GetNodeListSentinel(PageIndex index) {
+    return GetOffset(index, sizeof(Page));
 }
 
 }  // namespace mem

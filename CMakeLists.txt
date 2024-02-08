@@ -27,6 +27,8 @@ set(SOURCES
   src/mem/mem.hpp 
   src/mem/allocator.hpp 
   src/db_struct/database.hpp 
+  src/db_struct/class_storage.hpp 
+  src/db_struct/node_storage.hpp 
   src/type_system/class.hpp
   src/type_system/object.hpp
   src/mem/pagelist.hpp)

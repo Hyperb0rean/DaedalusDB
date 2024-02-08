@@ -11,15 +11,13 @@ namespace db {
 enum class DataMode { kCache, kFile };
 
 class ClassStorage {
-
+private:
     DECLARE_LOGGER;
     std::shared_ptr<mem::PageAllocator> alloc_;
     mem::PageList class_list_;
 
     using ClassCache = std::unordered_map<std::string, mem::PageIndex>;
     ClassCache class_cache_;
-
-    using ClassIndex = std::variant<ClassCache::iterator, mem::PageIndex, std::monostate>;
 
     std::string GetSerializedClass(mem::PageIndex index) const {
         auto header = mem::ClassHeader(index).ReadClassHeader(alloc_->GetFile());
@@ -56,8 +54,27 @@ class ClassStorage {
             .WriteClassHeader(alloc_->GetFile());
     }
 
-    ClassIndex FindClass(std::shared_ptr<ts::ClassObject> class_object,
-                         DataMode mode = DataMode::kCache) {
+public:
+    ClassStorage(std::shared_ptr<mem::PageAllocator>& alloc,
+                 std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+        : LOGGER(logger), alloc_(alloc) {
+
+        DEBUG("Class list sentinel offset:", mem::kClassListSentinelOffset);
+        DEBUG("Class list count:", alloc_->GetFile()->Read<size_t>(mem::kClassListCount));
+
+        class_list_ = mem::PageList(alloc_->GetFile(), mem::kClassListSentinelOffset, LOGGER);
+
+        INFO("ClassList initialized");
+
+        InitializeClassCache();
+    }
+
+    using ClassIndex = std::variant<ClassCache::iterator, mem::PageIndex, std::monostate>;
+
+    template <ts::ClassLike C>
+    ClassIndex FindClass(std::shared_ptr<C> new_class, DataMode mode = DataMode::kCache) {
+        auto class_object = MakeClassHolder(new_class);
+
         auto class_it = class_cache_.begin();
         auto serialized = class_object->ToString();
         for (; class_it != class_cache_.end(); ++class_it) {
@@ -85,21 +102,6 @@ class ClassStorage {
         return std::monostate{};
     }
 
-public:
-    ClassStorage(std::shared_ptr<mem::PageAllocator>& alloc,
-                 std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
-        : LOGGER(logger), alloc_(alloc) {
-
-        DEBUG("Class list sentinel offset:", mem::kClassListSentinelOffset);
-        DEBUG("Class list count:", alloc_->GetFile()->Read<size_t>(mem::kClassListCount));
-
-        class_list_ = mem::PageList(alloc_->GetFile(), mem::kClassListSentinelOffset, LOGGER);
-
-        INFO("ClassList initialized");
-
-        InitializeClassCache();
-    }
-
     template <ts::ClassLike C>
     void AddClass(std::shared_ptr<C>& new_class) {
         INFO("Adding new class..");
@@ -109,9 +111,9 @@ public:
         if (class_object->GetSize() > mem::kPageSize - sizeof(mem::ClassHeader)) {
             throw error::NotImplemented("Too complex class");
         }
-        if (std::holds_alternative<std::monostate>(FindClass(class_object, DataMode::kCache))) {
+        if (std::holds_alternative<std::monostate>(FindClass(new_class, DataMode::kCache))) {
 
-            auto found = FindClass(class_object, DataMode::kFile);
+            auto found = FindClass(new_class, DataMode::kFile);
 
             if (std::holds_alternative<std::monostate>(found)) {
                 DEBUG(class_object->ToString());
@@ -142,10 +144,9 @@ public:
     template <ts::ClassLike C>
     void RemoveClass(std::shared_ptr<C>& new_class) {
         INFO("Removing class..");
-        auto class_object = MakeClassHolder(new_class);
 
-        auto found = FindClass(class_object, DataMode::kFile);
-        auto cache_found = FindClass(class_object, DataMode::kCache);
+        auto found = FindClass(new_class, DataMode::kFile);
+        auto cache_found = FindClass(new_class, DataMode::kCache);
         mem::PageIndex index;
 
         if (!std::holds_alternative<std::monostate>(cache_found)) {

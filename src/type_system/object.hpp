@@ -113,7 +113,7 @@ public:
     ~ClassObject() = default;
     ClassObject(){};
     virtual std::shared_ptr<Class> GetClass() {
-        throw error::NotImplemented("Class Class");
+        return class_holder_;
     }
     ClassObject(const std::shared_ptr<Class>& holder) : class_holder_(holder) {
         serialized_ = class_holder_->Serialize();

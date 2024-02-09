@@ -51,15 +51,16 @@ public:
     template <ts::ObjectLike O>
     requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(std::shared_ptr<O>& node) {
 
-        if (node->GetSize() > mem::kPageSize - sizeof(mem::Page)) {
+        if (node->Size() > mem::kPageSize - sizeof(mem::Page)) {
             throw error::NotImplemented("Too big object)");
         }
 
         auto back = GetBack();
-        if (node->GetSize() + mem::GetOffset(back.index_, back.first_free_) >
+        if (node->Size() + mem::GetOffset(back.index_, back.first_free_) >
             mem::GetOffset(back.index_ + 1, 0)) {
             back = AllocatePage();
         }
+
         INFO("Writing Object: ", node->ToString());
         node->Write(alloc_->GetFile(), mem::GetOffset(back.index_, back.first_free_));
     }

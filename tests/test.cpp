@@ -20,6 +20,12 @@ TEST(TypeTests, SimpleReadWrite) {
     ASSERT_EQ("name: \"Cool\"", node->ToString());
 }
 
+TEST(TypeTests, InvalidClasses) {
+    ASSERT_THROW(auto name = ts::NewClass<ts::StringClass>("name_"), error::TypeError);
+    ASSERT_THROW(auto name = ts::NewClass<ts::StringClass>("n@me"), error::TypeError);
+    ASSERT_THROW(auto name = ts::NewClass<ts::StringClass>("<name>"), error::TypeError);
+}
+
 TEST(TypeTests, ReadWrite) {
     auto file = std::make_shared<mem::File>("test.data");
     file->Clear();
@@ -34,10 +40,10 @@ TEST(TypeTests, ReadWrite) {
     file->Write("Cool", 4, 0, 4);
     file->Write(20, 22);
 
-    ASSERT_EQ("person: { name: \"Greg\", surname: \"Sosnovtsev\", age: 19, male: 1 }",
+    ASSERT_EQ("person: { name: \"Greg\", surname: \"Sosnovtsev\", age: 19, male: true }",
               node->ToString());
     node->Read(file, 0);
-    ASSERT_EQ("person: { name: \"Cool\", surname: \"Sosnovtsev\", age: 20, male: 1 }",
+    ASSERT_EQ("person: { name: \"Cool\", surname: \"Sosnovtsev\", age: 20, male: true }",
               node->ToString());
 }
 
@@ -57,6 +63,18 @@ TEST(TypeTests, TypeDump) {
     ts::ClassObject read_class;
     read_class.Read(file, 1488);
     ASSERT_EQ(read_class.ToString(), ts::ClassObject(person_class).ToString());
+}
+
+TEST(TypeTests, Metadata) {
+    auto person_class = ts::NewClass<ts::StructClass>(
+        "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
+        ts::NewClass<ts::PrimitiveClass<int>>("age"),
+        ts::NewClass<ts::PrimitiveClass<bool>>("male"));
+
+    ASSERT_TRUE(ts::ClassObject(person_class).Contains(ts::NewClass<ts::StringClass>("surname")));
+    ASSERT_FALSE(
+        ts::ClassObject(person_class).Contains(ts::NewClass<ts::PrimitiveClass<int>>("surname")));
+    ASSERT_FALSE(ts::ClassObject(person_class).Contains(ts::NewClass<ts::StringClass>("address")));
 }
 
 TEST(ClassStorage, ClassAddition) {

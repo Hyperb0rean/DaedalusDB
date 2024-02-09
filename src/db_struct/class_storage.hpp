@@ -110,7 +110,7 @@ public:
 
         auto class_object = MakeClassHolder(new_class);
 
-        if (class_object->GetSize() > mem::kPageSize - sizeof(mem::ClassHeader)) {
+        if (class_object->Size() > mem::kPageSize - sizeof(mem::ClassHeader)) {
             throw error::NotImplemented("Too complex class");
         }
         if (std::holds_alternative<std::monostate>(FindClass(new_class, DataMode::kCache))) {
@@ -120,8 +120,7 @@ public:
             if (std::holds_alternative<std::monostate>(found)) {
                 DEBUG(class_object->ToString());
 
-                auto header =
-                    InitializeClassHeader(alloc_->AllocatePage(), class_object->GetSize());
+                auto header = InitializeClassHeader(alloc_->AllocatePage(), class_object->Size());
                 DEBUG("Index: ", header.index_);
 
                 class_list_.PushBack(header.index_);

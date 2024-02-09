@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <optional>
 #include <sstream>
 #include <typeinfo>
 
@@ -21,16 +22,36 @@ constexpr std::string_view type_name() {
     return result;
 }
 
-struct Class {
+class Class {
+protected:
     std::string name_;
+
+    void Validate() {
+        for (auto& c : name_) {
+            if (c == '@' || c == '_' || c == '<' || c == '>') {
+                throw error::TypeError("Invalid class name");
+            }
+        }
+    }
+
+public:
     explicit Class(std::string name) : name_(std::move(name)) {
+        Validate();
     }
     virtual ~Class() = default;
+
     [[nodiscard]] virtual std::string Serialize() const = 0;
+
+    [[nodiscard]] virtual std::optional<size_t> Size() const = 0;
+
+    [[nodiscard]] virtual std::string Name() const {
+        return name_;
+    }
 };
 template <typename T>
 requires std::is_fundamental_v<T>
-struct PrimitiveClass : public Class {
+class PrimitiveClass : public Class {
+public:
     explicit PrimitiveClass(std::string name) : Class(std::move(name)) {
     }
     [[nodiscard]] std::string Serialize() const override {
@@ -39,22 +60,30 @@ struct PrimitiveClass : public Class {
         result.append("@").append(name_).append("_");
         return {result.begin(), std::remove_if(result.begin(), result.end(), isspace)};
     }
+    [[nodiscard]] std::optional<size_t> Size() const override {
+        return sizeof(T);
+    }
 };
 
 template <typename C>
 concept ClassLike = std::derived_from<C, Class>;
 
-struct StringClass : public Class {
+class StringClass : public Class {
+public:
     explicit StringClass(std::string name) : Class(std::move(name)) {
     }
     [[nodiscard]] std::string Serialize() const override {
         return "_string@" + name_ + "_";
     }
+    [[nodiscard]] std::optional<size_t> Size() const override {
+        return std::nullopt;
+    }
 };
 
-struct StructClass : public Class {
+class StructClass : public Class {
     std::vector<std::shared_ptr<Class>> fields_;
 
+public:
     StructClass(std::string name) : Class(std::move(name)) {
     }
     template <ClassLike ActualClass>
@@ -74,6 +103,23 @@ struct StructClass : public Class {
         }
         result.append(">");
         return result;
+    }
+
+    [[nodiscard]] std::optional<size_t> Size() const override {
+        auto result = 0;
+        for (auto& field : fields_) {
+            auto size = field->Size();
+            if (size.has_value()) {
+                result += size.value();
+            } else {
+                return std::nullopt;
+            }
+        }
+        return result;
+    }
+
+    [[nodiscard]] std::vector<std::shared_ptr<Class>>& GetFields() {
+        return fields_;
     }
 };
 

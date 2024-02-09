@@ -1,7 +1,6 @@
 #pragma once
 
 #include <unordered_map>
-#include <variant>
 
 #include "allocator.hpp"
 #include "object.hpp"
@@ -11,14 +10,12 @@ namespace db {
 enum class DataMode { kCache, kFile };
 
 class ClassStorage {
-public:
-    using ClassCache = std::unordered_map<std::string, mem::PageIndex>;
-
 private:
     DECLARE_LOGGER;
     std::shared_ptr<mem::PageAllocator> alloc_;
     mem::PageList class_list_;
 
+    using ClassCache = std::unordered_map<std::string, mem::PageIndex>;
     ClassCache class_cache_;
 
     std::string GetSerializedClass(mem::PageIndex index) const {
@@ -26,10 +23,6 @@ private:
         ts::ClassObject class_object;
         class_object.Read(alloc_->GetFile(), mem::GetOffset(header.index_, header.first_free_));
         return class_object.ToString();
-    }
-
-    bool CheckCoherency(const ClassCache::iterator& it) const {
-        return it->first == GetSerializedClass(it->second);
     }
 
     void InitializeClassCache() {
@@ -44,6 +37,16 @@ private:
         }
     }
 
+    void EraseFromCache(mem::PageIndex index) {
+        for (auto it = class_cache_.begin(); it != class_cache_.end();) {
+            if (it->second == index) {
+                it = class_cache_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+
     template <ts::ClassLike C>
     std::shared_ptr<ts::ClassObject> MakeClassHolder(std::shared_ptr<C>& new_class) {
         return std::make_shared<ts::ClassObject>(new_class);
@@ -54,6 +57,10 @@ private:
             .ReadClassHeader(alloc_->GetFile())
             .InitClassHeader(alloc_->GetFile(), size)
             .WriteClassHeader(alloc_->GetFile());
+    }
+
+    void InitializeMagic(mem::ClassHeader header, std::shared_ptr<ts::ClassObject>& class_object) {
+        DEBUG("Initializing fundamental class constant");
     }
 
 public:
@@ -71,25 +78,20 @@ public:
         InitializeClassCache();
     }
 
-    using ClassIndex = std::variant<ClassCache::iterator, mem::PageIndex, std::monostate>;
-
     template <ts::ClassLike C>
-    ClassIndex FindClass(std::shared_ptr<C> new_class, DataMode mode = DataMode::kCache) {
+    std::optional<mem::PageIndex> FindClass(std::shared_ptr<C> new_class,
+                                            DataMode mode = DataMode::kCache) {
         auto class_object = MakeClassHolder(new_class);
-
-        auto class_it = class_cache_.begin();
         auto serialized = class_object->ToString();
-        for (; class_it != class_cache_.end(); ++class_it) {
-            if (class_it->first == serialized) {
-                switch (mode) {
-                    case DataMode::kCache:
-                        return class_it;
-                    case DataMode::kFile: {
-                        if (CheckCoherency(class_it)) {
-                            return class_it;
-                        }
-                    } break;
-                }
+        if (class_cache_.contains(serialized)) {
+            switch (mode) {
+                case DataMode::kCache:
+                    return class_cache_[serialized];
+                case DataMode::kFile: {
+                    if (serialized == GetSerializedClass(class_cache_[serialized])) {
+                        return class_cache_[serialized];
+                    }
+                } break;
             }
         }
 
@@ -101,7 +103,7 @@ public:
             }
         }
 
-        return std::monostate{};
+        return std::nullopt;
     }
 
     template <ts::ClassLike C>
@@ -113,32 +115,35 @@ public:
         if (class_object->Size() > mem::kPageSize - sizeof(mem::ClassHeader)) {
             throw error::NotImplemented("Too complex class");
         }
-        if (std::holds_alternative<std::monostate>(FindClass(new_class, DataMode::kCache))) {
 
-            auto found = FindClass(new_class, DataMode::kFile);
+        auto index = FindClass(new_class, DataMode::kFile);
+        auto cache_index = FindClass(new_class, DataMode::kCache);
 
-            if (std::holds_alternative<std::monostate>(found)) {
-                DEBUG(class_object->ToString());
-
+        if (!cache_index.has_value()) {
+            DEBUG(class_object->ToString());
+            if (!index.has_value()) {
                 auto header = InitializeClassHeader(alloc_->AllocatePage(), class_object->Size());
                 DEBUG("Index: ", header.index_);
+                InitializeMagic(header, class_object);
 
                 class_list_.PushBack(header.index_);
                 class_object->Write(alloc_->GetFile(),
                                     mem::GetOffset(header.index_, header.first_free_));
                 class_cache_.emplace(class_object->ToString(), header.index_);
-            } else if (std::holds_alternative<mem::PageIndex>(found)) {
-                INFO("Adding class to cache");
-                DEBUG(class_object->ToString());
-                class_cache_.emplace(class_object->ToString(), std::get<mem::PageIndex>(found));
             } else {
-                throw error::RuntimeError("Cache miss");
+                INFO("Adding class to cache");
+                class_cache_.emplace(class_object->ToString(), index.value());
             }
 
         } else {
-            ERROR(class_object->ToString());
-            ERROR("Class already present");
-            return;
+            if (!index.has_value()) {
+                WARN("Cache miss");
+                EraseFromCache(cache_index.value());
+
+            } else {
+                ERROR(class_object->ToString());
+                ERROR("Class already present");
+            }
         }
     }
 
@@ -146,29 +151,25 @@ public:
     void RemoveClass(std::shared_ptr<C>& new_class) {
         INFO("Removing class..");
 
-        auto found = FindClass(new_class, DataMode::kFile);
-        auto cache_found = FindClass(new_class, DataMode::kCache);
-        mem::PageIndex index;
+        auto index = FindClass(new_class, DataMode::kFile);
+        auto cache_index = FindClass(new_class, DataMode::kCache);
 
-        if (!std::holds_alternative<std::monostate>(cache_found)) {
-            index = std::get<ClassCache::iterator>(cache_found)->second;
-            class_cache_.erase(std::get<ClassCache::iterator>(cache_found));
-            if (std::holds_alternative<std::monostate>(found)) {
-                DEBUG("Removing from cache");
+        if (cache_index.has_value()) {
+            EraseFromCache(cache_index.value());
+            if (!index.has_value()) {
+                WARN("Removing from cache");
                 return;
             }
         }
 
-        if (std::holds_alternative<std::monostate>(found)) {
+        if (!index.has_value()) {
             ERROR("Class not present");
             return;
-        } else if (std::holds_alternative<mem::PageIndex>(found)) {
-            index = std::get<mem::PageIndex>(found);
         }
 
         // TODO: REMOVE ALL NODES OF CLASS
-        class_list_.Unlink(index);
-        alloc_->FreePage(index);
+        class_list_.Unlink(index.value());
+        alloc_->FreePage(index.value());
     }
 
     template <typename F>

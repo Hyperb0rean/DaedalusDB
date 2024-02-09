@@ -75,11 +75,16 @@ constexpr inline Offset GetSentinelIndex(Offset sentinel) {
     return sentinel + sizeof(PageType);
 }
 
+constexpr inline Offset GetOffset(PageIndex index, PageOffset virt_offset) {
+    return kPagetableOffset + index * mem::kPageSize + virt_offset;
+}
+
 class ClassHeader : public Page {
 public:
     Page node_list_sentinel_;
     size_t node_pages_count_;
     size_t nodes_;
+    uint64_t magic_;
 
     ClassHeader() : Page() {
         this->type_ = PageType::kClassHeader;
@@ -87,6 +92,19 @@ public:
 
     ClassHeader(PageIndex index) : Page(index) {
         this->type_ = PageType::kClassHeader;
+    }
+
+    Offset GetNodeListSentinelOffset() {
+        return GetOffset(index_, sizeof(Page));
+    }
+
+    Offset GetNodeCountOffset() {
+        return GetOffset(index_,
+                         GetCountFromSentinel(GetNodeListSentinelOffset()) + sizeof(size_t));
+    }
+
+    Offset GetFundamentalOffset() {
+        return GetOffset(index_, GetNodeCountOffset() + sizeof(size_t));
     }
 
     ClassHeader& ReadClassHeader(std::shared_ptr<File>& file) {
@@ -102,6 +120,7 @@ public:
         node_list_sentinel_.type_ = PageType::kSentinel;
         node_pages_count_ = 0;
         nodes_ = 0;
+        magic_ = 0;
         file->Write<ClassHeader>(*this, this->GetPageAddress(kPagetableOffset));
         return *this;
     }
@@ -110,13 +129,5 @@ public:
         return *this;
     }
 };
-
-constexpr inline Offset GetOffset(PageIndex index, PageOffset virt_offset) {
-    return kPagetableOffset + index * mem::kPageSize + virt_offset;
-}
-
-constexpr inline Offset GetNodeListSentinel(PageIndex index) {
-    return GetOffset(index, sizeof(Page));
-}
 
 }  // namespace mem

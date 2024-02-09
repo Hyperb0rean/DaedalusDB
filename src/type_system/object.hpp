@@ -36,6 +36,7 @@ concept ObjectLike = std::derived_from<O, Object>;
 class ClassObject : public Object {
     std::shared_ptr<Class> class_holder_;
     std::string serialized_;
+    using SizeType = u_int32_t;
 
     std::string ReadString(std::stringstream& stream, char end) {
         std::string result;
@@ -124,18 +125,18 @@ public:
         class_holder_ = Deserialize(stream);
     }
     size_t Size() const override {
-        return serialized_.size() + 4;
+        return serialized_.size() + sizeof(SizeType);
     }
     [[nodiscard]] std::string Name() const override {
         throw error::NotImplemented("Class Class");
     }
     mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
-        auto new_offset = file->Write<uint32_t>(serialized_.size(), offset) + 4;
+        auto new_offset = file->Write<SizeType>(serialized_.size(), offset) + sizeof(SizeType);
         return file->Write(serialized_, new_offset);
     }
     void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) override {
-        uint32_t size = file->Read<uint32_t>(offset);
-        serialized_ = file->ReadString(offset + 4, size);
+        SizeType size = file->Read<SizeType>(offset);
+        serialized_ = file->ReadString(offset + sizeof(SizeType), size);
         std::stringstream stream{serialized_};
         class_holder_ = Deserialize(stream);
     }
@@ -185,6 +186,7 @@ public:
 
 class String : public Object {
     std::string str_;
+    using SizeType = u_int32_t;
 
 public:
     ~String() = default;
@@ -193,7 +195,7 @@ public:
         this->class_ = argclass;
     }
     [[nodiscard]] size_t Size() const override {
-        return str_.size() + 4;
+        return str_.size() + sizeof(SizeType);
     }
     [[nodiscard]] std::string Value() const {
         return str_;
@@ -202,12 +204,12 @@ public:
         return str_;
     }
     mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
-        auto new_offset = file->Write<uint32_t>(str_.size(), offset) + 4;
+        auto new_offset = file->Write<SizeType>(str_.size(), offset) + sizeof(SizeType);
         return file->Write(str_, new_offset);
     }
     void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) override {
-        uint32_t size = file->Read<uint32_t>(offset);
-        str_ = file->ReadString(offset + 4, size);
+        SizeType size = file->Read<SizeType>(offset);
+        str_ = file->ReadString(offset + sizeof(SizeType), size);
     }
     [[nodiscard]] std::string ToString() const override {
         return class_->Name() + ": \"" + str_ + "\"";

@@ -59,7 +59,7 @@ TEST(TypeTests, TypeDump) {
     ASSERT_EQ(read_class.ToString(), ts::ClassObject(person_class).ToString());
 }
 
-TEST(Database, ClassAddition) {
+TEST(ClassStorage, ClassAddition) {
     auto file = std::make_shared<mem::File>("test.data", std::make_shared<util::ConsoleLogger>());
     file->Clear();
     auto person_class = ts::NewClass<ts::StructClass>(
@@ -81,12 +81,12 @@ TEST(Database, ClassAddition) {
     database.AddClass(city_class);
 }
 
-TEST(Database, PrintClasses) {
+TEST(ClassStorage, PrintClasses) {
     auto database = db::Database(std::make_shared<mem::File>("test.data"));
     database.PrintClasses();
 }
 
-TEST(Database, ClassRemoval) {
+TEST(ClassStorage, ClassRemoval) {
     auto file = std::make_shared<mem::File>("test.data", std::make_shared<util::ConsoleLogger>());
 
     auto person_class = ts::NewClass<ts::StructClass>(
@@ -107,6 +107,21 @@ TEST(Database, ClassRemoval) {
     database.RemoveClass(coordinates_class);
     // database.RemoveClass(city_class);
     database.PrintClasses();
+}
+
+TEST(NodeStorage, NodeAddition) {
+    auto file = std::make_shared<mem::File>("test.data", std::make_shared<util::ConsoleLogger>());
+    file->Clear();
+    auto person_class = ts::NewClass<ts::StructClass>(
+        "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
+        ts::NewClass<ts::PrimitiveClass<int>>("age"),
+        ts::NewClass<ts::PrimitiveClass<bool>>("male"));
+
+    auto database =
+        db::Database(file, db::OpenMode::kWrite, std::make_shared<util::ConsoleLogger>());
+    database.AddClass(person_class);
+
+    database.AddNode(ts::New<ts::Struct>(person_class, "Greg", "Sosnovtsev", 19, true));
 }
 
 int main(int argc, char** argv) {

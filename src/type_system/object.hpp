@@ -260,7 +260,7 @@ public:
 };
 
 template <ObjectLike O, ClassLike C, typename... Args>
-[[nodiscard]] std::shared_ptr<O> New(const std::shared_ptr<C>& object_class, Args&&... args) {
+[[nodiscard]] std::shared_ptr<O> New(std::shared_ptr<C> object_class, Args&&... args) {
 
     if constexpr (std::is_same_v<O, Struct>) {
         auto new_object = std::make_shared<Struct>(object_class);

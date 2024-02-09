@@ -11,12 +11,14 @@ namespace db {
 enum class DataMode { kCache, kFile };
 
 class ClassStorage {
+public:
+    using ClassCache = std::unordered_map<std::string, mem::PageIndex>;
+
 private:
     DECLARE_LOGGER;
     std::shared_ptr<mem::PageAllocator> alloc_;
     mem::PageList class_list_;
 
-    using ClassCache = std::unordered_map<std::string, mem::PageIndex>;
     ClassCache class_cache_;
 
     std::string GetSerializedClass(mem::PageIndex index) const {

@@ -14,7 +14,7 @@
 namespace mem {
 
 using FileDescriptor = int32_t;
-using Offset = loff_t;
+using Offset = size_t;
 using StructOffset = size_t;
 
 class File {

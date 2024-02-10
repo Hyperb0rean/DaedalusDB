@@ -16,7 +16,7 @@ constexpr Offset kClassListCount = kClassListSentinelOffset + sizeof(Page);
 
 constexpr Offset kPagetableOffset = kClassListCount + sizeof(size_t);
 
-constexpr PageIndex kDummyIndex = SIZE_MAX;
+constexpr PageIndex kSentinelIndex = SIZE_MAX;
 
 class Superblock {
 public:
@@ -49,11 +49,11 @@ public:
 
     Superblock& InitSuperblock(std::shared_ptr<File>& file) {
         file->Write<int64_t>(kMagic);
-        free_list_sentinel_ = Page(kDummyIndex);
+        free_list_sentinel_ = Page(kSentinelIndex);
         free_list_sentinel_.type_ = PageType::kSentinel;
         free_pages_count_ = 0;
         pages_count = 0;
-        class_list_sentinel_ = Page(kDummyIndex);
+        class_list_sentinel_ = Page(kSentinelIndex);
         class_list_count_ = 0;
         class_list_sentinel_.type_ = PageType::kSentinel;
 
@@ -98,13 +98,14 @@ public:
         return GetOffset(index_, sizeof(Page));
     }
 
-    Offset GetNodeCountOffset() {
-        return GetOffset(index_,
-                         GetCountFromSentinel(GetNodeListSentinelOffset()) + sizeof(size_t));
+    ClassHeader& WriteNodeCount(std::shared_ptr<File>& file, size_t count) {
+        file->Write<size_t>(count, GetOffset(index_, 2 * sizeof(Page) + sizeof(size_t)));
+        return *this;
     }
 
-    Offset GetFundamentalOffset() {
-        return GetOffset(index_, GetNodeCountOffset() + sizeof(size_t));
+    ClassHeader& WriteMagic(std::shared_ptr<File>& file, uint64_t count) {
+        file->Write<uint64_t>(count, GetOffset(index_, 2 * sizeof(Page) + 2 * sizeof(size_t)));
+        return *this;
     }
 
     ClassHeader& ReadClassHeader(std::shared_ptr<File>& file) {
@@ -116,7 +117,7 @@ public:
         this->type_ = PageType::kClassHeader;
         this->actual_size_ = size;
         this->first_free_ = sizeof(ClassHeader);
-        node_list_sentinel_ = Page(kDummyIndex);
+        node_list_sentinel_ = Page(kSentinelIndex);
         node_list_sentinel_.type_ = PageType::kSentinel;
         node_pages_count_ = 0;
         nodes_ = 0;

@@ -41,8 +41,9 @@ public:
             throw error::RuntimeError("No such class in class storage");
         }
         DEBUG("Node storage initialized with class");
-        data_page_list_ = mem::PageList(
-            alloc_->GetFile(), mem::ClassHeader(index.value()).GetNodeListSentinelOffset(), LOGGER);
+        data_page_list_ =
+            mem::PageList("", alloc_->GetFile(),
+                          mem::ClassHeader(index.value()).GetNodeListSentinelOffset(), LOGGER);
     }
 
     // template <ts::ObjectLike O>

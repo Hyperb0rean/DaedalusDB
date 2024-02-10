@@ -52,15 +52,19 @@ private:
         return std::make_shared<ts::ClassObject>(new_class);
     }
 
-    mem::ClassHeader InitializeClassHeader(mem::PageIndex index, size_t size) {
-        return mem::ClassHeader(index)
-            .ReadClassHeader(alloc_->GetFile())
-            .InitClassHeader(alloc_->GetFile(), size)
-            .WriteClassHeader(alloc_->GetFile());
+    mem::ClassHeader InitializeMagic(mem::ClassHeader header,
+                                     std::shared_ptr<ts::ClassObject>& class_object) {
+        DEBUG("Initializing fundamental class constant");
+        return header;
     }
 
-    void InitializeMagic(mem::ClassHeader header, std::shared_ptr<ts::ClassObject>& class_object) {
-        DEBUG("Initializing fundamental class constant");
+    mem::ClassHeader InitializeClassHeader(mem::PageIndex index,
+                                           std::shared_ptr<ts::ClassObject>& class_object) {
+        return InitializeMagic(mem::ClassHeader(index)
+                                   .ReadClassHeader(alloc_->GetFile())
+                                   .InitClassHeader(alloc_->GetFile(), class_object->Size()),
+                               class_object)
+            .WriteClassHeader(alloc_->GetFile());
     }
 
 public:
@@ -71,7 +75,8 @@ public:
         DEBUG("Class list sentinel offset:", mem::kClassListSentinelOffset);
         DEBUG("Class list count:", alloc_->GetFile()->Read<size_t>(mem::kClassListCount));
 
-        class_list_ = mem::PageList(alloc_->GetFile(), mem::kClassListSentinelOffset, LOGGER);
+        class_list_ =
+            mem::PageList("Class_List", alloc_->GetFile(), mem::kClassListSentinelOffset, LOGGER);
 
         INFO("ClassList initialized");
 
@@ -122,9 +127,8 @@ public:
         if (!cache_index.has_value()) {
             DEBUG(class_object->ToString());
             if (!index.has_value()) {
-                auto header = InitializeClassHeader(alloc_->AllocatePage(), class_object->Size());
+                auto header = InitializeClassHeader(alloc_->AllocatePage(), class_object);
                 DEBUG("Index: ", header.index_);
-                InitializeMagic(header, class_object);
 
                 class_list_.PushBack(header.index_);
                 class_object->Write(alloc_->GetFile(),

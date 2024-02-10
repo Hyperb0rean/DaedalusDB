@@ -66,7 +66,7 @@ public:
         DEBUG("Freelist sentinel offset: ", kFreeListSentinelOffset);
         DEBUG("Free list count: ", file->Read<size_t>(kFreePagesCountOffset));
 
-        free_list_ = PageList(file_, kFreeListSentinelOffset, LOGGER);
+        free_list_ = PageList("Free_List", file_, kFreeListSentinelOffset, LOGGER);
 
         INFO("FreeList initialized");
     }

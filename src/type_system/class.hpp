@@ -47,6 +47,7 @@ public:
     [[nodiscard]] virtual std::string Name() const {
         return name_;
     }
+    [[nodiscard]] virtual size_t Count() const = 0;
 };
 template <typename T>
 requires std::is_fundamental_v<T>
@@ -63,6 +64,10 @@ public:
     [[nodiscard]] std::optional<size_t> Size() const override {
         return sizeof(T);
     }
+
+    [[nodiscard]] size_t Count() const override {
+        return 1;
+    }
 };
 
 template <typename C>
@@ -78,6 +83,10 @@ public:
     [[nodiscard]] std::optional<size_t> Size() const override {
         return std::nullopt;
     }
+
+    [[nodiscard]] size_t Count() const override {
+        return 1;
+    }
 };
 
 class StructClass : public Class {
@@ -86,13 +95,13 @@ class StructClass : public Class {
 public:
     StructClass(std::string name) : Class(std::move(name)) {
     }
-    template <ClassLike ActualClass>
-    void AddField(ActualClass field) {
-        fields_.push_back(std::make_shared<ActualClass>(field));
+    template <ClassLike C>
+    void AddField(C field) {
+        fields_.push_back(std::make_shared<C>(field));
     }
 
-    template <ClassLike ActualClass>
-    void AddField(const std::shared_ptr<ActualClass>& field) {
+    template <ClassLike C>
+    void AddField(const std::shared_ptr<C>& field) {
         fields_.push_back(field);
     }
 
@@ -120,6 +129,14 @@ public:
 
     [[nodiscard]] std::vector<std::shared_ptr<Class>>& GetFields() {
         return fields_;
+    }
+
+    [[nodiscard]] size_t Count() const override {
+        size_t count = 0;
+        for (auto& field : fields_) {
+            count += field->Count();
+        }
+        return count;
     }
 };
 

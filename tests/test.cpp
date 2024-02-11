@@ -47,6 +47,47 @@ TEST(TypeTests, ReadWrite) {
               node->ToString());
 }
 
+TEST(TypeTests, SafeNew) {
+    auto file = std::make_shared<mem::File>("test.data");
+    file->Clear();
+    auto person_class = ts::NewClass<ts::StructClass>(
+        "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
+        ts::NewClass<ts::PrimitiveClass<int>>("age"),
+        ts::NewClass<ts::PrimitiveClass<bool>>("male"));
+
+    ASSERT_THROW(auto node = ts::New<ts::Struct>(person_class, "Greg"s, "Sosnovtsev"s),
+                 error::BadArgument);
+}
+
+TEST(TypeTests, DefaultNew) {
+    auto file = std::make_shared<mem::File>("test.data");
+    file->Clear();
+    auto person_class = ts::NewClass<ts::StructClass>(
+        "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
+        ts::NewClass<ts::PrimitiveClass<int>>("age"),
+        ts::NewClass<ts::PrimitiveClass<bool>>("male"));
+
+    auto node = ts::DefaultNew<ts::Struct>(person_class);
+
+    ASSERT_EQ("person: { name: \"\", surname: \"\", age: 0, male: false }", node->ToString());
+}
+
+TEST(TypeTests, ReadNew) {
+    auto file = std::make_shared<mem::File>("test.data");
+    file->Clear();
+    auto person_class = ts::NewClass<ts::StructClass>(
+        "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
+        ts::NewClass<ts::PrimitiveClass<int>>("age"),
+        ts::NewClass<ts::PrimitiveClass<bool>>("male"));
+
+    auto node = ts::New<ts::Struct>(person_class, "Greg"s, "Sosnovtsev"s, 19, true);
+    node->Write(file, 0);
+    ASSERT_EQ("person: { name: \"Greg\", surname: \"Sosnovtsev\", age: 19, male: true }",
+              node->ToString());
+    auto new_node = ReadNew<ts::Struct>(person_class, file, 0);
+    ASSERT_EQ(node->ToString(), new_node->ToString());
+}
+
 TEST(TypeTests, TypeDump) {
     auto file = std::make_shared<mem::File>("test.data");
     file->Clear();

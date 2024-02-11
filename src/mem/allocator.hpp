@@ -39,8 +39,8 @@ private:
 
         DEBUG("Swapping pages with indecies", first, " ", second);
 
-        auto first_data = file_->Read<PageData>(Page(first).GetPageAddress(kPagetableOffset));
-        auto second_data = file_->Read<PageData>(Page(second).GetPageAddress(kPagetableOffset));
+        auto first_data = file_->Read<PageData>(GetPageAddress(first));
+        auto second_data = file_->Read<PageData>(GetPageAddress(second));
 
         std::swap(first_data.page_header.index_, second_data.page_header.index_);
         std::swap(first_data.page_header.next_page_index_,
@@ -48,9 +48,8 @@ private:
         std::swap(first_data.page_header.previous_page_index_,
                   second_data.page_header.previous_page_index_);
 
-        file_->Write<PageData>(first_data, first_data.page_header.GetPageAddress(kPagetableOffset));
-        file_->Write<PageData>(second_data,
-                               second_data.page_header.GetPageAddress(kPagetableOffset));
+        file_->Write<PageData>(first_data, GetPageAddress(first_data.page_header.index_));
+        file_->Write<PageData>(second_data, GetPageAddress(second_data.page_header.index_));
 
         DEBUG("Successfully swaped");
     }

@@ -79,6 +79,14 @@ constexpr inline Offset GetOffset(PageIndex index, PageOffset virt_offset) {
     return kPagetableOffset + index * mem::kPageSize + virt_offset;
 }
 
+constexpr inline size_t GetIndex(Offset offset) {
+    return (offset - kPagetableOffset) / kPageSize;
+}
+
+constexpr inline Offset GetPageAddress(PageIndex index) {
+    return kPagetableOffset + index * kPageSize;
+}
+
 class ClassHeader : public Page {
 public:
     Page node_list_sentinel_;
@@ -99,36 +107,86 @@ public:
     }
 
     ClassHeader& WriteNodeCount(std::shared_ptr<File>& file, size_t count) {
-        file->Write<size_t>(count, GetOffset(index_, 2 * sizeof(Page) + sizeof(size_t)));
+        nodes_ = count;
+        file->Write<size_t>(nodes_, GetOffset(index_, 2 * sizeof(Page) + sizeof(size_t)));
         return *this;
     }
 
-    ClassHeader& WriteMagic(std::shared_ptr<File>& file, uint64_t count) {
-        file->Write<uint64_t>(count, GetOffset(index_, 2 * sizeof(Page) + 2 * sizeof(size_t)));
+    ClassHeader& WriteMagic(std::shared_ptr<File>& file, uint64_t magic) {
+        magic_ = magic;
+        file->Write<uint64_t>(magic_, GetOffset(index_, 2 * sizeof(Page) + 2 * sizeof(size_t)));
+        return *this;
+    }
+
+    ClassHeader& ReadNodeCount(std::shared_ptr<File>& file) {
+        nodes_ = file->Read<size_t>(GetOffset(index_, 2 * sizeof(Page) + sizeof(size_t)));
+        return *this;
+    }
+
+    ClassHeader& ReadMagic(std::shared_ptr<File>& file) {
+        magic_ = file->Read<uint64_t>(GetOffset(index_, 2 * sizeof(Page) + 2 * sizeof(size_t)));
         return *this;
     }
 
     ClassHeader& ReadClassHeader(std::shared_ptr<File>& file) {
-        auto header = file->Read<ClassHeader>(this->GetPageAddress(kPagetableOffset));
+        auto header = file->Read<ClassHeader>(GetPageAddress(index_));
         std::swap(header, *this);
         return *this;
     }
     ClassHeader& InitClassHeader(std::shared_ptr<File>& file, size_t size = 0) {
         this->type_ = PageType::kClassHeader;
-        this->actual_size_ = size;
-        this->first_free_ = sizeof(ClassHeader);
+        this->initialized_offset_ = sizeof(ClassHeader) + size;
+        this->free_offset_ = sizeof(ClassHeader);
         node_list_sentinel_ = Page(kSentinelIndex);
         node_list_sentinel_.type_ = PageType::kSentinel;
         node_pages_count_ = 0;
         nodes_ = 0;
         magic_ = 0;
-        file->Write<ClassHeader>(*this, this->GetPageAddress(kPagetableOffset));
+        file->Write<ClassHeader>(*this, GetPageAddress(index_));
         return *this;
     }
     ClassHeader& WriteClassHeader(std::shared_ptr<File>& file) {
-        file->Write<ClassHeader>(*this, this->GetPageAddress(kPagetableOffset));
+        file->Write<ClassHeader>(*this, GetPageAddress(index_));
         return *this;
     }
 };
+
+Page ReadPage(Page other, std::shared_ptr<File>& file) {
+    auto page = file->Read<Page>(GetPageAddress(other.index_));
+    std::swap(page, other);
+    return other;
+}
+
+Page WritePage(Page other, std::shared_ptr<File>& file) {
+    file->Write<Page>(other, GetPageAddress(other.index_));
+    return other;
+}
+
+Page WriteFreeOffset(Page other, std::shared_ptr<File>& file, PageOffset free_offset) {
+    other.free_offset_ = free_offset;
+    file->Write<PageOffset>(
+        other.free_offset_,
+        GetOffset(other.index_, sizeof(PageType) + sizeof(PageIndex) + sizeof(PageOffset)));
+    return other;
+}
+
+Page ReadFreeOffset(Page other, std::shared_ptr<File>& file) {
+    other.free_offset_ = file->Read<PageOffset>(
+        GetOffset(other.index_, sizeof(PageType) + sizeof(PageIndex) + sizeof(PageOffset)));
+    return other;
+}
+
+Page WriteInitOffset(Page other, std::shared_ptr<File>& file, PageOffset init_offset) {
+    other.initialized_offset_ = init_offset;
+    file->Write<uint64_t>(other.initialized_offset_,
+                          GetOffset(other.index_, sizeof(PageType) + sizeof(PageIndex)));
+    return other;
+}
+
+Page ReadInitOffset(Page other, std::shared_ptr<File>& file) {
+    other.initialized_offset_ =
+        file->Read<PageOffset>(GetOffset(other.index_, sizeof(PageType) + sizeof(PageIndex)));
+    return other;
+}
 
 }  // namespace mem

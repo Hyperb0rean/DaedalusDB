@@ -21,7 +21,7 @@ private:
     std::string GetSerializedClass(mem::PageIndex index) const {
         auto header = mem::ClassHeader(index).ReadClassHeader(alloc_->GetFile());
         ts::ClassObject class_object;
-        class_object.Read(alloc_->GetFile(), mem::GetOffset(header.index_, header.first_free_));
+        class_object.Read(alloc_->GetFile(), mem::GetOffset(header.index_, header.free_offset_));
         return class_object.ToString();
     }
 
@@ -132,7 +132,7 @@ public:
 
                 class_list_.PushBack(header.index_);
                 class_object->Write(alloc_->GetFile(),
-                                    mem::GetOffset(header.index_, header.first_free_));
+                                    mem::GetOffset(header.index_, header.free_offset_));
                 class_cache_.emplace(class_object->ToString(), header.index_);
             } else {
                 INFO("Adding class to cache");
@@ -190,7 +190,7 @@ public:
         for (auto& class_header : class_list_) {
             ts::ClassObject class_object;
             class_object.Read(alloc_->GetFile(),
-                              mem::GetOffset(class_header.index_, class_header.first_free_));
+                              mem::GetOffset(class_header.index_, class_header.free_offset_));
             functor(class_object);
         }
     }

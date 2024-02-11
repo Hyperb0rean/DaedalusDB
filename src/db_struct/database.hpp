@@ -70,7 +70,7 @@ public:
         class_storage_->VisitClasses([alloc](mem::ClassHeader class_header) -> void {
             ts::ClassObject class_object;
             class_object.Read(alloc->GetFile(),
-                              mem::GetOffset(class_header.index_, class_header.first_free_));
+                              mem::GetOffset(class_header.index_, class_header.free_offset_));
             std::cout << " [ " << class_header.index_ << " ] " << class_object.ToString()
                       << std::endl;
         });

@@ -81,7 +81,7 @@ public:
 
         [[nodiscard]] Page ReadPage(PageIndex index) {
             if (index < kSentinelIndex) {
-                return Page(index).ReadPage(file_, kPagetableOffset);
+                return mem::ReadPage(Page(index), file_);
             } else {
                 return file_->Read<Page>(sentinel_offset_);
             }
@@ -89,7 +89,7 @@ public:
 
         void WritePage() {
             if (curr_.index_ < kSentinelIndex) {
-                curr_.WritePage(file_, kPagetableOffset);
+                mem::WritePage(curr_, file_);
             } else {
                 file_->Write<Page>(curr_, sentinel_offset_);
             }

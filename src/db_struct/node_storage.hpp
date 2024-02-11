@@ -14,18 +14,16 @@ protected:
 
     mem::Page AllocatePage() {
         data_page_list_.PushBack(alloc_->AllocatePage());
-        auto page =
-            mem::Page(data_page_list_.Back()).ReadPage(alloc_->GetFile(), mem::kPagetableOffset);
+        auto page = ReadPage(mem::Page(data_page_list_.Back()), alloc_->GetFile());
         page.type_ = mem::PageType::kData;
-        return page.WritePage(alloc_->GetFile(), mem::kPagetableOffset);
+        return WritePage(page, alloc_->GetFile());
     }
 
     mem::Page GetBack() {
         if (data_page_list_.IsEmpty()) {
             return AllocatePage();
         } else {
-            return mem::Page(data_page_list_.Back())
-                .ReadPage(alloc_->GetFile(), mem::kPagetableOffset);
+            return ReadPage(mem::Page(data_page_list_.Back()), alloc_->GetFile());
         }
     }
 

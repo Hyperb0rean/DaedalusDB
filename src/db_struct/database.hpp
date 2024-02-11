@@ -78,7 +78,11 @@ public:
 
     template <ts::ObjectLike O>
     requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(std::shared_ptr<O> node) {
-        // NodeStorage(node->GetClass(), class_storage_, alloc_, LOGGER).AddNode(node);
+        if (node->GetClass()->Size().has_value()) {
+            ConstantSizeNodeStorage(node->GetClass(), class_storage_, alloc_, LOGGER).AddNode(node);
+        } else {
+            VariableSizeNodeStorage(node->GetClass(), class_storage_, alloc_, LOGGER).AddNode(node);
+        }
     }
 };
 

@@ -52,19 +52,18 @@ private:
         return std::make_shared<ts::ClassObject>(new_class);
     }
 
-    mem::ClassHeader InitializeMagic(mem::ClassHeader header,
-                                     std::shared_ptr<ts::ClassObject>& class_object) {
-        DEBUG("Initializing fundamental class constant");
-        return header;
+    mem::ClassHeader InitializeMagic(mem::ClassHeader header) {
+        DEBUG("Initializing magic class constant");
+        // TODO: Change to random generation
+        header.magic_ = mem::kMagic;
+        return header.WriteClassHeader(alloc_->GetFile());
     }
 
     mem::ClassHeader InitializeClassHeader(mem::PageIndex index,
                                            std::shared_ptr<ts::ClassObject>& class_object) {
         return InitializeMagic(mem::ClassHeader(index)
                                    .ReadClassHeader(alloc_->GetFile())
-                                   .InitClassHeader(alloc_->GetFile(), class_object->Size()),
-                               class_object)
-            .WriteClassHeader(alloc_->GetFile());
+                                   .InitClassHeader(alloc_->GetFile(), class_object->Size()));
     }
 
 public:
@@ -73,7 +72,8 @@ public:
         : LOGGER(logger), alloc_(alloc) {
 
         DEBUG("Class list sentinel offset:", mem::kClassListSentinelOffset);
-        DEBUG("Class list count:", alloc_->GetFile()->Read<size_t>(mem::kClassListCount));
+        DEBUG("Class list count:", alloc_->GetFile()->Read<size_t>(
+                                       mem::GetCountFromSentinel(mem::kClassListSentinelOffset)));
 
         class_list_ =
             mem::PageList("Class_List", alloc_->GetFile(), mem::kClassListSentinelOffset, LOGGER);

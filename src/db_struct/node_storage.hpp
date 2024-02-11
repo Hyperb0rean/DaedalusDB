@@ -29,6 +29,14 @@ protected:
         }
     }
 
+    mem::ClassHeader GetHeader() {
+        auto index = class_storage_->FindClass(nodes_class_);
+        if (!index.has_value()) {
+            throw error::RuntimeError("No such class in class storage");
+        }
+        return mem::ClassHeader(index.value()).ReadClassHeader(alloc_->GetFile());
+    }
+
 public:
     template <ts::ClassLike C>
     NodeStorage(std::shared_ptr<C> nodes_class, std::shared_ptr<ClassStorage>& class_storage,
@@ -36,31 +44,40 @@ public:
                 std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
         : LOGGER(logger), nodes_class_(nodes_class), class_storage_(class_storage), alloc_(alloc) {
 
-        auto index = class_storage_->FindClass(nodes_class_);
-        if (!index.has_value()) {
-            throw error::RuntimeError("No such class in class storage");
-        }
         DEBUG("Node storage initialized with class");
-        data_page_list_ =
-            mem::PageList("", alloc_->GetFile(),
-                          mem::ClassHeader(index.value()).GetNodeListSentinelOffset(), LOGGER);
+        data_page_list_ = mem::PageList(nodes_class->Name(), alloc_->GetFile(),
+                                        GetHeader().GetNodeListSentinelOffset(), LOGGER);
+    }
+};
+
+class ConstantSizeNodeStorage : public NodeStorage {
+public:
+    template <ts::ClassLike C>
+    ConstantSizeNodeStorage(
+        std::shared_ptr<C> nodes_class, std::shared_ptr<ClassStorage>& class_storage,
+        std::shared_ptr<mem::PageAllocator>& alloc,
+        std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+        : NodeStorage(nodes_class, class_storage, alloc, logger) {
     }
 
-    // template <ts::ObjectLike O>
-    // requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(std::shared_ptr<O>& node) {
-
-    //     if (node->Size() > mem::kPageSize - sizeof(mem::Page)) {
-    //         throw error::NotImplemented("Too big object)");
-    //     }
-
-    //     auto back = GetBack();
-    //     if (node->Size() + mem::GetOffset(back.index_, back.first_free_) >
-    //         mem::GetOffset(back.index_ + 1, 0)) {
-    //         back = AllocatePage();
-    //     }
-
-    //     INFO("Writing Object: ", node->ToString());
-    //     node->Write(alloc_->GetFile(), mem::GetOffset(back.index_, back.first_free_));
-    // }
+    template <ts::ObjectLike O>
+    requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(std::shared_ptr<O>& node) {
+    }
 };
+
+class VariableSizeNodeStorage : public NodeStorage {
+public:
+    template <ts::ClassLike C>
+    VariableSizeNodeStorage(
+        std::shared_ptr<C> nodes_class, std::shared_ptr<ClassStorage>& class_storage,
+        std::shared_ptr<mem::PageAllocator>& alloc,
+        std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+        : NodeStorage(nodes_class, class_storage, alloc, logger) {
+    }
+
+    template <ts::ObjectLike O>
+    requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(std::shared_ptr<O>& node) {
+    }
+};
+
 }  // namespace db

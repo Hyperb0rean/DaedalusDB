@@ -13,10 +13,7 @@ public:
         return class_;
     }
     virtual ~Object() = default;
-    virtual size_t Size() const {
-        throw error::NotImplemented("Void Class");
-    }
-    [[nodiscard]] virtual std::string Name() const {
+    [[nodiscard]] virtual size_t Size() const {
         throw error::NotImplemented("Void Class");
     }
     virtual mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const {
@@ -124,11 +121,8 @@ public:
         std::stringstream stream(serialized_);
         class_holder_ = Deserialize(stream);
     }
-    size_t Size() const override {
+    [[nodiscard]] size_t Size() const override {
         return serialized_.size() + sizeof(SizeType);
-    }
-    [[nodiscard]] std::string Name() const override {
-        throw error::NotImplemented("Class Class");
     }
     mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
         auto new_offset = file->Write<SizeType>(serialized_.size(), offset) + sizeof(SizeType);
@@ -294,6 +288,8 @@ template <ObjectLike O, ClassLike C, typename... Args>
                 } else {
                     if constexpr (!std::is_convertible_v<std::remove_reference_t<decltype(args)>,
                                                          std::string_view>) {
+
+                        // TODO: May cause bugs e.g. passed 0 as double, decltype(0) = int;
                         new_object->AddFieldValue(
                             UnsafeNew<Primitive<std::remove_reference_t<decltype(args)>>>(
                                 util::As<PrimitiveClass<std::remove_reference_t<decltype(args)>>>(
@@ -356,7 +352,7 @@ template <ObjectLike O, ClassLike C>
                 ADD_PRIMITIVE(wchar_t)
 #undef ADD_PRIMITIVE
 
-                throw error::TypeError("Type can't be defaulted");
+                throw error::TypeError("Class can't be defaulted");
             }
         }
         return new_object;
@@ -372,16 +368,9 @@ template <ObjectLike O, ClassLike C>
 [[nodiscard]] std::shared_ptr<O> ReadNew(std::shared_ptr<C> object_class,
                                          std::shared_ptr<mem::File>& file, mem::Offset offset) {
 
-    if constexpr (std::is_same_v<O, Struct>) {
-        auto new_object = DefaultNew<Struct>(object_class);
-        new_object->Read(file, offset);
-        return new_object;
-    } else if constexpr (std::is_same_v<O, String>) {
-        return std::make_shared<String>(object_class)->Read(file, offset);
-    } else {
-        return std::make_shared<O>(object_class)->Read(file, offset);
-    }
-    throw error::TypeError("Can't create object");
+    auto new_object = DefaultNew<O, C>(object_class);
+    new_object->Read(file, offset);
+    return new_object;
 }
 
 }  // namespace ts

@@ -119,8 +119,6 @@ TEST(TypeTests, Metadata) {
 }
 
 TEST(ClassStorage, ClassAddition) {
-    auto file = std::make_shared<mem::File>("test.data", std::make_shared<util::ConsoleLogger>());
-    file->Clear();
     auto person_class = ts::NewClass<ts::StructClass>(
         "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
         ts::NewClass<ts::PrimitiveClass<int>>("age"),
@@ -133,8 +131,8 @@ TEST(ClassStorage, ClassAddition) {
     auto city_class = ts::NewClass<ts::StructClass>("city", ts::NewClass<ts::StringClass>("name"),
                                                     coordinates_class);
 
-    auto database =
-        db::Database(file, db::OpenMode::kWrite, std::make_shared<util::ConsoleLogger>());
+    auto database = db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite,
+                                 std::make_shared<util::ConsoleLogger>());
     database.AddClass(person_class);
     database.AddClass(coordinates_class);
     database.AddClass(city_class);
@@ -146,8 +144,6 @@ TEST(ClassStorage, PrintClasses) {
 }
 
 TEST(ClassStorage, ClassRemoval) {
-    auto file = std::make_shared<mem::File>("test.data", std::make_shared<util::ConsoleLogger>());
-
     auto person_class = ts::NewClass<ts::StructClass>(
         "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
         ts::NewClass<ts::PrimitiveClass<int>>("age"),
@@ -160,27 +156,38 @@ TEST(ClassStorage, ClassRemoval) {
     auto city_class = ts::NewClass<ts::StructClass>("city", ts::NewClass<ts::StringClass>("name"),
                                                     coordinates_class);
 
-    auto database =
-        db::Database(file, db::OpenMode::kRead, std::make_shared<util::ConsoleLogger>());
+    auto database = db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kRead,
+                                 std::make_shared<util::ConsoleLogger>());
     database.RemoveClass(person_class);
     database.RemoveClass(coordinates_class);
     // database.RemoveClass(city_class);
     database.PrintClasses();
 }
 
-TEST(NodeStorage, NodeAddition) {
+TEST(Database, Metaobject) {
     auto file = std::make_shared<mem::File>("test.data", std::make_shared<util::ConsoleLogger>());
     file->Clear();
-    auto person_class = ts::NewClass<ts::StructClass>(
-        "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
-        ts::NewClass<ts::PrimitiveClass<int>>("age"),
-        ts::NewClass<ts::PrimitiveClass<bool>>("male"));
+    auto coords =
+        ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
+                                      ts::NewClass<ts::PrimitiveClass<double>>("lon"));
+    auto meta1 = db::MetaObject(mem::kMagic, 0, ts::New<ts::Struct>(coords, 0., 0.));
+    meta1.Write(file, 0);
+    auto meta2 = db::MetaObject(coords, file, 0);
 
-    auto database =
-        db::Database(file, db::OpenMode::kWrite, std::make_shared<util::ConsoleLogger>());
-    database.AddClass(person_class);
+    ASSERT_EQ(meta1.ToString(), meta2.ToString());
+}
 
-    database.AddNode(ts::New<ts::Struct>(person_class, "Greg", "Sosnovtsev", 19, true));
+TEST(NodeStorage, NodeAddition) {
+    auto coords =
+        ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
+                                      ts::NewClass<ts::PrimitiveClass<double>>("lon"));
+
+    auto database = db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite,
+                                 std::make_shared<util::ConsoleLogger>());
+    database.AddClass(coords);
+
+    database.AddNode(ts::New<ts::Struct>(coords, 1., 0.));
+    database.AddNode(ts::New<ts::Struct>(coords, 0., 1.));
 }
 
 int main(int argc, char** argv) {

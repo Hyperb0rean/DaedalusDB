@@ -1,6 +1,7 @@
 #pragma once
 
 #include "class_storage.hpp"
+#include "metaobject.hpp"
 
 namespace db {
 
@@ -42,13 +43,57 @@ public:
                 std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
         : LOGGER(logger), nodes_class_(nodes_class), class_storage_(class_storage), alloc_(alloc) {
 
-        DEBUG("Node storage initialized with class");
         data_page_list_ = mem::PageList(nodes_class->Name(), alloc_->GetFile(),
                                         GetHeader().GetNodeListSentinelOffset(), LOGGER);
     }
 };
 
 class ConstantSizeNodeStorage : public NodeStorage {
+
+    class ObjectIterator {
+
+        std::shared_ptr<MetaObject> curr_;
+
+    public:
+        using iterator_category = std::bidirectional_iterator_tag;
+        using value_type = MetaObject;
+        using difference_type = size_t;
+        using pointer = std::shared_ptr<MetaObject>;
+        using reference = MetaObject&;
+
+        ObjectIterator() {
+        }
+        ObjectIterator& operator++() {
+            return *this;
+        }
+        ObjectIterator operator++(int) {
+            auto temp = *this;
+            return temp;
+        }
+
+        ObjectIterator& operator--() {
+            return *this;
+        }
+        ObjectIterator operator--(int) {
+            auto temp = *this;
+            return temp;
+        }
+
+        reference operator*() {
+            return *curr_;
+        }
+        pointer operator->() {
+            return curr_;
+        }
+
+        bool operator==(const ObjectIterator& other) const {
+            return curr_->Id() == other.curr_->Id();
+        }
+        bool operator!=(const ObjectIterator& other) const {
+            return !(*this == other);
+        }
+    };
+
 public:
     template <ts::ClassLike C>
     ConstantSizeNodeStorage(
@@ -56,6 +101,8 @@ public:
         std::shared_ptr<mem::PageAllocator>& alloc,
         std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
         : NodeStorage(nodes_class, class_storage, alloc, logger) {
+        DEBUG("Constant Node storage initialized with class: ",
+              ts::ClassObject(nodes_class).ToString());
     }
 
     template <ts::ObjectLike O>

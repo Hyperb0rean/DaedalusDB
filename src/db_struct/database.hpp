@@ -70,7 +70,7 @@ public:
         class_storage_->VisitClasses([alloc](mem::ClassHeader class_header) -> void {
             ts::ClassObject class_object;
             class_object.Read(alloc->GetFile(),
-                              mem::GetOffset(class_header.index_, class_header.first_free_));
+                              mem::GetOffset(class_header.index_, class_header.free_offset_));
             std::cout << " [ " << class_header.index_ << " ] " << class_object.ToString()
                       << std::endl;
         });
@@ -78,7 +78,11 @@ public:
 
     template <ts::ObjectLike O>
     requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(std::shared_ptr<O> node) {
-        // NodeStorage(node->GetClass(), class_storage_, alloc_, LOGGER).AddNode(node);
+        if (node->GetClass()->Size().has_value()) {
+            ConstantSizeNodeStorage(node->GetClass(), class_storage_, alloc_, LOGGER).AddNode(node);
+        } else {
+            VariableSizeNodeStorage(node->GetClass(), class_storage_, alloc_, LOGGER).AddNode(node);
+        }
     }
 };
 

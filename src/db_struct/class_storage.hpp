@@ -21,7 +21,7 @@ private:
     std::string GetSerializedClass(mem::PageIndex index) const {
         auto header = mem::ClassHeader(index).ReadClassHeader(alloc_->GetFile());
         ts::ClassObject class_object;
-        class_object.Read(alloc_->GetFile(), mem::GetOffset(header.index_, header.first_free_));
+        class_object.Read(alloc_->GetFile(), mem::GetOffset(header.index_, header.free_offset_));
         return class_object.ToString();
     }
 
@@ -52,19 +52,18 @@ private:
         return std::make_shared<ts::ClassObject>(new_class);
     }
 
-    mem::ClassHeader InitializeMagic(mem::ClassHeader header,
-                                     std::shared_ptr<ts::ClassObject>& class_object) {
-        DEBUG("Initializing fundamental class constant");
-        return header;
+    mem::ClassHeader InitializeMagic(mem::ClassHeader header) {
+        DEBUG("Initializing magic class constant");
+        // TODO: Change to random generation
+        header.magic_ = mem::kMagic;
+        return header.WriteClassHeader(alloc_->GetFile());
     }
 
     mem::ClassHeader InitializeClassHeader(mem::PageIndex index,
                                            std::shared_ptr<ts::ClassObject>& class_object) {
         return InitializeMagic(mem::ClassHeader(index)
                                    .ReadClassHeader(alloc_->GetFile())
-                                   .InitClassHeader(alloc_->GetFile(), class_object->Size()),
-                               class_object)
-            .WriteClassHeader(alloc_->GetFile());
+                                   .InitClassHeader(alloc_->GetFile(), class_object->Size()));
     }
 
 public:
@@ -73,7 +72,8 @@ public:
         : LOGGER(logger), alloc_(alloc) {
 
         DEBUG("Class list sentinel offset:", mem::kClassListSentinelOffset);
-        DEBUG("Class list count:", alloc_->GetFile()->Read<size_t>(mem::kClassListCount));
+        DEBUG("Class list count:", alloc_->GetFile()->Read<size_t>(
+                                       mem::GetCountFromSentinel(mem::kClassListSentinelOffset)));
 
         class_list_ =
             mem::PageList("Class_List", alloc_->GetFile(), mem::kClassListSentinelOffset, LOGGER);
@@ -132,7 +132,7 @@ public:
 
                 class_list_.PushBack(header.index_);
                 class_object->Write(alloc_->GetFile(),
-                                    mem::GetOffset(header.index_, header.first_free_));
+                                    mem::GetOffset(header.index_, header.free_offset_));
                 class_cache_.emplace(class_object->ToString(), header.index_);
             } else {
                 INFO("Adding class to cache");
@@ -190,7 +190,7 @@ public:
         for (auto& class_header : class_list_) {
             ts::ClassObject class_object;
             class_object.Read(alloc_->GetFile(),
-                              mem::GetOffset(class_header.index_, class_header.first_free_));
+                              mem::GetOffset(class_header.index_, class_header.free_offset_));
             functor(class_object);
         }
     }

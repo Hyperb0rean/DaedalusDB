@@ -53,7 +53,7 @@ class ClassObject : public Object {
             return {s.begin(), remove_if(s.begin(), s.end(), isspace)};
         };
 
-#define DESERIALIZE_PRIMITIVE(P)                                             \
+#define DDB_DESERIALIZE_PRIMITIVE(P)                                         \
     else if (type == remove_spaces(#P)) {                                    \
         return std::make_shared<PrimitiveClass<P>>(ReadString(stream, '_')); \
     }
@@ -86,21 +86,21 @@ class ClassObject : public Object {
         } else if (type == "string") {
             return std::make_shared<StringClass>(ReadString(stream, '_'));
         }
-        DESERIALIZE_PRIMITIVE(int)
-        DESERIALIZE_PRIMITIVE(double)
-        DESERIALIZE_PRIMITIVE(float)
-        DESERIALIZE_PRIMITIVE(bool)
-        DESERIALIZE_PRIMITIVE(unsigned int)
-        DESERIALIZE_PRIMITIVE(short int)
-        DESERIALIZE_PRIMITIVE(short unsigned int)
-        DESERIALIZE_PRIMITIVE(long long int)
-        DESERIALIZE_PRIMITIVE(long long unsigned int)
-        DESERIALIZE_PRIMITIVE(long unsigned int)
-        DESERIALIZE_PRIMITIVE(long int)
-        DESERIALIZE_PRIMITIVE(char)
-        DESERIALIZE_PRIMITIVE(signed char)
-        DESERIALIZE_PRIMITIVE(unsigned char)
-        DESERIALIZE_PRIMITIVE(wchar_t)
+        DDB_DESERIALIZE_PRIMITIVE(int)
+        DDB_DESERIALIZE_PRIMITIVE(double)
+        DDB_DESERIALIZE_PRIMITIVE(float)
+        DDB_DESERIALIZE_PRIMITIVE(bool)
+        DDB_DESERIALIZE_PRIMITIVE(unsigned int)
+        DDB_DESERIALIZE_PRIMITIVE(short int)
+        DDB_DESERIALIZE_PRIMITIVE(short unsigned int)
+        DDB_DESERIALIZE_PRIMITIVE(long long int)
+        DDB_DESERIALIZE_PRIMITIVE(long long unsigned int)
+        DDB_DESERIALIZE_PRIMITIVE(long unsigned int)
+        DDB_DESERIALIZE_PRIMITIVE(long int)
+        DDB_DESERIALIZE_PRIMITIVE(char)
+        DDB_DESERIALIZE_PRIMITIVE(signed char)
+        DDB_DESERIALIZE_PRIMITIVE(unsigned char)
+        DDB_DESERIALIZE_PRIMITIVE(wchar_t)
         else {
             throw error::NotImplemented("Unsupported for deserialization type");
         }
@@ -335,26 +335,26 @@ template <ObjectLike O, ClassLike C>
             } else if (util::Is<StringClass>(*it)) {
                 new_object->AddFieldValue(DefaultNew<String>(util::As<StringClass>(*it)));
             } else {
-#define ADD_PRIMITIVE(P)                                                                       \
+#define DDB_ADD_PRIMITIVE(P)                                                                   \
     if (util::Is<PrimitiveClass<P>>(*it)) {                                                    \
         new_object->AddFieldValue(DefaultNew<Primitive<P>>(util::As<PrimitiveClass<P>>(*it))); \
         continue;                                                                              \
     }
-                ADD_PRIMITIVE(int)
-                ADD_PRIMITIVE(double)
-                ADD_PRIMITIVE(float)
-                ADD_PRIMITIVE(bool)
-                ADD_PRIMITIVE(unsigned int)
-                ADD_PRIMITIVE(short int)
-                ADD_PRIMITIVE(short unsigned int)
-                ADD_PRIMITIVE(long long int)
-                ADD_PRIMITIVE(long long unsigned int)
-                ADD_PRIMITIVE(long unsigned int)
-                ADD_PRIMITIVE(long int)
-                ADD_PRIMITIVE(char)
-                ADD_PRIMITIVE(signed char)
-                ADD_PRIMITIVE(unsigned char)
-                ADD_PRIMITIVE(wchar_t)
+                DDB_ADD_PRIMITIVE(int)
+                DDB_ADD_PRIMITIVE(double)
+                DDB_ADD_PRIMITIVE(float)
+                DDB_ADD_PRIMITIVE(bool)
+                DDB_ADD_PRIMITIVE(unsigned int)
+                DDB_ADD_PRIMITIVE(short int)
+                DDB_ADD_PRIMITIVE(short unsigned int)
+                DDB_ADD_PRIMITIVE(long long int)
+                DDB_ADD_PRIMITIVE(long long unsigned int)
+                DDB_ADD_PRIMITIVE(long unsigned int)
+                DDB_ADD_PRIMITIVE(long int)
+                DDB_ADD_PRIMITIVE(char)
+                DDB_ADD_PRIMITIVE(signed char)
+                DDB_ADD_PRIMITIVE(unsigned char)
+                DDB_ADD_PRIMITIVE(wchar_t)
 #undef ADD_PRIMITIVE
 
                 throw error::TypeError("Class can't be defaulted");

@@ -49,16 +49,17 @@ public:
 
 class ConstantSizeNodeStorage : public NodeStorage {
 
+    template <typename M>
     class ObjectIterator {
 
-        std::shared_ptr<MetaObject> curr_;
+        std::shared_ptr<MetaObject<M>> curr_;
 
     public:
         using iterator_category = std::bidirectional_iterator_tag;
-        using value_type = MetaObject;
+        using value_type = MetaObject<M>;
         using difference_type = size_t;
-        using pointer = std::shared_ptr<MetaObject>;
-        using reference = MetaObject&;
+        using pointer = std::shared_ptr<MetaObject<M>>;
+        using reference = MetaObject<M>&;
 
         ObjectIterator() {
         }

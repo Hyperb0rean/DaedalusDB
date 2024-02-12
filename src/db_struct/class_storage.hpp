@@ -52,18 +52,12 @@ private:
         return std::make_shared<ts::ClassObject>(new_class);
     }
 
-    mem::ClassHeader InitializeMagic(mem::ClassHeader header) {
-        DEBUG("Initializing magic class constant");
-        // TODO: Change to random generation
-        header.magic_ = mem::kMagic;
-        return header.WriteClassHeader(alloc_->GetFile());
-    }
-
     mem::ClassHeader InitializeClassHeader(mem::PageIndex index,
                                            std::shared_ptr<ts::ClassObject>& class_object) {
-        return InitializeMagic(mem::ClassHeader(index)
-                                   .ReadClassHeader(alloc_->GetFile())
-                                   .InitClassHeader(alloc_->GetFile(), class_object->Size()));
+        return mem::ClassHeader(index)
+            .ReadClassHeader(alloc_->GetFile())
+            .InitClassHeader(alloc_->GetFile(), class_object->Size())
+            .WriteMagic(alloc_->GetFile(), mem::kMagic);
     }
 
 public:

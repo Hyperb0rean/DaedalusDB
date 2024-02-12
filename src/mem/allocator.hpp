@@ -55,8 +55,7 @@ private:
     }
 
 public:
-    PageAllocator(std::shared_ptr<mem::File>& file,
-                  std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+    PageAllocator(std::shared_ptr<mem::File>& file, DEFAULT_LOGGER(logger))
         : LOGGER(logger), file_(file) {
 
         DEBUG("Free list count: ", file->Read<size_t>(kPagesCountOffset));

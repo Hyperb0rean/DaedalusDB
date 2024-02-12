@@ -39,8 +39,7 @@ protected:
 public:
     template <ts::ClassLike C>
     NodeStorage(std::shared_ptr<C> nodes_class, std::shared_ptr<ClassStorage>& class_storage,
-                std::shared_ptr<mem::PageAllocator>& alloc,
-                std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+                std::shared_ptr<mem::PageAllocator>& alloc, DEFAULT_LOGGER(logger))
         : LOGGER(logger), nodes_class_(nodes_class), class_storage_(class_storage), alloc_(alloc) {
 
         data_page_list_ = mem::PageList(nodes_class->Name(), alloc_->GetFile(),
@@ -96,10 +95,9 @@ class ConstantSizeNodeStorage : public NodeStorage {
 
 public:
     template <ts::ClassLike C>
-    ConstantSizeNodeStorage(
-        std::shared_ptr<C> nodes_class, std::shared_ptr<ClassStorage>& class_storage,
-        std::shared_ptr<mem::PageAllocator>& alloc,
-        std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+    ConstantSizeNodeStorage(std::shared_ptr<C> nodes_class,
+                            std::shared_ptr<ClassStorage>& class_storage,
+                            std::shared_ptr<mem::PageAllocator>& alloc, DEFAULT_LOGGER(logger))
         : NodeStorage(nodes_class, class_storage, alloc, logger) {
         DEBUG("Constant Node storage initialized with class: ",
               ts::ClassObject(nodes_class).ToString());
@@ -113,10 +111,9 @@ public:
 class VariableSizeNodeStorage : public NodeStorage {
 public:
     template <ts::ClassLike C>
-    VariableSizeNodeStorage(
-        std::shared_ptr<C> nodes_class, std::shared_ptr<ClassStorage>& class_storage,
-        std::shared_ptr<mem::PageAllocator>& alloc,
-        std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+    VariableSizeNodeStorage(std::shared_ptr<C> nodes_class,
+                            std::shared_ptr<ClassStorage>& class_storage,
+                            std::shared_ptr<mem::PageAllocator>& alloc, DEFAULT_LOGGER(logger))
         : NodeStorage(nodes_class, class_storage, alloc, logger) {
     }
 

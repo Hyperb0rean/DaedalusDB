@@ -218,7 +218,17 @@ public:
 class Struct : public Object {
     std::vector<std::shared_ptr<Object>> fields_;
 
+    template <ObjectLike O>
+    void AddFieldValue(const std::shared_ptr<O>& value) {
+        fields_.push_back(value);
+    }
+
 public:
+    template <ObjectLike O, ClassLike C, typename... Args>
+    friend std::shared_ptr<O> UnsafeNew(std::shared_ptr<C> object_class, Args&&... args);
+    template <ObjectLike O, ClassLike C>
+    friend std::shared_ptr<O> DefaultNew(std::shared_ptr<C> object_class);
+
     ~Struct() = default;
     Struct(const std::shared_ptr<StructClass>& argclass) {
         this->class_ = argclass;
@@ -229,11 +239,6 @@ public:
             size += field->Size();
         }
         return size;
-    }
-
-    template <ObjectLike O>
-    void AddFieldValue(const std::shared_ptr<O>& value) {
-        fields_.push_back(value);
     }
 
     [[nodiscard]] std::vector<std::shared_ptr<Object>> GetFields() const {

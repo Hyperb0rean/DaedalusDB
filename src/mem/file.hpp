@@ -32,16 +32,14 @@ class File {
     }
 
 public:
-    explicit File(std::string&& fileName,
-                  std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+    explicit File(std::string&& fileName, DEFAULT_LOGGER(logger))
         : LOGGER(logger), fileName_(std::move(fileName)) {
         fd_ = open(fileName_.c_str(), O_RDWR | O_CREAT, S_IRWXU | S_IRGRP | S_IROTH);
         if (fd_ == -1) {
             throw error::IoError("File could not be opened");
         }
     }
-    explicit File(const std::string& fileName,
-                  std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+    explicit File(const std::string& fileName, DEFAULT_LOGGER(logger))
         : File(std::string(fileName), logger) {
     }
     ~File() {

@@ -56,15 +56,17 @@ public:
     virtual ~Logger(){};
 };
 
-class ConsoleLogger : public Logger {
+#define DEFINE_LOGGER(logger) std::shared_ptr<::util::Logger> logger
+
+class DebugLogger : public Logger {
 protected:
     std::ostream& cout_;
     std::ostream& cerr_;
 
 public:
-    ~ConsoleLogger(){};
+    ~DebugLogger(){};
 
-    ConsoleLogger(std::ostream& cout = std::cout, std::ostream& cerr = std::cerr)
+    DebugLogger(std::ostream& cout = std::cout, std::ostream& cerr = std::cerr)
         : cout_(cout), cerr_(cerr) {
     }
 
@@ -81,10 +83,12 @@ public:
     }
 };
 
-class SimpleLogger : public ConsoleLogger {
+#define DEBUG_LOGGER std::make_shared<::util::DebugLogger>()
+
+class ConsoleLogger : public DebugLogger {
 public:
-    SimpleLogger(std::ostream& cout = std::cout, std::ostream& cerr = std::cerr)
-        : ConsoleLogger(cout, cerr) {
+    ConsoleLogger(std::ostream& cout = std::cout, std::ostream& cerr = std::cerr)
+        : DebugLogger(cout, cerr) {
     }
 
     void LogFooter(LogLevel level) override {
@@ -106,6 +110,8 @@ public:
     }
 };
 
+#define CONSOLE_LOGGER std::make_shared<::util::ConsoleLogger>()
+
 class EmptyLogger : public Logger {
 
 public:
@@ -123,4 +129,8 @@ public:
     void LogImpl(LogLevel level, PrintableAny&& data) override {
     }
 };
+
+#define EMPTY_LOGGER std::make_shared<::util::EmptyLogger>()
+
+#define DEFAULT_LOGGER(logger) DEFINE_LOGGER(logger) = EMPTY_LOGGER
 }  // namespace util

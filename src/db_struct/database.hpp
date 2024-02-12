@@ -41,7 +41,7 @@ class Database {
 
 public:
     Database(const std::shared_ptr<mem::File>& file, OpenMode mode = OpenMode::kDefault,
-             std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+             DEFAULT_LOGGER(logger))
         : LOGGER(logger), file_(file) {
 
         InitializeSuperblock(mode);

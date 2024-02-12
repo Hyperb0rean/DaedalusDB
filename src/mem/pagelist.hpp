@@ -100,7 +100,7 @@ public:
     }
 
     PageList(std::string name, const std::shared_ptr<File>& file, Offset sentinel_offset,
-             std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+             DEFAULT_LOGGER(logger))
         : LOGGER(logger), name_(std::move(name)), file_(file), sentinel_offset_(sentinel_offset) {
         pages_count_ = file_->Read<size_t>(GetCountFromSentinel(sentinel_offset));
     }

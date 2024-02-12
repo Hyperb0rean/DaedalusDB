@@ -67,8 +67,7 @@ private:
     }
 
 public:
-    ClassStorage(std::shared_ptr<mem::PageAllocator>& alloc,
-                 std::shared_ptr<util::Logger> logger = std::make_shared<util::EmptyLogger>())
+    ClassStorage(std::shared_ptr<mem::PageAllocator>& alloc, DEFAULT_LOGGER(logger))
         : LOGGER(logger), alloc_(alloc) {
 
         DEBUG("Class list sentinel offset:", mem::kClassListSentinelOffset);

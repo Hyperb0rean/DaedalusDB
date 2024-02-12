@@ -54,6 +54,19 @@ public:
                 throw error::RuntimeError("Invalid state");
         }
     }
+
+    std::optional<size_t> OptionalSize() const {
+        if (state_ == ObjectState::kInvalid) {
+            throw error::BadArgument("Invalid object has no theoretical size");
+        }
+
+        if (data_->GetClass()->Size().has_value()) {
+            return sizeof(M) + sizeof(ObjectId) + data_->GetClass()->Size().value();
+        } else {
+            return std::nullopt;
+        }
+    }
+
     mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
         switch (state_) {
             case ObjectState::kFree:

@@ -66,14 +66,13 @@ public:
         class_storage_->RemoveClass(new_class);
     }
 
-    void PrintClasses() {
+    void PrintAllClasses(std::ostream& os = std::cout) {
         auto& alloc = alloc_;
-        class_storage_->VisitClasses([alloc](mem::ClassHeader class_header) -> void {
+        class_storage_->VisitClasses([alloc, &os](mem::ClassHeader class_header) -> void {
             ts::ClassObject class_object;
             class_object.Read(alloc->GetFile(),
                               mem::GetOffset(class_header.index_, class_header.free_offset_));
-            std::cout << " [ " << class_header.index_ << " ] " << class_object.ToString()
-                      << std::endl;
+            os << " [ " << class_header.index_ << " ] " << class_object.ToString() << std::endl;
         });
     }
 
@@ -84,6 +83,31 @@ public:
         } else {
             VariableSizeNodeStorage(node->GetClass(), class_storage_, alloc_, LOGGER).AddNode(node);
         }
+    }
+
+    template <ts::ClassLike C, typename Predicate>
+    void PrintNodesIf(std::shared_ptr<C>& node_class, Predicate predicate,
+                      std::ostream& os = std::cout) {
+
+        auto print = [&os](Node node) { os << node.ToString() << std::endl; };
+
+        if (node_class->Size().has_value()) {
+            static_assert(
+                std::is_invocable_r_v<bool, Predicate,
+                                      std::remove_cvref_t<ConstantSizeNodeStorage::NodeIterator>>);
+            ConstantSizeNodeStorage(node_class, class_storage_, alloc_, LOGGER)
+                .VisitNodes(predicate, print);
+        } else {
+            // static_assert(std::is_invocable_r_v<bool, Predicate,
+            //                                              VariableSizeNodeStorage::NodeIterator>);
+            // VariableSizeNodeStorage(node_class, class_storage_, alloc_, LOGGER)
+            //     .VisitNodes(predicate, print);
+        }
+    }
+
+    template <ts::ClassLike C>
+    void PrintAllNodes(std::shared_ptr<C>& node_class) {
+        PrintNodesIf(node_class, [](auto) { return true; });
     }
 };
 

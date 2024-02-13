@@ -177,14 +177,14 @@ public:
         }
     }
 
-    template <typename F>
-    requires std::invocable<F, ts::ClassObject>
-    void VisitClasses(F functor) {
+    template <typename Functor>
+    requires std::invocable<Functor, ts::Class>
+    void VisitClasses(Functor functor) {
         for (auto& class_header : class_list_) {
             ts::ClassObject class_object;
             class_object.Read(alloc_->GetFile(),
                               mem::GetOffset(class_header.index_, class_header.free_offset_));
-            functor(class_object);
+            functor(class_object.GetClass().get());
         }
     }
 };

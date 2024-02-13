@@ -12,10 +12,10 @@ class ConstantSizeNodeStorage : public NodeStorage {
 
     template <ts::ObjectLike O>
     void WriteIntoFree(mem::Page& back, mem::ClassHeader& header, std::shared_ptr<O>& node,
-                       MetaObject& jumper) {
+                       Node& jumper) {
 
         DEBUG("Found free space: ", jumper.Id());
-        auto metaobject = MetaObject(header.ReadMagic(alloc_->GetFile()).magic_, jumper.Id(), node);
+        auto metaobject = Node(header.ReadMagic(alloc_->GetFile()).magic_, jumper.Id(), node);
         metaobject.Write(alloc_->GetFile(), mem::GetOffset(back.index_, back.free_offset_));
 
         back.free_offset_ = GetPageOffsetById(jumper.Id());
@@ -30,7 +30,7 @@ class ConstantSizeNodeStorage : public NodeStorage {
     template <ts::ObjectLike O>
     void WriteIntoInvalid(mem::Page& back, mem::ClassHeader& header, std::shared_ptr<O>& node) {
         auto count = header.ReadNodeCount(alloc_->GetFile()).nodes_;
-        auto metaobject = MetaObject(header.ReadMagic(alloc_->GetFile()).magic_, count, node);
+        auto metaobject = Node(header.ReadMagic(alloc_->GetFile()).magic_, count, node);
 
         if (back.initialized_offset_ + metaobject.Size() > mem::kPageSize) {
             DEBUG("Allocation");
@@ -52,8 +52,10 @@ class ConstantSizeNodeStorage : public NodeStorage {
     }
 
 public:
-    class ObjectIterator {
+    class NodeIterator {
     private:
+        mem::Magic magic_;
+        std::shared_ptr<ts::Class> node_class_;
         std::shared_ptr<mem::File> file_;
         mem::PageList& page_list_;
         size_t node_size_;
@@ -62,7 +64,7 @@ public:
         mem::PageList::PageIterator current_page_;
         ObjectId id_;
 
-        std::shared_ptr<MetaObject> curr_;
+        std::shared_ptr<Node> curr_;
 
         size_t GetNodesInPage() {
             return (mem::kPageSize - sizeof(mem::Page)) / node_size_;
@@ -102,14 +104,17 @@ public:
 
     public:
         using iterator_category = std::bidirectional_iterator_tag;
-        using value_type = MetaObject;
+        using value_type = Node;
         using difference_type = size_t;
-        using pointer = std::shared_ptr<MetaObject>;
-        using reference = MetaObject&;
+        using pointer = std::shared_ptr<Node>;
+        using reference = Node&;
 
-        ObjectIterator(std::shared_ptr<mem::File>& file, mem::PageList& page_list, size_t node_size,
-                       ObjectId id)
-            : file_(file),
+        NodeIterator(mem::Magic magic, std::shared_ptr<ts::Class>& node_class,
+                     std::shared_ptr<mem::File>& file, mem::PageList& page_list, size_t node_size,
+                     ObjectId id)
+            : magic_(magic),
+              node_class_(node_class),
+              file_(file),
               page_list_(page_list),
               node_size_(node_size),
               inner_offset_(sizeof(mem::Page)),
@@ -129,40 +134,46 @@ public:
                 Advance();
             }
         }
-        ObjectIterator& operator++() {
+        NodeIterator& operator++() {
             Advance();
             return *this;
         }
-        ObjectIterator operator++(int) {
+        NodeIterator operator++(int) {
             auto temp = *this;
             Advance();
             return temp;
         }
 
-        ObjectIterator& operator--() {
+        NodeIterator& operator--() {
             Retreat();
             return *this;
         }
-        ObjectIterator operator--(int) {
+        NodeIterator operator--(int) {
             auto temp = *this;
             Retreat();
             return temp;
         }
 
         reference operator*() {
-            curr_->Read(file_, mem::GetOffset(current_page_->index_, inner_offset_));
+            curr_ = std::make_shared<Node>(magic_, node_class_, file_,
+                                           mem::GetOffset(current_page_->index_, inner_offset_));
             return *curr_;
         }
         pointer operator->() {
-            curr_->Read(file_, mem::GetOffset(current_page_->index_, inner_offset_));
+            curr_ = std::make_shared<Node>(magic_, node_class_, file_,
+                                           mem::GetOffset(current_page_->index_, inner_offset_));
             return curr_;
         }
 
-        bool operator==(const ObjectIterator& other) const {
-            return curr_->Id() == other.curr_->Id();
+        bool operator==(const NodeIterator& other) const {
+            return id_ == other.id_;
         }
-        bool operator!=(const ObjectIterator& other) const {
+        bool operator!=(const NodeIterator& other) const {
             return !(*this == other);
+        }
+
+        ObjectId Id() const noexcept {
+            return id_;
         }
     };
 
@@ -175,13 +186,15 @@ public:
               ts::ClassObject(nodes_class).ToString());
     }
 
-    ObjectIterator Begin() {
-        return ObjectIterator(alloc_->GetFile(), data_page_list_, nodes_class_->Size().value(), 0);
+    NodeIterator Begin() {
+        return NodeIterator(GetHeader().magic_, nodes_class_, alloc_->GetFile(), data_page_list_,
+                            nodes_class_->Size().value(), 0);
     }
 
-    ObjectIterator End() {
-        return ObjectIterator(alloc_->GetFile(), data_page_list_, nodes_class_->Size().value(),
-                              GetHeader().ReadNodeCount(alloc_->GetFile()).nodes_);
+    NodeIterator End() {
+        return NodeIterator(GetHeader().magic_, nodes_class_, alloc_->GetFile(), data_page_list_,
+                            nodes_class_->Size().value(),
+                            GetHeader().ReadNodeCount(alloc_->GetFile()).nodes_);
     }
 
     template <ts::ObjectLike O>
@@ -194,8 +207,8 @@ public:
         INFO("Addding node: ", node->ToString());
         auto header = GetHeader();
         auto back = GetBack();
-        auto jumper = MetaObject(header.ReadMagic(alloc_->GetFile()).magic_, nodes_class_,
-                                 alloc_->GetFile(), mem::GetOffset(back.index_, back.free_offset_));
+        auto jumper = Node(header.ReadMagic(alloc_->GetFile()).magic_, nodes_class_,
+                           alloc_->GetFile(), mem::GetOffset(back.index_, back.free_offset_));
         DEBUG("Jumper: ", jumper.ToString());
         switch (jumper.State()) {
             case ObjectState::kFree: {
@@ -210,6 +223,20 @@ public:
                 throw error::RuntimeError("Already occupied memory");
             default:
                 return;
+        }
+    }
+
+    template <typename Predicate, typename Functor>
+    requires requires {
+        requires std::is_invocable_r_v<bool, Predicate, NodeIterator>;
+        requires std::is_invocable_v<Functor, Node>;
+    }
+    void VisitNodes(Predicate predicate, Functor functor) {
+        DEBUG("Visiting nodes..");
+        for (auto node_it = Begin(); node_it != End(); ++node_it) {
+            if (predicate(node_it)) {
+                functor(*node_it);
+            }
         }
     }
 };

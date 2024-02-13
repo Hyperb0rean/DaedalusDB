@@ -23,7 +23,7 @@ enum class ObjectState { kFree, kValid, kInvalid };
 
 using ObjectId = size_t;
 
-class MetaObject : public ts::Object {
+class Node : public ts::Object {
 private:
     mem::Magic magic_;
     std::variant<mem::PageOffset, ObjectId> meta_;
@@ -32,7 +32,7 @@ private:
 
 public:
     template <ts::ObjectLike O>
-    MetaObject(mem::Magic magic, ObjectId id, std::shared_ptr<O> data)
+    Node(mem::Magic magic, ObjectId id, std::shared_ptr<O> data)
         : magic_(magic), meta_(id), data_(data), state_(ObjectState::kValid) {
     }
 
@@ -109,7 +109,7 @@ public:
         }
     }
     [[nodiscard]] std::string ToString() const override {
-        return std::string("META: ")
+        return std::string("NODE: ")
             .append("state: ")
             .append(ObjectStateToString(state_))
             .append(std::holds_alternative<ObjectId>(meta_)
@@ -121,8 +121,8 @@ public:
             .append(" } ");
     }
 
-    MetaObject(mem::Magic magic, std::shared_ptr<ts::Class> data_class,
-               std::shared_ptr<mem::File>& file, mem::Offset offset)
+    Node(mem::Magic magic, std::shared_ptr<ts::Class> data_class, std::shared_ptr<mem::File>& file,
+         mem::Offset offset)
         : magic_(magic) {
 
         auto read_magic = file->Read<mem::Magic>(offset);
@@ -165,7 +165,7 @@ public:
                 DDB_CREATE_PRIMITIVE(unsigned char)
                 DDB_CREATE_PRIMITIVE(wchar_t)
 #undef CREATE_PRIMITIVE
-                throw error::TypeError("Class can't be turned in metaobject");
+                throw error::TypeError("Class can't be turned in Node");
             }
         } else if (read_magic == ~magic_) {
             state_ = ObjectState::kFree;
@@ -181,21 +181,18 @@ public:
 
     [[nodiscard]] ObjectId Id() const {
         if (state_ == ObjectState::kInvalid || !data_->GetClass()->Size().has_value()) {
-            throw error::BadArgument("Metaobject has no id");
+            throw error::BadArgument("Node has no id");
         }
         return std::get<ObjectId>(meta_);
     }
 
     [[nodiscard]] mem::PageOffset Jumper() const {
         if (state_ == ObjectState::kInvalid || data_->GetClass()->Size().has_value()) {
-            throw error::BadArgument("Metaobject has no jumper");
+            throw error::BadArgument("Node has no jumper");
         }
         return std::get<mem::PageOffset>(meta_);
     }
 
-    [[nodiscard]] mem::Magic Magic() const {
-        return magic_;
-    }
     [[nodiscard]] ObjectState State() const {
         return state_;
     }

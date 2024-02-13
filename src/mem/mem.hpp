@@ -5,10 +5,12 @@
 #include "page.hpp"
 
 namespace mem {
-constexpr int64_t kMagic = 0xDEADBEEF;
+
+using GlobalMagic = uint64_t;
+constexpr GlobalMagic kMagic = 0xDEADBEEF;
 
 // Constant offsets of some data in superblock for more precise changes
-constexpr Offset kFreeListSentinelOffset = sizeof(kMagic);
+constexpr Offset kFreeListSentinelOffset = sizeof(GlobalMagic);
 constexpr Offset kFreePagesCountOffset = kFreeListSentinelOffset + sizeof(Page);
 constexpr Offset kPagesCountOffset = kFreePagesCountOffset + sizeof(Offset);
 constexpr Offset kClassListSentinelOffset = kPagesCountOffset + sizeof(size_t);
@@ -28,7 +30,7 @@ public:
 
     void CheckConsistency(std::shared_ptr<File>& file) {
         try {
-            auto magic = file->Read<int64_t>();
+            auto magic = file->Read<GlobalMagic>();
             if (magic != kMagic) {
                 throw error::StructureError("Can't open database from this file: " +
                                             file->GetFilename());
@@ -48,7 +50,7 @@ public:
     }
 
     Superblock& InitSuperblock(std::shared_ptr<File>& file) {
-        file->Write<int64_t>(kMagic);
+        file->Write<GlobalMagic>(kMagic);
         free_list_sentinel_ = Page(kSentinelIndex);
         free_list_sentinel_.type_ = PageType::kSentinel;
         free_pages_count_ = 0;
@@ -87,12 +89,14 @@ constexpr inline Offset GetPageAddress(PageIndex index) {
     return kPagetableOffset + index * kPageSize;
 }
 
+using Magic = uint64_t;
+
 class ClassHeader : public Page {
 public:
     Page node_list_sentinel_;
     size_t node_pages_count_;
     size_t nodes_;
-    uint64_t magic_;
+    Magic magic_;
 
     ClassHeader() : Page() {
         this->type_ = PageType::kClassHeader;
@@ -106,15 +110,17 @@ public:
         return GetOffset(index_, sizeof(Page));
     }
 
+    // Should think about structure alignment in 4 following methods
+
     ClassHeader& WriteNodeCount(std::shared_ptr<File>& file, size_t count) {
         nodes_ = count;
         file->Write<size_t>(nodes_, GetOffset(index_, 2 * sizeof(Page) + sizeof(size_t)));
         return *this;
     }
 
-    ClassHeader& WriteMagic(std::shared_ptr<File>& file, uint64_t magic) {
+    ClassHeader& WriteMagic(std::shared_ptr<File>& file, Magic magic) {
         magic_ = magic;
-        file->Write<uint64_t>(magic_, GetOffset(index_, 2 * sizeof(Page) + 2 * sizeof(size_t)));
+        file->Write<Magic>(magic_, GetOffset(index_, 2 * sizeof(Page) + 2 * sizeof(size_t)));
         return *this;
     }
 
@@ -124,7 +130,7 @@ public:
     }
 
     ClassHeader& ReadMagic(std::shared_ptr<File>& file) {
-        magic_ = file->Read<uint64_t>(GetOffset(index_, 2 * sizeof(Page) + 2 * sizeof(size_t)));
+        magic_ = file->Read<Magic>(GetOffset(index_, 2 * sizeof(Page) + 2 * sizeof(size_t)));
         return *this;
     }
 
@@ -159,33 +165,6 @@ Page ReadPage(Page other, std::shared_ptr<File>& file) {
 
 Page WritePage(Page other, std::shared_ptr<File>& file) {
     file->Write<Page>(other, GetPageAddress(other.index_));
-    return other;
-}
-
-Page WriteFreeOffset(Page other, std::shared_ptr<File>& file, PageOffset free_offset) {
-    other.free_offset_ = free_offset;
-    file->Write<PageOffset>(
-        other.free_offset_,
-        GetOffset(other.index_, sizeof(PageType) + sizeof(PageIndex) + sizeof(PageOffset)));
-    return other;
-}
-
-Page ReadFreeOffset(Page other, std::shared_ptr<File>& file) {
-    other.free_offset_ = file->Read<PageOffset>(
-        GetOffset(other.index_, sizeof(PageType) + sizeof(PageIndex) + sizeof(PageOffset)));
-    return other;
-}
-
-Page WriteInitOffset(Page other, std::shared_ptr<File>& file, PageOffset init_offset) {
-    other.initialized_offset_ = init_offset;
-    file->Write<uint64_t>(other.initialized_offset_,
-                          GetOffset(other.index_, sizeof(PageType) + sizeof(PageIndex)));
-    return other;
-}
-
-Page ReadInitOffset(Page other, std::shared_ptr<File>& file) {
-    other.initialized_offset_ =
-        file->Read<PageOffset>(GetOffset(other.index_, sizeof(PageType) + sizeof(PageIndex)));
     return other;
 }
 

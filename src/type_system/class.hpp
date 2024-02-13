@@ -49,6 +49,10 @@ public:
     }
     [[nodiscard]] virtual size_t Count() const = 0;
 };
+
+template <typename C>
+concept ClassLike = std::derived_from<C, Class>;
+
 template <typename T>
 requires std::is_fundamental_v<T>
 class PrimitiveClass : public Class {
@@ -69,9 +73,6 @@ public:
         return 1;
     }
 };
-
-template <typename C>
-concept ClassLike = std::derived_from<C, Class>;
 
 class StringClass : public Class {
 public:

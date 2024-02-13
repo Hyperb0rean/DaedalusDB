@@ -208,17 +208,32 @@ TEST(Metaobject, MetaObjectVarious) {
     std::cerr << meta_string_ivalid.ToString() << std::endl;
 }
 
-TEST(NodeStorage, NodeAddition) {
+TEST(ConstNodeStorage, NodeAddition) {
+    auto coords =
+        ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
+                                      ts::NewClass<ts::PrimitiveClass<double>>("lon"));
+
+    auto database =
+        db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
+    database.AddClass(coords);
+
+    database.AddNode(ts::New<ts::Struct>(coords, 1., 0.));
+    database.AddNode(ts::New<ts::Struct>(coords, 0., 1.));
+}
+
+TEST(ConstNodeStorage, NodeAddditionWithAllocation) {
     auto coords =
         ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
                                       ts::NewClass<ts::PrimitiveClass<double>>("lon"));
 
     auto database = db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite,
-                                 std::make_shared<util::ConsoleLogger>());
+                                 CONSOLE_LOGGER);
     database.AddClass(coords);
 
-    database.AddNode(ts::New<ts::Struct>(coords, 1., 0.));
-    database.AddNode(ts::New<ts::Struct>(coords, 0., 1.));
+    for (size_t i = 0; i < 200; ++i) {
+        database.AddNode(ts::New<ts::Struct>(coords, 1., 0.));
+        database.AddNode(ts::New<ts::Struct>(coords, 0., 1.));
+    }
 }
 
 int main(int argc, char** argv) {

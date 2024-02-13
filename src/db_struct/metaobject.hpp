@@ -23,17 +23,16 @@ enum class ObjectState { kFree, kValid, kInvalid };
 
 using ObjectId = size_t;
 
-template <typename M>
 class MetaObject : public ts::Object {
 private:
-    M magic_;
+    mem::Magic magic_;
     std::variant<mem::PageOffset, ObjectId> meta_;
     std::shared_ptr<ts::Object> data_;
     ObjectState state_;
 
 public:
     template <ts::ObjectLike O>
-    MetaObject(M magic, ObjectId id, std::shared_ptr<O> data)
+    MetaObject(mem::Magic magic, ObjectId id, std::shared_ptr<O> data)
         : magic_(magic), meta_(id), data_(data), state_(ObjectState::kValid) {
     }
 
@@ -41,13 +40,13 @@ public:
         switch (state_) {
             case ObjectState::kFree: {
                 if (data_->GetClass()->Size().has_value()) {
-                    return sizeof(M) + sizeof(ObjectId);
+                    return sizeof(mem::Magic) + sizeof(ObjectId);
                 } else {
-                    return sizeof(M) + sizeof(mem::PageOffset);
+                    return sizeof(mem::Magic) + sizeof(mem::PageOffset);
                 }
             }
             case ObjectState::kValid:
-                return sizeof(M) + sizeof(ObjectId) + data_->Size();
+                return sizeof(mem::Magic) + sizeof(ObjectId) + data_->Size();
             case ObjectState::kInvalid:
                 throw error::BadArgument("Invalid object has no size");
             default:
@@ -61,7 +60,7 @@ public:
         }
 
         if (data_->GetClass()->Size().has_value()) {
-            return sizeof(M) + sizeof(ObjectId) + data_->GetClass()->Size().value();
+            return sizeof(mem::Magic) + sizeof(ObjectId) + data_->GetClass()->Size().value();
         } else {
             return std::nullopt;
         }
@@ -70,16 +69,16 @@ public:
     mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
         switch (state_) {
             case ObjectState::kFree:
-                file->Write<M>(~magic_, offset);
-                offset += sizeof(M);
+                file->Write<mem::Magic>(~magic_, offset);
+                offset += sizeof(mem::Magic);
                 if (data_->GetClass()->Size().has_value()) {
                     return file->Write(std::get<ObjectId>(meta_), offset);
                 } else {
                     return file->Write(std::get<mem::PageOffset>(meta_), offset);
                 }
             case ObjectState::kValid:
-                file->Write<M>(magic_, offset);
-                offset += sizeof(M);
+                file->Write<mem::Magic>(magic_, offset);
+                offset += sizeof(mem::Magic);
                 file->Write(std::get<ObjectId>(meta_), offset);
                 offset += sizeof(ObjectId);
                 return data_->Write(file, offset);
@@ -90,8 +89,8 @@ public:
         }
     }
     void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) override {
-        auto magic = file->Read<M>(offset);
-        offset += sizeof(M);
+        auto magic = file->Read<mem::Magic>(offset);
+        offset += sizeof(mem::Magic);
 
         if (magic == magic_) {
             state_ = ObjectState::kValid;
@@ -122,12 +121,12 @@ public:
             .append(" } ");
     }
 
-    MetaObject(M magic, std::shared_ptr<ts::Class> data_class, std::shared_ptr<mem::File>& file,
-               mem::Offset offset)
+    MetaObject(mem::Magic magic, std::shared_ptr<ts::Class> data_class,
+               std::shared_ptr<mem::File>& file, mem::Offset offset)
         : magic_(magic) {
 
-        auto read_magic = file->Read<M>(offset);
-        offset += sizeof(M);
+        auto read_magic = file->Read<mem::Magic>(offset);
+        offset += sizeof(mem::Magic);
 
         if (read_magic == magic_) {
             state_ = ObjectState::kValid;
@@ -194,7 +193,7 @@ public:
         return std::get<mem::PageOffset>(meta_);
     }
 
-    [[nodiscard]] M Magic() const {
+    [[nodiscard]] mem::Magic Magic() const {
         return magic_;
     }
     [[nodiscard]] ObjectState State() const {

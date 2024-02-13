@@ -1,6 +1,7 @@
 #pragma once
 
-#include "node_storage.hpp"
+#include "const_node_storage.hpp"
+#include "var_node_storage.hpp"
 
 namespace db {
 

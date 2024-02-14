@@ -54,7 +54,7 @@ template <typename C>
 concept ClassLike = std::derived_from<C, Class>;
 
 template <typename T>
-requires std::is_fundamental_v<T>
+requires std::is_arithmetic_v<T>
 class PrimitiveClass : public Class {
 public:
     explicit PrimitiveClass(std::string name) : Class(std::move(name)) {

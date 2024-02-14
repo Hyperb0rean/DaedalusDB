@@ -149,21 +149,7 @@ public:
 
                 if (false) {
                 }
-                DDB_CREATE_PRIMITIVE(int)
-                DDB_CREATE_PRIMITIVE(double)
-                DDB_CREATE_PRIMITIVE(float)
-                DDB_CREATE_PRIMITIVE(bool)
-                DDB_CREATE_PRIMITIVE(unsigned int)
-                DDB_CREATE_PRIMITIVE(short int)
-                DDB_CREATE_PRIMITIVE(short unsigned int)
-                DDB_CREATE_PRIMITIVE(long long int)
-                DDB_CREATE_PRIMITIVE(long long unsigned int)
-                DDB_CREATE_PRIMITIVE(long unsigned int)
-                DDB_CREATE_PRIMITIVE(long int)
-                DDB_CREATE_PRIMITIVE(char)
-                DDB_CREATE_PRIMITIVE(signed char)
-                DDB_CREATE_PRIMITIVE(unsigned char)
-                DDB_CREATE_PRIMITIVE(wchar_t)
+                DDB_PRIMITIVE_GENERATOR(DDB_CREATE_PRIMITIVE)
 #undef CREATE_PRIMITIVE
                 throw error::TypeError("Class can't be turned in Node");
             }

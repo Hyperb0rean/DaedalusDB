@@ -58,7 +58,6 @@ public:
         std::shared_ptr<ts::Class> node_class_;
         std::shared_ptr<mem::File> file_;
         mem::PageList& page_list_;
-        size_t node_size_;
 
         mem::PageOffset inner_offset_;
         mem::PageList::PageIterator current_page_;
@@ -66,12 +65,16 @@ public:
 
         std::shared_ptr<Node> curr_;
 
+        size_t Size() {
+            return sizeof(mem::Magic) + sizeof(ObjectId) + node_class_->Size().value();
+        }
+
         size_t GetNodesInPage() {
-            return (mem::kPageSize - sizeof(mem::Page)) / node_size_;
+            return (mem::kPageSize - sizeof(mem::Page)) / Size();
         }
 
         ObjectId GetInPageIndex() {
-            return (inner_offset_ - sizeof(mem::Page)) / node_size_;
+            return (inner_offset_ - sizeof(mem::Page)) / Size();
         }
 
         void Advance() {
@@ -81,7 +84,7 @@ public:
 
             ++id_;
             if (GetInPageIndex() + 1 < GetNodesInPage()) {
-                inner_offset_ += node_size_;
+                inner_offset_ += Size();
             } else {
                 ++current_page_;
                 inner_offset_ = sizeof(mem::Page);
@@ -95,10 +98,10 @@ public:
 
             --id_;
             if (GetInPageIndex() >= 1) {
-                inner_offset_ -= node_size_;
+                inner_offset_ -= Size();
             } else {
                 --current_page_;
-                inner_offset_ = node_size_ * (GetNodesInPage() - 1) + sizeof(mem::Page);
+                inner_offset_ = Size() * (GetNodesInPage() - 1) + sizeof(mem::Page);
             }
         }
 
@@ -110,13 +113,11 @@ public:
         using reference = Node&;
 
         NodeIterator(mem::Magic magic, std::shared_ptr<ts::Class>& node_class,
-                     std::shared_ptr<mem::File>& file, mem::PageList& page_list, size_t node_size,
-                     ObjectId id)
+                     std::shared_ptr<mem::File>& file, mem::PageList& page_list, ObjectId id)
             : magic_(magic),
               node_class_(node_class),
               file_(file),
               page_list_(page_list),
-              node_size_(node_size),
               inner_offset_(sizeof(mem::Page)),
               current_page_(page_list_.Begin()),
               id_(0) {
@@ -188,12 +189,11 @@ public:
 
     NodeIterator Begin() {
         return NodeIterator(GetHeader().magic_, nodes_class_, alloc_->GetFile(), data_page_list_,
-                            nodes_class_->Size().value(), 0);
+                            0);
     }
 
     NodeIterator End() {
         return NodeIterator(GetHeader().magic_, nodes_class_, alloc_->GetFile(), data_page_list_,
-                            nodes_class_->Size().value(),
                             GetHeader().ReadNodeCount(alloc_->GetFile()).nodes_);
     }
 

@@ -2,6 +2,23 @@
 
 #include "class.hpp"
 
+#define DDB_PRIMITIVE_GENERATOR(MACRO) \
+    MACRO(int)                         \
+    MACRO(double)                      \
+    MACRO(float)                       \
+    MACRO(bool)                        \
+    MACRO(unsigned int)                \
+    MACRO(short int)                   \
+    MACRO(short unsigned int)          \
+    MACRO(long long int)               \
+    MACRO(long long unsigned int)      \
+    MACRO(long unsigned int)           \
+    MACRO(long int)                    \
+    MACRO(char)                        \
+    MACRO(signed char)                 \
+    MACRO(unsigned char)               \
+    MACRO(wchar_t)
+
 namespace ts {
 
 class Object {
@@ -86,21 +103,7 @@ class ClassObject : public Object {
         } else if (type == "string") {
             return std::make_shared<StringClass>(ReadString(stream, '_'));
         }
-        DDB_DESERIALIZE_PRIMITIVE(int)
-        DDB_DESERIALIZE_PRIMITIVE(double)
-        DDB_DESERIALIZE_PRIMITIVE(float)
-        DDB_DESERIALIZE_PRIMITIVE(bool)
-        DDB_DESERIALIZE_PRIMITIVE(unsigned int)
-        DDB_DESERIALIZE_PRIMITIVE(short int)
-        DDB_DESERIALIZE_PRIMITIVE(short unsigned int)
-        DDB_DESERIALIZE_PRIMITIVE(long long int)
-        DDB_DESERIALIZE_PRIMITIVE(long long unsigned int)
-        DDB_DESERIALIZE_PRIMITIVE(long unsigned int)
-        DDB_DESERIALIZE_PRIMITIVE(long int)
-        DDB_DESERIALIZE_PRIMITIVE(char)
-        DDB_DESERIALIZE_PRIMITIVE(signed char)
-        DDB_DESERIALIZE_PRIMITIVE(unsigned char)
-        DDB_DESERIALIZE_PRIMITIVE(wchar_t)
+        DDB_PRIMITIVE_GENERATOR(DDB_DESERIALIZE_PRIMITIVE)
         else {
             throw error::NotImplemented("Unsupported for deserialization type");
         }
@@ -145,7 +148,7 @@ public:
 };
 
 template <typename T>
-requires std::is_fundamental_v<T>
+requires std::is_arithmetic_v<T>
 class Primitive : public Object {
     T value_;
 
@@ -340,21 +343,7 @@ template <ObjectLike O, ClassLike C>
         new_object->AddFieldValue(DefaultNew<Primitive<P>>(util::As<PrimitiveClass<P>>(*it))); \
         continue;                                                                              \
     }
-                DDB_ADD_PRIMITIVE(int)
-                DDB_ADD_PRIMITIVE(double)
-                DDB_ADD_PRIMITIVE(float)
-                DDB_ADD_PRIMITIVE(bool)
-                DDB_ADD_PRIMITIVE(unsigned int)
-                DDB_ADD_PRIMITIVE(short int)
-                DDB_ADD_PRIMITIVE(short unsigned int)
-                DDB_ADD_PRIMITIVE(long long int)
-                DDB_ADD_PRIMITIVE(long long unsigned int)
-                DDB_ADD_PRIMITIVE(long unsigned int)
-                DDB_ADD_PRIMITIVE(long int)
-                DDB_ADD_PRIMITIVE(char)
-                DDB_ADD_PRIMITIVE(signed char)
-                DDB_ADD_PRIMITIVE(unsigned char)
-                DDB_ADD_PRIMITIVE(wchar_t)
+                DDB_PRIMITIVE_GENERATOR(DDB_ADD_PRIMITIVE)
 #undef ADD_PRIMITIVE
 
                 throw error::TypeError("Class can't be defaulted");

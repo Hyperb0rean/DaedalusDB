@@ -230,7 +230,7 @@ TEST(ConstNodeStorage, NodeAddditionWithAllocation) {
                                  CONSOLE_LOGGER);
     database.AddClass(coords);
 
-    for (size_t i = 0; i < 1; ++i) {
+    for (size_t i = 0; i < 200; ++i) {
         database.AddNode(ts::New<ts::Struct>(coords, 1., 0.));
         database.AddNode(ts::New<ts::Struct>(coords, 0., 1.));
     }
@@ -241,16 +241,16 @@ TEST(ConstNodeStorage, PrintNodes) {
         ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
                                       ts::NewClass<ts::PrimitiveClass<double>>("lon"));
 
-    auto database =
-        db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
+    auto database = db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite,
+                                 CONSOLE_LOGGER);
     database.AddClass(coords);
 
-    for (size_t i = 0; i < 105; ++i) {
+    for (size_t i = 0; i < 10; ++i) {
         database.AddNode(ts::New<ts::Struct>(coords, 13., 46.));
         database.AddNode(ts::New<ts::Struct>(coords, 60., 15.));
     }
 
-    database.PrintNodesIf(coords, [](auto it) { return it.Id() > 200; });
+    database.PrintNodesIf(coords, [](auto it) { return it.Id() % 2 == 0; });
 }
 
 int main(int argc, char** argv) {

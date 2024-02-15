@@ -1,11 +1,28 @@
 #pragma once
 
+#include <ostream>
+
 #include "file.hpp"
 
 namespace mem {
 
 inline const size_t kPageSize = 4096;
 enum class PageType { kClassHeader, kData, kFree, kSentinel };
+
+constexpr inline std::string_view PageTypeToString(PageType type) {
+    switch (type) {
+        case PageType::kClassHeader:
+            return "Class Header";
+        case PageType::kData:
+            return "Data";
+        case PageType::kFree:
+            return "Free";
+        case PageType::kSentinel:
+            return "Sentinel";
+        default:
+            return "";
+    }
+}
 
 using PageOffset = uint32_t;
 using PageIndex = size_t;
@@ -29,6 +46,11 @@ public:
     }
 
     Page() : Page(0) {
+    }
+    friend std::ostream& operator<<(std::ostream& os, const Page& page) {
+        return os << " [ " << page.index_ << " ] type: " << PageTypeToString(page.type_)
+                  << ", init: " << page.initialized_offset_ << ", free: " << page.free_offset_
+                  << ", prev: " << page.previous_page_index_ << ", next: " << page.next_page_index_;
     }
 };
 

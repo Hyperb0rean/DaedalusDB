@@ -31,6 +31,10 @@ private:
     ObjectState state_;
 
 public:
+    // Node(mem::Magic magic, mem::PageOffset free)
+    //     : magic_(magic), meta_(free), state_(ObjectState::kFree) {
+    // }
+
     template <ts::ObjectLike O>
     Node(mem::Magic magic, ObjectId id, std::shared_ptr<O> data)
         : magic_(magic), meta_(id), data_(data), state_(ObjectState::kValid) {
@@ -39,11 +43,7 @@ public:
     size_t Size() const override {
         switch (state_) {
             case ObjectState::kFree: {
-                if (data_->GetClass()->Size().has_value()) {
-                    return sizeof(mem::Magic) + sizeof(ObjectId);
-                } else {
-                    return sizeof(mem::Magic) + sizeof(mem::PageOffset);
-                }
+                return sizeof(mem::Magic) + sizeof(mem::PageOffset);
             }
             case ObjectState::kValid:
                 return sizeof(mem::Magic) + sizeof(ObjectId) + data_->Size();
@@ -54,28 +54,13 @@ public:
         }
     }
 
-    std::optional<size_t> OptionalSize() const {
-        if (state_ == ObjectState::kInvalid) {
-            throw error::BadArgument("Invalid object has no theoretical size");
-        }
-
-        if (data_->GetClass()->Size().has_value()) {
-            return sizeof(mem::Magic) + sizeof(ObjectId) + data_->GetClass()->Size().value();
-        } else {
-            return std::nullopt;
-        }
-    }
-
     mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
         switch (state_) {
             case ObjectState::kFree:
                 file->Write<mem::Magic>(~magic_, offset);
                 offset += sizeof(mem::Magic);
-                if (data_->GetClass()->Size().has_value()) {
-                    return file->Write(std::get<ObjectId>(meta_), offset);
-                } else {
-                    return file->Write(std::get<mem::PageOffset>(meta_), offset);
-                }
+                return file->Write(std::get<mem::PageOffset>(meta_), offset);
+
             case ObjectState::kValid:
                 file->Write<mem::Magic>(magic_, offset);
                 offset += sizeof(mem::Magic);
@@ -99,11 +84,7 @@ public:
             data_->Read(file, offset);
         } else if (magic == ~magic_) {
             state_ = ObjectState::kFree;
-            if (data_->GetClass()->Size().has_value()) {
-                meta_ = file->Read<ObjectId>(offset);
-            } else {
-                meta_ = file->Read<mem::PageOffset>(offset);
-            }
+            meta_ = file->Read<mem::PageOffset>(offset);
         } else {
             state_ = ObjectState::kInvalid;
         }
@@ -114,7 +95,7 @@ public:
             .append(ObjectStateToString(state_))
             .append(std::holds_alternative<ObjectId>(meta_)
                         ? std::string(", id: ").append(std::to_string(std::get<ObjectId>(meta_)))
-                        : std::string(", jumper: ")
+                        : std::string(", next_free: ")
                               .append(std::to_string(std::get<mem::PageOffset>(meta_))))
             .append(", data: { ")
             .append(state_ == ObjectState::kValid ? data_->ToString() : ObjectStateToString(state_))
@@ -142,16 +123,15 @@ public:
             } else {
 
 #define DDB_CREATE_PRIMITIVE(P)                                                                  \
-    else if (util::Is<ts::PrimitiveClass<P>>(data_class)) {                                      \
+    if (util::Is<ts::PrimitiveClass<P>>(data_class)) {                                           \
         data_ = ts::ReadNew<ts::Primitive<P>>(util::As<ts::PrimitiveClass<P>>(data_class), file, \
                                               offset);                                           \
     }
-
-                if (false) {
-                }
                 DDB_PRIMITIVE_GENERATOR(DDB_CREATE_PRIMITIVE)
+                else {
+                    throw error::TypeError("Class can't be turned in Node");
+                }
 #undef CREATE_PRIMITIVE
-                throw error::TypeError("Class can't be turned in Node");
             }
         } else if (read_magic == ~magic_) {
             state_ = ObjectState::kFree;
@@ -165,15 +145,20 @@ public:
         }
     }
 
+    void Free(std::variant<mem::PageOffset, ObjectId> meta) {
+        state_ = ObjectState::kFree;
+        meta_ = meta;
+    }
+
     [[nodiscard]] ObjectId Id() const {
-        if (state_ == ObjectState::kInvalid || !data_->GetClass()->Size().has_value()) {
+        if (state_ != ObjectState::kValid) {
             throw error::BadArgument("Node has no id");
         }
         return std::get<ObjectId>(meta_);
     }
 
-    [[nodiscard]] mem::PageOffset Jumper() const {
-        if (state_ == ObjectState::kInvalid || data_->GetClass()->Size().has_value()) {
+    [[nodiscard]] mem::PageOffset NextFree() const {
+        if (state_ != ObjectState::kFree) {
             throw error::BadArgument("Node has no jumper");
         }
         return std::get<mem::PageOffset>(meta_);

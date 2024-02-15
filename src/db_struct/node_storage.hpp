@@ -45,6 +45,7 @@ public:
 
         data_page_list_ = mem::PageList(nodes_class->Name(), alloc_->GetFile(),
                                         GetHeader().GetNodeListSentinelOffset(), LOGGER);
+        DEBUG("Init begin page: ", *data_page_list_.Begin());
     }
 };
 

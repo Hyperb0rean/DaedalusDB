@@ -64,17 +64,6 @@ class ClassObject : public Object {
     }
 
     std::shared_ptr<Class> Deserialize(std::stringstream& stream) {
-
-        auto remove_spaces = [](const char* str) -> std::string {
-            std::string s = str;
-            return {s.begin(), remove_if(s.begin(), s.end(), isspace)};
-        };
-
-#define DDB_DESERIALIZE_PRIMITIVE(P)                                         \
-    else if (type == remove_spaces(#P)) {                                    \
-        return std::make_shared<PrimitiveClass<P>>(ReadString(stream, '_')); \
-    }
-
         char del;
         stream >> del;
         if (del == '>') {
@@ -102,13 +91,22 @@ class ClassObject : public Object {
             return result;
         } else if (type == "string") {
             return std::make_shared<StringClass>(ReadString(stream, '_'));
-        }
-        DDB_PRIMITIVE_GENERATOR(DDB_DESERIALIZE_PRIMITIVE)
-        else {
+        } else {
+
+            auto remove_spaces = [](const char* str) -> std::string {
+                std::string s = str;
+                return {s.begin(), remove_if(s.begin(), s.end(), isspace)};
+            };
+
+#define DDB_DESERIALIZE_PRIMITIVE(P)                                         \
+    if (type == remove_spaces(#P)) {                                         \
+        return std::make_shared<PrimitiveClass<P>>(ReadString(stream, '_')); \
+    }
+            DDB_PRIMITIVE_GENERATOR(DDB_DESERIALIZE_PRIMITIVE)
+#undef DESERIALIZE_PRIMITIVE
+
             throw error::NotImplemented("Unsupported for deserialization type");
         }
-
-#undef DESERIALIZE_PRIMITIVE
     }
 
 public:

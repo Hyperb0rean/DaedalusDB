@@ -86,6 +86,19 @@ public:
     }
 
     template <ts::ClassLike C, typename Predicate>
+    void RemoveNodesIf(std::shared_ptr<C> node_class, Predicate predicate) {
+        if (node_class->Size().has_value()) {
+            static_assert(
+                std::is_invocable_r_v<bool, Predicate, ConstantSizeNodeStorage::NodeIterator>);
+            ConstantSizeNodeStorage(node_class, class_storage_, alloc_, LOGGER)
+                .RemoveNodesIf(predicate);
+        } else {
+            // VariableSizeNodeStorage(node->GetClass(), class_storage_, alloc_,
+            // LOGGER).AddNode(node);
+        }
+    }
+
+    template <ts::ClassLike C, typename Predicate>
     void PrintNodesIf(std::shared_ptr<C>& node_class, Predicate predicate,
                       std::ostream& os = std::cout) {
 
@@ -93,8 +106,7 @@ public:
 
         if (node_class->Size().has_value()) {
             static_assert(
-                std::is_invocable_r_v<bool, Predicate,
-                                      std::remove_cvref_t<ConstantSizeNodeStorage::NodeIterator>>);
+                std::is_invocable_r_v<bool, Predicate, ConstantSizeNodeStorage::NodeIterator>);
             ConstantSizeNodeStorage(node_class, class_storage_, alloc_, LOGGER)
                 .VisitNodes(predicate, print);
         } else {

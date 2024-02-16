@@ -246,6 +246,16 @@ public:
         return fields_;
     }
 
+    template <ObjectLike O>
+    [[nodiscard]] std::shared_ptr<O> GetField(std::string name) const {
+        for (auto& field : fields_) {
+            if (field->GetClass()->Name() == name) {
+                return util::As<O>(field);
+            }
+        }
+        throw error::RuntimeError("No such field");
+    }
+
     mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
         mem::Offset new_offset = offset;
         for (auto& field : fields_) {

@@ -208,7 +208,7 @@ TEST(Node, NodeVarious) {
     std::cerr << meta_string_ivalid.ToString() << std::endl;
 }
 
-TEST(ConstNodeStorage, NodeAddition) {
+TEST(ValNodeStorage, NodeAddition) {
     auto coords =
         ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
                                       ts::NewClass<ts::PrimitiveClass<double>>("lon"));
@@ -221,7 +221,7 @@ TEST(ConstNodeStorage, NodeAddition) {
     database.AddNode(ts::New<ts::Struct>(coords, 0., 1.));
 }
 
-TEST(ConstNodeStorage, NodeAddditionWithAllocation) {
+TEST(ValNodeStorage, NodeAddditionWithAllocation) {
     auto coords =
         ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
                                       ts::NewClass<ts::PrimitiveClass<double>>("lon"));
@@ -236,7 +236,7 @@ TEST(ConstNodeStorage, NodeAddditionWithAllocation) {
     }
 }
 
-TEST(ConstNodeStorage, PrintNodes) {
+TEST(ValNodeStorage, PrintNodes) {
     auto coords =
         ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
                                       ts::NewClass<ts::PrimitiveClass<double>>("lon"));
@@ -253,7 +253,7 @@ TEST(ConstNodeStorage, PrintNodes) {
     database.PrintNodesIf(coords, [](auto it) { return it.Id() % 2 == 0; });
 }
 
-TEST(ConstNodeStorage, RemoveNodes) {
+TEST(ValNodeStorage, RemoveNodes) {
     auto coords =
         ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
                                       ts::NewClass<ts::PrimitiveClass<double>>("lon"));
@@ -271,7 +271,7 @@ TEST(ConstNodeStorage, RemoveNodes) {
     database.PrintNodesIf(coords, [](auto it) { return true; });
 }
 
-TEST(ConstNodeStorage, RemoveThenAddNodes) {
+TEST(ValNodeStorage, RemoveThenAddNodes) {
     auto coords =
         ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
                                       ts::NewClass<ts::PrimitiveClass<double>>("lon"));
@@ -294,7 +294,7 @@ TEST(ConstNodeStorage, RemoveThenAddNodes) {
     database.PrintNodesIf(coords, [](auto it) { return true; });
 }
 
-TEST(ConstNodeStorage, FreeUnusedDataPages) {
+TEST(ValNodeStorage, FreeUnusedDataPages) {
     auto coords =
         ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
                                       ts::NewClass<ts::PrimitiveClass<double>>("lon"));
@@ -309,6 +309,25 @@ TEST(ConstNodeStorage, FreeUnusedDataPages) {
 
     database.RemoveNodesIf(coords, [](auto it) { return true; });
     database.PrintNodesIf(coords, [](auto it) { return true; });
+}
+
+TEST(ValNodeStorage, Select) {
+    auto coords =
+        ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
+                                      ts::NewClass<ts::PrimitiveClass<double>>("lon"));
+
+    auto database = db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite,
+                                 CONSOLE_LOGGER);
+    database.AddClass(coords);
+
+    for (size_t i = 0; i < 100; ++i) {
+        database.AddNode(ts::New<ts::Struct>(coords, i * 10.0, 1000. - i));
+    }
+
+    database.PrintNodesIf(coords, [](db::ValNodeIterator it) {
+        return it->Data<ts::Struct>()->GetField<ts::Primitive<double>>("lat")->Value() >
+               it->Data<ts::Struct>()->GetField<ts::Primitive<double>>("lon")->Value();
+    });
 }
 
 int main(int argc, char** argv) {

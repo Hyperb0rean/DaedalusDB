@@ -1,11 +1,13 @@
 #pragma once
 
-#include "const_node_storage.hpp"
+#include "val_node_storage.hpp"
 #include "var_node_storage.hpp"
 
 namespace db {
 
 enum class OpenMode { kDefault, kRead, kWrite };
+using ValNodeIterator = db::ValNodeStorage::NodeIterator;
+// using VarNodeIterator = db::VarNodeStorage::NodeIterator;
 
 class Database {
 
@@ -79,19 +81,17 @@ public:
     template <ts::ObjectLike O>
     requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(std::shared_ptr<O> node) {
         if (node->GetClass()->Size().has_value()) {
-            ConstantSizeNodeStorage(node->GetClass(), class_storage_, alloc_, LOGGER).AddNode(node);
+            ValNodeStorage(node->GetClass(), class_storage_, alloc_, LOGGER).AddNode(node);
         } else {
-            VariableSizeNodeStorage(node->GetClass(), class_storage_, alloc_, LOGGER).AddNode(node);
+            VarNodeStorage(node->GetClass(), class_storage_, alloc_, LOGGER).AddNode(node);
         }
     }
 
     template <ts::ClassLike C, typename Predicate>
     void RemoveNodesIf(std::shared_ptr<C> node_class, Predicate predicate) {
         if (node_class->Size().has_value()) {
-            static_assert(
-                std::is_invocable_r_v<bool, Predicate, ConstantSizeNodeStorage::NodeIterator>);
-            ConstantSizeNodeStorage(node_class, class_storage_, alloc_, LOGGER)
-                .RemoveNodesIf(predicate);
+            static_assert(std::is_invocable_r_v<bool, Predicate, ValNodeIterator>);
+            ValNodeStorage(node_class, class_storage_, alloc_, LOGGER).RemoveNodesIf(predicate);
         } else {
             // VariableSizeNodeStorage(node->GetClass(), class_storage_, alloc_,
             // LOGGER).AddNode(node);
@@ -105,13 +105,12 @@ public:
         auto print = [&os](Node node) { os << node.ToString() << std::endl; };
 
         if (node_class->Size().has_value()) {
-            static_assert(
-                std::is_invocable_r_v<bool, Predicate, ConstantSizeNodeStorage::NodeIterator>);
-            ConstantSizeNodeStorage(node_class, class_storage_, alloc_, LOGGER)
-                .VisitNodes(predicate, print);
+            static_assert(std::is_invocable_r_v<bool, Predicate, ValNodeIterator>);
+            ValNodeStorage(node_class, class_storage_, alloc_, LOGGER)
+                .VisitNodes<Predicate, decltype(print)>(predicate, print);
         } else {
             // static_assert(std::is_invocable_r_v<bool, Predicate,
-            //                                              VariableSizeNodeStorage::NodeIterator>);
+            //                                              VarNodeIterator>);
             // VariableSizeNodeStorage(node_class, class_storage_, alloc_, LOGGER)
             //     .VisitNodes(predicate, print);
         }

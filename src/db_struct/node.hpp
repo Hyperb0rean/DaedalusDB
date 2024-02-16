@@ -163,5 +163,20 @@ public:
     [[nodiscard]] ObjectState State() const {
         return state_;
     }
+
+    template <ts::ObjectLike O>
+    [[nodiscard]] std::shared_ptr<O> Data() const {
+        switch (state_) {
+            case ObjectState::kFree: {
+                throw error::RuntimeError("Use after free");
+            }
+            case ObjectState::kValid:
+                return util::As<O>(data_);
+            case ObjectState::kInvalid:
+                throw error::RuntimeError("Invalid node");
+            default:
+                throw error::RuntimeError("Invalid state");
+        }
+    }
 };
 }  // namespace db

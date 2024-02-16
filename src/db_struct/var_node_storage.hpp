@@ -3,12 +3,11 @@
 #include "node_storage.hpp"
 
 namespace db {
-class VariableSizeNodeStorage : public NodeStorage {
+class VarNodeStorage : public NodeStorage {
 public:
     template <ts::ClassLike C>
-    VariableSizeNodeStorage(std::shared_ptr<C> nodes_class,
-                            std::shared_ptr<ClassStorage>& class_storage,
-                            std::shared_ptr<mem::PageAllocator>& alloc, DEFAULT_LOGGER(logger))
+    VarNodeStorage(std::shared_ptr<C> nodes_class, std::shared_ptr<ClassStorage>& class_storage,
+                   std::shared_ptr<mem::PageAllocator>& alloc, DEFAULT_LOGGER(logger))
         : NodeStorage(nodes_class, class_storage, alloc, logger) {
     }
 

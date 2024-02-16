@@ -4,7 +4,7 @@
 
 namespace db {
 
-class ConstantSizeNodeStorage : public NodeStorage {
+class ValNodeStorage : public NodeStorage {
 
 public:
     class NodeIterator {
@@ -125,7 +125,7 @@ public:
         }
 
     public:
-        friend ConstantSizeNodeStorage;
+        friend ValNodeStorage;
         using iterator_category = std::bidirectional_iterator_tag;
         using value_type = Node;
         using difference_type = size_t;
@@ -215,9 +215,8 @@ public:
     };
 
     template <ts::ClassLike C>
-    ConstantSizeNodeStorage(std::shared_ptr<C> nodes_class,
-                            std::shared_ptr<ClassStorage>& class_storage,
-                            std::shared_ptr<mem::PageAllocator>& alloc, DEFAULT_LOGGER(logger))
+    ValNodeStorage(std::shared_ptr<C> nodes_class, std::shared_ptr<ClassStorage>& class_storage,
+                   std::shared_ptr<mem::PageAllocator>& alloc, DEFAULT_LOGGER(logger))
         : NodeStorage(nodes_class, class_storage, alloc, logger) {
         DEBUG("Constant Node storage initialized with class: ",
               ts::ClassObject(nodes_class).ToString());
@@ -293,9 +292,9 @@ public:
     }
 
     template <typename Predicate, typename Functor>
-    requires requires {
-        requires std::is_invocable_r_v<bool, Predicate, NodeIterator>;
-        requires std::is_invocable_v<Functor, Node>;
+    requires requires(Predicate pred, Functor functor, NodeIterator iter) {
+        { pred(iter) } -> std::convertible_to<bool>;
+        {functor(*iter)};
     }
     void VisitNodes(Predicate predicate, Functor functor) {
         DEBUG("Visiting nodes..");

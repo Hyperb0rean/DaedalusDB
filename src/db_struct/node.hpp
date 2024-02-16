@@ -135,11 +135,7 @@ public:
             }
         } else if (read_magic == ~magic_) {
             state_ = ObjectState::kFree;
-            if (data_class->Size().has_value()) {
-                meta_ = file->Read<ObjectId>(offset);
-            } else {
-                meta_ = file->Read<mem::PageOffset>(offset);
-            }
+            meta_ = file->Read<mem::PageOffset>(offset);
         } else {
             state_ = ObjectState::kInvalid;
         }
@@ -159,7 +155,7 @@ public:
 
     [[nodiscard]] mem::PageOffset NextFree() const {
         if (state_ != ObjectState::kFree) {
-            throw error::BadArgument("Node has no jumper");
+            throw error::BadArgument("Node has no next");
         }
         return std::get<mem::PageOffset>(meta_);
     }

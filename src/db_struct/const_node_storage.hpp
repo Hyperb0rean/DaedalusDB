@@ -19,18 +19,15 @@ public:
         ObjectId id_;
         ObjectId end_;
 
+        ObjectId actual_id_;
+
         std::shared_ptr<Node> curr_;
 
-    public:
         [[nodiscard]] mem::PageOffset InPageOffset() const noexcept {
             return inner_offset_;
         }
         [[nodiscard]] mem::PageList::PageIterator Page() const noexcept {
             return current_page_;
-        }
-
-        [[nodiscard]] size_t Size() const {
-            return sizeof(mem::Magic) + sizeof(ObjectId) + node_class_->Size().value();
         }
 
         [[nodiscard]] size_t GetNodesInPage() const {
@@ -41,10 +38,24 @@ public:
             return (inner_offset_ - sizeof(mem::Page)) / Size();
         }
 
+    public:
+        [[nodiscard]] size_t Size() const {
+            return sizeof(mem::Magic) + sizeof(ObjectId) + node_class_->Size().value();
+        }
+
+        [[nodiscard]] ObjectId Id() const noexcept {
+            return id_;
+        }
+
+        [[nodiscard]] ObjectId ActualId() const noexcept {
+            return actual_id_;
+        }
+
+    private:
         NodeIterator& RegenerateId() {
             switch (curr_->State()) {
                 case ObjectState::kFree: {
-                    id_ = page_list_.GetPagesCount() * GetNodesInPage() + GetInPageIndex();
+                    id_ = (page_list_.GetPagesCount() - 1) * GetNodesInPage() + GetInPageIndex();
                     return *this;
                 }
                 case ObjectState::kValid: {
@@ -57,11 +68,6 @@ public:
             }
         }
 
-        [[nodiscard]] ObjectId Id() const noexcept {
-            return id_;
-        }
-
-    private:
         bool IsFree() {
             auto magic =
                 file_->Read<mem::Magic>(mem::GetOffset(current_page_->index_, inner_offset_));
@@ -70,18 +76,17 @@ public:
             } else if (magic == ~magic_) {
                 return true;
             } else {
-                current_page_ = page_list_.End();
-                return true;
+                return false;
                 // throw error::RuntimeError("Invalid iterator");
             }
         }
 
         void Advance() {
             do {
-                ++id_;
-                if (id_ >= end_) {
+                if (actual_id_ >= end_) {
                     return;
                 }
+                ++id_;
                 if (GetInPageIndex() + 1 <= GetNodesInPage()) {
                     inner_offset_ += Size();
                 } else {
@@ -89,11 +94,12 @@ public:
                     inner_offset_ = sizeof(mem::Page);
                 }
             } while (IsFree());
+            ++actual_id_;
         }
 
         void Retreat() {
             do {
-                if (id_ == 0) {
+                if (actual_id_ == 0) {
                     return;
                 }
                 --id_;
@@ -104,6 +110,7 @@ public:
                     inner_offset_ = Size() * (GetNodesInPage() - 1) + sizeof(mem::Page);
                 }
             } while (IsFree());
+            --actual_id_;
         }
 
         void Read() {
@@ -112,6 +119,7 @@ public:
         }
 
     public:
+        friend ConstantSizeNodeStorage;
         using iterator_category = std::bidirectional_iterator_tag;
         using value_type = Node;
         using difference_type = size_t;
@@ -128,7 +136,9 @@ public:
               inner_offset_(sizeof(mem::Page)),
               current_page_(page_list.Begin()),
               id_(0),
-              end_(end) {
+              end_(end),
+              actual_id_(0) {
+
             for (auto page_it = page_list_.Begin(); page_it != page_list.End(); ++page_it) {
                 if (id_ + GetNodesInPage() <= id) {
                     current_page_ = page_it;
@@ -142,12 +152,13 @@ public:
                 inner_offset_ += Size();
                 ++id_;
             }
+            actual_id_ = id_;
             Read();
         }
 
         NodeIterator(mem::Magic magic, std::shared_ptr<ts::Class>& node_class,
                      std::shared_ptr<mem::File>& file, mem::PageList& page_list,
-                     mem::PageList::PageIterator it, mem::PageOffset offset, ObjectId end)
+                     mem::PageList::PageIterator it, mem::PageOffset offset)
             : magic_(magic),
               node_class_(node_class),
               file_(file),
@@ -155,7 +166,8 @@ public:
               inner_offset_(offset),
               current_page_(it),
               id_(0),
-              end_(end) {
+              end_(0),
+              actual_id_(0) {
             if (current_page_ != page_list.End()) {
                 Read();
                 RegenerateId();
@@ -193,7 +205,7 @@ public:
         }
 
         bool operator==(const NodeIterator& other) const {
-            return id_ == other.id_;
+            return actual_id_ == other.actual_id_;
         }
         bool operator!=(const NodeIterator& other) const {
             return !(*this == other);
@@ -236,12 +248,11 @@ public:
 
         switch (next_free.State()) {
             case ObjectState::kFree: {
-                auto id =
-                    NodeIterator(header.ReadMagic(alloc_->GetFile()).magic_, nodes_class_,
-                                 alloc_->GetFile(), data_page_list_,
-                                 data_page_list_.IteratorTo(back.index_), back.free_offset_, count)
-                        .RegenerateId()
-                        .Id();
+                auto id = NodeIterator(header.ReadMagic(alloc_->GetFile()).magic_, nodes_class_,
+                                       alloc_->GetFile(), data_page_list_,
+                                       data_page_list_.IteratorTo(back.index_), back.free_offset_)
+                              .RegenerateId()
+                              .Id();
                 DEBUG("Rewrited id: ", id);
                 DEBUG("Found free space: ", next_free.NextFree());
                 Node(header.ReadMagic(alloc_->GetFile()).magic_, id, node)
@@ -270,8 +281,9 @@ public:
                 break;
         }
         mem::WritePage(back, alloc_->GetFile());
-        DEBUG("Written offsets free: ", back.free_offset_, ", init: ", back.initialized_offset_);
+        DEBUG("Back ", back);
         header.WriteNodeCount(alloc_->GetFile(), ++count);
+        DEBUG("Count ", GetHeader().nodes_);
     }
 
     template <typename Predicate, typename Functor>

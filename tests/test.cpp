@@ -271,6 +271,29 @@ TEST(ConstNodeStorage, RemoveNodes) {
     database.PrintNodesIf(coords, [](auto it) { return true; });
 }
 
+TEST(ConstNodeStorage, RemoveThenAddNodes) {
+    auto coords =
+        ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
+                                      ts::NewClass<ts::PrimitiveClass<double>>("lon"));
+
+    auto database =
+        db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
+    database.AddClass(coords);
+
+    for (size_t i = 0; i < 10; ++i) {
+        database.AddNode(ts::New<ts::Struct>(coords, 13., 46.));
+        database.AddNode(ts::New<ts::Struct>(coords, 60., 15.));
+    }
+
+    database.RemoveNodesIf(coords, [](auto it) { return it.Id() % 2 == 0; });
+
+    for (size_t i = 0; i < 10; ++i) {
+        database.AddNode(ts::New<ts::Struct>(coords, i * 1., -1. * i));
+    }
+
+    database.PrintNodesIf(coords, [](auto it) { return true; });
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
 

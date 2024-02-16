@@ -1,7 +1,7 @@
 #pragma once
 
 #include "class_storage.hpp"
-#include "metaobject.hpp"
+#include "node.hpp"
 
 namespace db {
 

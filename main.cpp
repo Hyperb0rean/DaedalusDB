@@ -19,6 +19,7 @@ int main() {
     database.PrintAllNodes(coordinates_class);
 
     database.RemoveNodesIf(coordinates_class, [](auto it) { return it.Id() != 0; });
+    database.AddNode(ts::New<ts::Struct>(coordinates_class, 31., 55.));
 
     database.PrintAllNodes(coordinates_class);
     database.RemoveClass(coordinates_class);

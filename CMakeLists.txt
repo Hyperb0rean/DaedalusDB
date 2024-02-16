@@ -31,7 +31,7 @@ set(SOURCES
   src/db_struct/node_storage.hpp 
   src/db_struct/const_node_storage.hpp 
   src/db_struct/var_node_storage.hpp 
-  src/db_struct/metaobject.hpp 
+  src/db_struct/node.hpp 
   src/type_system/class.hpp
   src/type_system/object.hpp
   src/mem/pagelist.hpp)

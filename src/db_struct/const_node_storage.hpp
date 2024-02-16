@@ -17,9 +17,9 @@ public:
         mem::PageOffset inner_offset_;
         mem::PageList::PageIterator current_page_;
         ObjectId id_;
-        ObjectId end_;
 
-        ObjectId actual_id_;
+        mem::Offset end_offset_;
+        mem::Offset real_offset_;
 
         std::shared_ptr<Node> curr_;
 
@@ -47,10 +47,6 @@ public:
             return id_;
         }
 
-        [[nodiscard]] ObjectId ActualId() const noexcept {
-            return actual_id_;
-        }
-
     private:
         NodeIterator& RegenerateId() {
             switch (curr_->State()) {
@@ -68,22 +64,26 @@ public:
             }
         }
 
-        bool IsFree() {
-            auto magic =
-                file_->Read<mem::Magic>(mem::GetOffset(current_page_->index_, inner_offset_));
+        void RegenerateEnd() {
+            auto back = mem::ReadPage(mem::Page(page_list_.Back()), file_);
+            end_offset_ = mem::GetOffset(back.index_, back.initialized_offset_);
+        }
+
+        ObjectState State() {
+            auto magic = file_->Read<mem::Magic>(real_offset_);
             if (magic == magic_) {
-                return false;
+                return ObjectState::kValid;
             } else if (magic == ~magic_) {
-                return true;
+                return ObjectState::kFree;
             } else {
-                return false;
+                return ObjectState::kInvalid;
                 // throw error::RuntimeError("Invalid iterator");
             }
         }
 
         void Advance() {
             do {
-                if (actual_id_ >= end_) {
+                if (real_offset_ >= end_offset_) {
                     return;
                 }
                 ++id_;
@@ -93,13 +93,17 @@ public:
                     ++current_page_;
                     inner_offset_ = sizeof(mem::Page);
                 }
-            } while (IsFree());
-            ++actual_id_;
+                real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
+
+            } while (State() == ObjectState::kFree);
+            if (State() == ObjectState::kInvalid) {
+                Advance();
+            }
         }
 
         void Retreat() {
             do {
-                if (actual_id_ == 0) {
+                if (id_ == 0) {
                     return;
                 }
                 --id_;
@@ -109,13 +113,15 @@ public:
                     --current_page_;
                     inner_offset_ = Size() * (GetNodesInPage() - 1) + sizeof(mem::Page);
                 }
-            } while (IsFree());
-            --actual_id_;
+                real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
+            } while (State() == ObjectState::kFree);
+            if (State() == ObjectState::kInvalid) {
+                Retreat();
+            }
         }
 
         void Read() {
-            curr_ = std::make_shared<Node>(magic_, node_class_, file_,
-                                           mem::GetOffset(current_page_->index_, inner_offset_));
+            curr_ = std::make_shared<Node>(magic_, node_class_, file_, real_offset_);
         }
 
     public:
@@ -127,17 +133,14 @@ public:
         using reference = Node&;
 
         NodeIterator(mem::Magic magic, std::shared_ptr<ts::Class>& node_class,
-                     std::shared_ptr<mem::File>& file, mem::PageList& page_list, ObjectId id,
-                     ObjectId end)
+                     std::shared_ptr<mem::File>& file, mem::PageList& page_list, ObjectId id)
             : magic_(magic),
               node_class_(node_class),
               file_(file),
               page_list_(page_list),
               inner_offset_(sizeof(mem::Page)),
               current_page_(page_list.Begin()),
-              id_(0),
-              end_(end),
-              actual_id_(0) {
+              id_(0) {
 
             for (auto page_it = page_list_.Begin(); page_it != page_list.End(); ++page_it) {
                 if (id_ + GetNodesInPage() <= id) {
@@ -152,7 +155,8 @@ public:
                 inner_offset_ += Size();
                 ++id_;
             }
-            actual_id_ = id_;
+            real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
+            RegenerateEnd();
             Read();
         }
 
@@ -165,14 +169,12 @@ public:
               page_list_(page_list),
               inner_offset_(offset),
               current_page_(it),
-              id_(0),
-              end_(0),
-              actual_id_(0) {
-            if (current_page_ != page_list.End()) {
+              id_(0) {
+            RegenerateEnd();
+            real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
+            if (real_offset_ != end_offset_) {
                 Read();
                 RegenerateId();
-            } else {
-                id_ = page_list_.GetPagesCount() * GetNodesInPage() + (inner_offset_ / Size());
             }
         }
         NodeIterator& operator++() {
@@ -205,7 +207,7 @@ public:
         }
 
         bool operator==(const NodeIterator& other) const {
-            return actual_id_ == other.actual_id_;
+            return real_offset_ == other.real_offset_;
         }
         bool operator!=(const NodeIterator& other) const {
             return !(*this == other);
@@ -222,22 +224,25 @@ public:
     }
 
     NodeIterator Begin() {
-        return NodeIterator(GetHeader().magic_, nodes_class_, alloc_->GetFile(), data_page_list_, 0,
-                            GetHeader().nodes_);
+        return NodeIterator(GetHeader().magic_, nodes_class_, alloc_->GetFile(), data_page_list_,
+                            0);
     }
 
     NodeIterator End() {
+        auto back = mem::ReadPage(mem::Page(data_page_list_.Back()), alloc_->GetFile());
+        DEBUG("Back in End ", back);
         return NodeIterator(GetHeader().magic_, nodes_class_, alloc_->GetFile(), data_page_list_,
-                            GetHeader().nodes_, GetHeader().nodes_);
+                            data_page_list_.IteratorTo(back.index_), back.initialized_offset_);
     }
 
     template <ts::ObjectLike O>
     requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(std::shared_ptr<O>& node) {
 
-        if (node->Size() + sizeof(mem::Magic) + sizeof(ObjectId) + sizeof(mem::Page) >
+        if (node->Size() + sizeof(mem::Magic) + sizeof(ObjectId) + sizeof(mem::Page) >=
             mem::kPageSize) {
             throw error::NotImplemented("Too big Object");
         }
+
         INFO("Addding node: ", node->ToString());
         auto header = GetHeader();
         auto back = GetBack();
@@ -251,13 +256,13 @@ public:
                 auto id = NodeIterator(header.ReadMagic(alloc_->GetFile()).magic_, nodes_class_,
                                        alloc_->GetFile(), data_page_list_,
                                        data_page_list_.IteratorTo(back.index_), back.free_offset_)
-                              .RegenerateId()
                               .Id();
                 DEBUG("Rewrited id: ", id);
                 DEBUG("Found free space: ", next_free.NextFree());
-                Node(header.ReadMagic(alloc_->GetFile()).magic_, id, node)
-                    .Write(alloc_->GetFile(), mem::GetOffset(back.index_, back.free_offset_));
+                auto metaobject = Node(header.ReadMagic(alloc_->GetFile()).magic_, id, node);
+                metaobject.Write(alloc_->GetFile(), mem::GetOffset(back.index_, back.free_offset_));
                 back.free_offset_ = next_free.NextFree();
+                back.actual_size_ += metaobject.Size();
                 INFO("Successfully added node with id: ", id);
             } break;
             case ObjectState::kInvalid: {
@@ -273,6 +278,7 @@ public:
                 metaobject.Write(alloc_->GetFile(), mem::GetOffset(back.index_, back.free_offset_));
                 back.free_offset_ += metaobject.Size();
                 back.initialized_offset_ += metaobject.Size();
+                back.actual_size_ += metaobject.Size();
                 INFO("Successfully added node with id: ", metaobject.Id());
             } break;
             case ObjectState::kValid:
@@ -293,6 +299,11 @@ public:
     }
     void VisitNodes(Predicate predicate, Functor functor) {
         DEBUG("Visiting nodes..");
+        DEBUG("Pages count ", data_page_list_.GetPagesCount());
+        if (data_page_list_.IsEmpty()) {
+            DEBUG("Empty list");
+            return;
+        }
         DEBUG("Begin page: ", *data_page_list_.Begin());
         auto end = End();
         for (auto node_it = Begin(); node_it != end; ++node_it) {
@@ -307,13 +318,21 @@ public:
     requires std::is_invocable_r_v<bool, Predicate, NodeIterator>
     void RemoveNodesIf(Predicate predicate) {
         DEBUG("Removing nodes..");
+        DEBUG("Pages count ", data_page_list_.GetPagesCount());
+        if (data_page_list_.IsEmpty()) {
+            DEBUG("Empty list");
+            return;
+        }
         auto end = End();
         size_t count = 0;
+        std::vector<mem::PageIndex> free_pages;
         for (auto node_it = Begin(); node_it != end; ++node_it) {
             if (predicate(node_it)) {
                 DEBUG("Removing node ", node_it.Id());
                 auto page = mem::ReadPage(*node_it.Page(), alloc_->GetFile());
                 auto node = *node_it;
+
+                page.actual_size_ -= node.Size();
                 node.Free(page.free_offset_);
                 node.Write(alloc_->GetFile(),
                            mem::GetOffset(node_it.Page()->index_, node_it.InPageOffset()));
@@ -321,8 +340,15 @@ public:
                 page.free_offset_ = node_it.InPageOffset();
                 DEBUG("Page: ", page);
                 mem::WritePage(page, alloc_->GetFile());
+                if (page.actual_size_ == 0) {
+                    INFO("Deallocated page", page);
+                    free_pages.push_back(page.index_);
+                }
                 ++count;
             }
+        }
+        for (auto id : free_pages) {
+            FreePage(id);
         }
         auto header = GetHeader();
         header.WriteNodeCount(alloc_->GetFile(), header.nodes_ - count);

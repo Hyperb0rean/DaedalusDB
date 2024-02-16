@@ -15,6 +15,7 @@ class PageList {
     size_t pages_count_;
 
     void DecrementCount() {
+        DEBUG("Pages_count ", pages_count_);
         file_->Write<size_t>(--pages_count_, GetCountFromSentinel(sentinel_offset_));
         DEBUG(name_, " Decremented page count, current: ", pages_count_);
     }
@@ -77,6 +78,10 @@ public:
         }
         bool operator!=(const PageIterator& other) const {
             return !(*this == other);
+        }
+
+        [[nodiscard]] mem::PageIndex Index() const noexcept {
+            return curr_.index_;
         }
 
         [[nodiscard]] Page ReadPage(PageIndex index) {

@@ -78,6 +78,9 @@ constexpr inline Offset GetSentinelIndex(Offset sentinel) {
 }
 
 constexpr inline Offset GetOffset(PageIndex index, PageOffset virt_offset) {
+    if (virt_offset >= mem::kPageSize) {
+        throw error::BadArgument("Invalid virtual offset");
+    }
     return kPagetableOffset + index * mem::kPageSize + virt_offset;
 }
 
@@ -143,6 +146,7 @@ public:
         this->type_ = PageType::kClassHeader;
         this->initialized_offset_ = sizeof(ClassHeader) + size;
         this->free_offset_ = sizeof(ClassHeader);
+        this->actual_size_ = size;
         node_list_sentinel_ = Page(kSentinelIndex);
         node_list_sentinel_.type_ = PageType::kSentinel;
         node_pages_count_ = 0;

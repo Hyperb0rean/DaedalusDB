@@ -33,6 +33,7 @@ public:
     PageIndex index_;
     PageOffset initialized_offset_;
     PageOffset free_offset_;
+    size_t actual_size_;
     PageIndex previous_page_index_;
     PageIndex next_page_index_;
 
@@ -41,6 +42,7 @@ public:
           index_(index),
           initialized_offset_(sizeof(Page)),
           free_offset_(sizeof(Page)),
+          actual_size_(0),
           previous_page_index_(index_),
           next_page_index_(index_) {
     }
@@ -50,7 +52,8 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const Page& page) {
         return os << " [ " << page.index_ << " ] type: " << PageTypeToString(page.type_)
                   << ", init: " << page.initialized_offset_ << ", free: " << page.free_offset_
-                  << ", prev: " << page.previous_page_index_ << ", next: " << page.next_page_index_;
+                  << ", size: " << page.actual_size_ << ", prev: " << page.previous_page_index_
+                  << ", next: " << page.next_page_index_;
     }
 };
 

@@ -20,6 +20,11 @@ protected:
         return WritePage(page, alloc_->GetFile());
     }
 
+    void FreePage(mem::PageIndex index) {
+        data_page_list_.Unlink(index);
+        alloc_->FreePage(index);
+    }
+
     mem::Page GetBack() {
         if (data_page_list_.IsEmpty()) {
             return AllocatePage();

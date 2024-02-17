@@ -7,7 +7,7 @@ namespace db {
 
 enum class OpenMode { kDefault, kRead, kWrite };
 using ValNodeIterator = db::ValNodeStorage::NodeIterator;
-// using VarNodeIterator = db::VarNodeStorage::NodeIterator;
+using VarNodeIterator = db::VarNodeStorage::NodeIterator;
 
 class Database {
 
@@ -90,11 +90,18 @@ public:
     template <ts::ClassLike C, typename Predicate>
     void RemoveNodesIf(std::shared_ptr<C> node_class, Predicate predicate) {
         if (node_class->Size().has_value()) {
-            static_assert(std::is_invocable_r_v<bool, Predicate, ValNodeIterator>);
-            ValNodeStorage(node_class, class_storage_, alloc_, LOGGER).RemoveNodesIf(predicate);
+            if constexpr (std::is_invocable_r_v<bool, Predicate, ValNodeIterator>) {
+                ValNodeStorage(node_class, class_storage_, alloc_, LOGGER).RemoveNodesIf(predicate);
+            } else {
+                ERROR("Bad predicate");
+            }
+
         } else {
-            // VariableSizeNodeStorage(node->GetClass(), class_storage_, alloc_,
-            // LOGGER).AddNode(node);
+            if constexpr (std::is_invocable_r_v<bool, Predicate, VarNodeIterator>) {
+                VarNodeStorage(node_class, class_storage_, alloc_, LOGGER).RemoveNodesIf(predicate);
+            } else {
+                ERROR("Bad predicate");
+            }
         }
     }
 
@@ -105,14 +112,20 @@ public:
         auto print = [&os](Node node) { os << node.ToString() << std::endl; };
 
         if (node_class->Size().has_value()) {
-            static_assert(std::is_invocable_r_v<bool, Predicate, ValNodeIterator>);
-            ValNodeStorage(node_class, class_storage_, alloc_, LOGGER)
-                .VisitNodes<Predicate, decltype(print)>(predicate, print);
+            if constexpr (std::is_invocable_r_v<bool, Predicate, ValNodeIterator>) {
+                ValNodeStorage(node_class, class_storage_, alloc_, LOGGER)
+                    .VisitNodes(predicate, print);
+            } else {
+                ERROR("Bad predicate");
+            }
+
         } else {
-            // static_assert(std::is_invocable_r_v<bool, Predicate,
-            //                                              VarNodeIterator>);
-            // VariableSizeNodeStorage(node_class, class_storage_, alloc_, LOGGER)
-            //     .VisitNodes(predicate, print);
+            if constexpr (std::is_invocable_r_v<bool, Predicate, VarNodeIterator>) {
+                VarNodeStorage(node_class, class_storage_, alloc_, LOGGER)
+                    .VisitNodes(predicate, print);
+            } else {
+                ERROR("Bad predicate");
+            }
         }
     }
 

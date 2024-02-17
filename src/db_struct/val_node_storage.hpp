@@ -170,8 +170,8 @@ public:
               inner_offset_(offset),
               current_page_(it),
               id_(0) {
-            RegenerateEnd();
             real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
+            RegenerateEnd();
             if (real_offset_ != end_offset_) {
                 Read();
                 RegenerateId();
@@ -218,8 +218,7 @@ public:
     ValNodeStorage(std::shared_ptr<C> nodes_class, std::shared_ptr<ClassStorage>& class_storage,
                    std::shared_ptr<mem::PageAllocator>& alloc, DEFAULT_LOGGER(logger))
         : NodeStorage(nodes_class, class_storage, alloc, logger) {
-        DEBUG("Constant Node storage initialized with class: ",
-              ts::ClassObject(nodes_class).ToString());
+        DEBUG("Val Node storage initialized with class: ", ts::ClassObject(nodes_class).ToString());
     }
 
     NodeIterator Begin() {

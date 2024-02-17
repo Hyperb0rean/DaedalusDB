@@ -29,8 +29,15 @@ protected:
         if (data_page_list_.IsEmpty()) {
             return AllocatePage();
         } else {
-            auto page = ReadPage(mem::Page(data_page_list_.Back()), alloc_->GetFile());
-            return page;
+            return ReadPage(mem::Page(data_page_list_.Back()), alloc_->GetFile());
+        }
+    }
+
+    mem::Page GetFront() {
+        if (data_page_list_.IsEmpty()) {
+            throw error::RuntimeError("No front");
+        } else {
+            return ReadPage(mem::Page(data_page_list_.Front()), alloc_->GetFile());
         }
     }
 

@@ -37,7 +37,7 @@ public:
 
         void RegenerateEnd() {
             auto back = mem::ReadPage(mem::Page(page_list_.Back()), file_);
-            end_offset_ = mem::GetOffset(back.index_, back.initialized_offset_);
+            end_offset_ = mem::GetOffset(back.index_, back.free_offset_);
         }
 
         ObjectState State() {
@@ -52,28 +52,34 @@ public:
             }
         }
 
-        void Next() {
-            if (real_offset_ >= end_offset_) {
-                return;
-            }
-            auto offset = file_->Read<mem::PageOffset>(real_offset_ + sizeof(mem::Magic));
-            if (inner_offset_ + offset >= mem::kPageSize) {
-                ++current_page_;
-                inner_offset_ = current_page_.ReadPage().initialized_offset_;
-            } else {
-                inner_offset_ += offset;
-                real_offset_ += offset;
-            }
+        void Read() {
+            curr_ = std::make_shared<Node>(magic_, node_class_, file_, real_offset_);
         }
 
         void Advance() {
-            do {
-                Next();
-            } while (State() != ObjectState::kValid);
-        }
-
-        void Read() {
-            curr_ = std::make_shared<Node>(magic_, node_class_, file_, real_offset_);
+            if (State() == ObjectState::kValid) {
+                inner_offset_ += curr_->Size();
+                real_offset_ += curr_->Size();
+            }
+            while (State() != ObjectState::kValid) {
+                if (real_offset_ >= end_offset_) {
+                    return;
+                }
+                auto offset = file_->Read<mem::PageOffset>(real_offset_ + sizeof(mem::Magic));
+                // offset == 0
+                if (State() == ObjectState::kInvalid) {
+                    ++current_page_;
+                    inner_offset_ = current_page_->initialized_offset_;
+                    real_offset_ =
+                        mem::GetOffset(current_page_->index_, current_page_->initialized_offset_);
+                } else {
+                    inner_offset_ = offset;
+                    real_offset_ = mem::GetOffset(current_page_->index_, inner_offset_);
+                }
+            }
+            if (State() == ObjectState::kValid) {
+                Read();
+            }
         }
 
     public:
@@ -86,23 +92,26 @@ public:
 
         NodeIterator(mem::Magic magic, std::shared_ptr<ts::Class>& node_class,
                      std::shared_ptr<mem::File>& file, mem::PageList& page_list,
-                     mem::PageOffset inner_offset)
+                     mem::PageIndex index, mem::Offset inner_offset)
             : magic_(magic),
               node_class_(node_class),
               file_(file),
               page_list_(page_list),
               inner_offset_(inner_offset),
-              current_page_(page_list.Begin()) {
+              current_page_(page_list.IteratorTo(index)) {
 
-            if (page_list_.IsEmpty()) {
-                real_offset_ = SIZE_MAX;
+            if (!page_list_.IsEmpty()) {
+                real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
+                RegenerateEnd();
+                Read();
+                while (State() == ObjectState::kFree) {
+                    Advance();
+                }
+
+            } else {
                 current_page_ = page_list_.End();
-                return;
+                real_offset_ = 0;
             }
-
-            real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
-            RegenerateEnd();
-            Read();
         }
 
         NodeIterator& operator++() {
@@ -116,11 +125,9 @@ public:
         }
 
         reference operator*() {
-            Read();
             return *curr_;
         }
         pointer operator->() {
-            Read();
             return curr_;
         }
 
@@ -141,17 +148,28 @@ public:
 
     NodeIterator Begin() {
         return NodeIterator(GetHeader().magic_, nodes_class_, alloc_->GetFile(), data_page_list_,
-                            GetFront().initialized_offset_);
+                            GetFront().index_, GetFront().initialized_offset_);
     }
 
     NodeIterator End() {
-        if (data_page_list_.IsEmpty()) {
-            return Begin();
-        }
         return NodeIterator(GetHeader().magic_, nodes_class_, alloc_->GetFile(), data_page_list_,
-                            GetBack().free_offset_);
+                            GetBack().index_, GetBack().free_offset_);
     }
 
+private:
+    mem::Offset GetNewNodeOffset(size_t node_size) {
+        auto back = GetBack();
+        if (back.free_offset_ + node_size >= mem::kPageSize) {
+            DEBUG("Allocation");
+            // Maybe should think about the case | valid | new | -> | free | new |
+
+            AllocatePage();
+            back = GetBack();
+        }
+        return mem::GetOffset(back.index_, back.free_offset_);
+    }
+
+public:
     template <ts::ObjectLike O>
     requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(std::shared_ptr<O>& node) {
 
@@ -161,15 +179,22 @@ public:
         }
 
         INFO("Addding node: ", node->ToString());
-        auto header = GetHeader();
+        auto count = GetHeader().ReadNodeCount(alloc_->GetFile()).nodes_;
+        // TODO: fix id's uniqueness
+        auto metaobject = Node(GetHeader().ReadMagic(alloc_->GetFile()).magic_, count, node);
+        auto node_offset = GetNewNodeOffset(metaobject.Size());
         auto back = GetBack();
-        auto count = header.ReadNodeCount(alloc_->GetFile()).nodes_;
+        DEBUG("Initializing new memory on id: ", count, ", offset: ", node_offset);
 
-        // TODO
+        metaobject.Write(alloc_->GetFile(), node_offset);
+        back.free_offset_ += metaobject.Size();
+        back.actual_size_ += metaobject.Size();
+
+        INFO("Successfully added node with id: ", count);
 
         mem::WritePage(back, alloc_->GetFile());
         DEBUG("Back ", back);
-        header.WriteNodeCount(alloc_->GetFile(), ++count);
+        GetHeader().WriteNodeCount(alloc_->GetFile(), ++count);
         DEBUG("Count ", GetHeader().nodes_);
     }
 
@@ -180,12 +205,9 @@ public:
     }
     void VisitNodes(Predicate predicate, Functor functor) {
         DEBUG("Visiting nodes..");
-        DEBUG("Pages count ", data_page_list_.GetPagesCount());
-        if (data_page_list_.IsEmpty()) {
-            DEBUG("Empty list");
-            return;
-        }
         DEBUG("Begin page: ", *data_page_list_.Begin());
+        DEBUG("End page: ", GetBack());
+
         auto end = End();
         for (auto node_it = Begin(); node_it != end; ++node_it) {
             if (predicate(node_it)) {
@@ -199,21 +221,25 @@ public:
     requires std::is_invocable_r_v<bool, Predicate, NodeIterator>
     void RemoveNodesIf(Predicate predicate) {
         DEBUG("Removing nodes..");
-        DEBUG("Pages count ", data_page_list_.GetPagesCount());
-        if (data_page_list_.IsEmpty()) {
-            DEBUG("Empty list");
-            return;
-        }
         auto end = End();
         size_t count = 0;
         std::vector<mem::PageIndex> free_pages;
-        for (auto node_it = Begin(); node_it != end; ++node_it) {
-            if (predicate(node_it)) {
-                DEBUG("Removing node ", node_it.Id());
-                DEBUG("Node: ", node_it->ToString());
-                auto page = mem::ReadPage(*node_it.Page(), alloc_->GetFile());
+        for (auto node_it = Begin(); node_it != end;) {
+            auto current_it = node_it++;
+            if (predicate(current_it)) {
+                DEBUG("Node: ", current_it->ToString());
+                auto page = mem::ReadPage(*current_it.Page(), alloc_->GetFile());
+                auto node = *current_it;
 
-                // TODO
+                page.actual_size_ -= node.Size();
+
+                // Not working as intended this should be a pointer from which we will iterate in
+                // page for some optimizations
+                page.initialized_offset_ =
+                    std::min(current_it.InPageOffset(), page.initialized_offset_);
+                node.Free(current_it.InPageOffset() + node.Size());
+                node.Write(alloc_->GetFile(),
+                           mem::GetOffset(current_it.Page()->index_, current_it.InPageOffset()));
 
                 DEBUG("Page: ", page);
                 mem::WritePage(page, alloc_->GetFile());

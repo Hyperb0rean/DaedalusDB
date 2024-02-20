@@ -135,12 +135,6 @@ public:
               current_page_(page_list.Begin()),
               id_(0) {
 
-            if (page_list_.IsEmpty()) {
-                real_offset_ = SIZE_MAX;
-                current_page_ = page_list_.End();
-                return;
-            }
-
             for (auto page_it = page_list_.Begin(); page_it != page_list.End(); ++page_it) {
                 if (id_ + GetNodesInPage() <= id) {
                     current_page_ = page_it;
@@ -149,14 +143,18 @@ public:
                     break;
                 }
             }
-
             while (id_ < id) {
                 inner_offset_ += Size();
                 ++id_;
             }
-            real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
-            RegenerateEnd();
-            Read();
+            if (!page_list_.IsEmpty()) {
+                real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
+                RegenerateEnd();
+                Read();
+            } else {
+                current_page_ = page_list_.End();
+                real_offset_ = 0;
+            }
         }
 
         NodeIterator(mem::Magic magic, std::shared_ptr<ts::Class>& node_class,
@@ -169,18 +167,16 @@ public:
               inner_offset_(offset),
               current_page_(it),
               id_(0) {
-
-            if (page_list_.IsEmpty()) {
-                real_offset_ = SIZE_MAX;
+            if (!page_list_.IsEmpty()) {
+                real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
+                RegenerateEnd();
+                if (real_offset_ != end_offset_) {
+                    Read();
+                    RegenerateId();
+                }
+            } else {
                 current_page_ = page_list_.End();
-                return;
-            }
-
-            real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
-            RegenerateEnd();
-            if (real_offset_ != end_offset_) {
-                Read();
-                RegenerateId();
+                real_offset_ = 0;
             }
         }
         NodeIterator& operator++() {
@@ -233,19 +229,15 @@ public:
     }
 
     NodeIterator End() {
-        if (data_page_list_.IsEmpty()) {
-            return Begin();
-        }
-        auto back = mem::ReadPage(mem::Page(data_page_list_.Back()), alloc_->GetFile());
-        DEBUG("Back in End ", back);
         return NodeIterator(GetHeader().magic_, nodes_class_, alloc_->GetFile(), data_page_list_,
-                            data_page_list_.IteratorTo(back.index_), back.initialized_offset_);
+                            data_page_list_.IteratorTo(GetBack().index_),
+                            GetBack().initialized_offset_);
     }
 
 private:
     template <ts::ObjectLike O>
-    void WrtiteIntoFree(mem::Page& back, mem::ClassHeader& header, Node& next_free,
-                        std::shared_ptr<O>& node) {
+    ObjectId WrtiteIntoFree(mem::Page& back, mem::ClassHeader& header, Node& next_free,
+                            std::shared_ptr<O>& node) {
         auto id = NodeIterator(header.ReadMagic(alloc_->GetFile()).magic_, nodes_class_,
                                alloc_->GetFile(), data_page_list_,
                                data_page_list_.IteratorTo(back.index_), back.free_offset_)
@@ -256,14 +248,14 @@ private:
         metaobject.Write(alloc_->GetFile(), mem::GetOffset(back.index_, back.free_offset_));
         back.free_offset_ = next_free.NextFree();
         back.actual_size_ += metaobject.Size();
-        INFO("Successfully added node with id: ", id);
+        return metaobject.Id();
     }
 
     template <ts::ObjectLike O>
-    void WriteIntoInvalid(mem::Page& back, mem::ClassHeader& header, std::shared_ptr<O>& node) {
+    ObjectId WriteIntoInvalid(mem::Page& back, mem::ClassHeader& header, std::shared_ptr<O>& node) {
         auto count = header.ReadNodeCount(alloc_->GetFile()).nodes_;
         auto metaobject = Node(header.ReadMagic(alloc_->GetFile()).magic_, count, node);
-        if (back.initialized_offset_ + metaobject.Size() > mem::kPageSize) {
+        if (back.initialized_offset_ + metaobject.Size() >= mem::kPageSize) {
             DEBUG("Allocation");
             AllocatePage();
             back = GetBack();
@@ -275,7 +267,7 @@ private:
         back.free_offset_ += metaobject.Size();
         back.initialized_offset_ += metaobject.Size();
         back.actual_size_ += metaobject.Size();
-        INFO("Successfully added node with id: ", metaobject.Id());
+        return metaobject.Id();
     }
 
 public:
@@ -294,18 +286,21 @@ public:
                               alloc_->GetFile(), mem::GetOffset(back.index_, back.free_offset_));
         DEBUG("Free: ", next_free.ToString());
 
+        ObjectId id;
         switch (next_free.State()) {
             case ObjectState::kFree: {
-                WrtiteIntoFree(back, header, next_free, node);
+                id = WrtiteIntoFree(back, header, next_free, node);
             } break;
             case ObjectState::kInvalid: {
-                WriteIntoInvalid(back, header, node);
+                id = WriteIntoInvalid(back, header, node);
             } break;
             case ObjectState::kValid:
                 throw error::RuntimeError("Already occupied memory");
             default:
                 break;
         }
+        INFO("Successfully added node with id: ", id);
+
         mem::WritePage(back, alloc_->GetFile());
         DEBUG("Back ", back);
         header.WriteNodeCount(alloc_->GetFile(), ++header.ReadNodeCount(alloc_->GetFile()).nodes_);
@@ -319,6 +314,7 @@ public:
     }
     void VisitNodes(Predicate predicate, Functor functor) {
         DEBUG("Visiting nodes..");
+
         DEBUG("Begin page: ", *data_page_list_.Begin());
         auto end = End();
         for (auto node_it = Begin(); node_it != end; ++node_it) {
@@ -333,6 +329,7 @@ public:
     requires std::is_invocable_r_v<bool, Predicate, NodeIterator>
     void RemoveNodesIf(Predicate predicate) {
         DEBUG("Removing nodes..");
+
         auto end = End();
         size_t count = 0;
         std::vector<mem::PageIndex> free_pages;

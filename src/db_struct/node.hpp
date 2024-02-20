@@ -27,6 +27,7 @@ using ObjectId = uint64_t;
 class Node : public ts::Object {
 private:
     mem::Magic magic_;
+    // Stores for valid objects their ids and for free  next free inpage offset
     std::variant<mem::PageOffset, ObjectId> meta_;
     std::shared_ptr<ts::Object> data_;
     ObjectState state_;
@@ -142,7 +143,7 @@ public:
         }
     }
 
-    void Free(std::variant<mem::PageOffset, ObjectId> meta) {
+    void Free(mem::PageOffset meta) {
         state_ = ObjectState::kFree;
         meta_ = meta;
     }

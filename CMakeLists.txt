@@ -13,7 +13,6 @@ set(CMAKE_CXX_FLAGS_ASAN "-g -fsanitize=address -fsanitize=pointer-compare -fsan
 set(CMAKE_CXX_STANDARD 23)
 
          
-enable_testing()
 add_subdirectory(tests)
 add_subdirectory(googletest)
 

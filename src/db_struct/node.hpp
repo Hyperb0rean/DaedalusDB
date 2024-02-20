@@ -21,7 +21,8 @@ enum class ObjectState { kFree, kValid, kInvalid };
     }
 }
 
-using ObjectId = size_t;
+// Should be twice size of mem::PageOffset;
+using ObjectId = uint64_t;
 
 class Node : public ts::Object {
 private:

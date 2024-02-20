@@ -24,8 +24,7 @@ public:
 
     public:
         [[nodiscard]] ObjectId Id() {
-            // TODO
-            return 0;
+            return file_->Read<ObjectId>(real_offset_ + sizeof(mem::Magic));
         }
 
     private:
@@ -53,12 +52,24 @@ public:
             }
         }
 
-        void Advance() {
-            // TODO
+        void Next() {
+            if (real_offset_ >= end_offset_) {
+                return;
+            }
+            auto offset = file_->Read<mem::PageOffset>(real_offset_ + sizeof(mem::Magic));
+            if (inner_offset_ + offset >= mem::kPageSize) {
+                ++current_page_;
+                inner_offset_ = current_page_.ReadPage().initialized_offset_;
+            } else {
+                inner_offset_ += offset;
+                real_offset_ += offset;
+            }
         }
 
-        void Retreat() {
-            // TODO
+        void Advance() {
+            do {
+                Next();
+            } while (State() != ObjectState::kValid);
         }
 
         void Read() {
@@ -67,9 +78,9 @@ public:
 
     public:
         friend VarNodeStorage;
-        using iterator_category = std::bidirectional_iterator_tag;
+        using iterator_category = std::forward_iterator_tag;
         using value_type = Node;
-        using difference_type = size_t;
+        using difference_type = ObjectId;
         using pointer = std::shared_ptr<Node>;
         using reference = Node&;
 
@@ -83,7 +94,11 @@ public:
               inner_offset_(inner_offset),
               current_page_(page_list.Begin()) {
 
-            // TODO
+            if (page_list_.IsEmpty()) {
+                real_offset_ = SIZE_MAX;
+                current_page_ = page_list_.End();
+                return;
+            }
 
             real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
             RegenerateEnd();
@@ -97,16 +112,6 @@ public:
         NodeIterator operator++(int) {
             auto temp = *this;
             Advance();
-            return temp;
-        }
-
-        NodeIterator& operator--() {
-            Retreat();
-            return *this;
-        }
-        NodeIterator operator--(int) {
-            auto temp = *this;
-            Retreat();
             return temp;
         }
 
@@ -140,6 +145,9 @@ public:
     }
 
     NodeIterator End() {
+        if (data_page_list_.IsEmpty()) {
+            return Begin();
+        }
         return NodeIterator(GetHeader().magic_, nodes_class_, alloc_->GetFile(), data_page_list_,
                             GetBack().free_offset_);
     }

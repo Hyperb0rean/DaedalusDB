@@ -19,7 +19,6 @@ public:
         ObjectId id_;
 
         mem::Offset end_offset_;
-        mem::Offset real_offset_;
 
         std::shared_ptr<Node> curr_;
 
@@ -46,6 +45,9 @@ public:
         [[nodiscard]] ObjectId Id() const noexcept {
             return id_;
         }
+        [[nodiscard]] mem::Offset GetRealOffset() {
+            return mem::GetOffset(current_page_->index_, inner_offset_);
+        }
 
     private:
         NodeIterator& RegenerateId() {
@@ -70,7 +72,7 @@ public:
         }
 
         ObjectState State() {
-            auto magic = file_->Read<mem::Magic>(real_offset_);
+            auto magic = file_->Read<mem::Magic>(GetRealOffset());
             if (magic == magic_) {
                 return ObjectState::kValid;
             } else if (magic == ~magic_) {
@@ -83,7 +85,7 @@ public:
 
         void Advance() {
             do {
-                if (real_offset_ >= end_offset_) {
+                if (GetRealOffset() >= end_offset_) {
                     return;
                 }
                 ++id_;
@@ -93,7 +95,6 @@ public:
                     ++current_page_;
                     inner_offset_ = sizeof(mem::Page);
                 }
-                real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
             } while (State() != ObjectState::kValid);
         }
 
@@ -109,12 +110,11 @@ public:
                     --current_page_;
                     inner_offset_ = Size() * (GetNodesInPage() - 1) + sizeof(mem::Page);
                 }
-                real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
             } while (State() != ObjectState::kValid);
         }
 
         void Read() {
-            curr_ = std::make_shared<Node>(magic_, node_class_, file_, real_offset_);
+            curr_ = std::make_shared<Node>(magic_, node_class_, file_, GetRealOffset());
         }
 
     public:
@@ -148,12 +148,10 @@ public:
                 ++id_;
             }
             if (!page_list_.IsEmpty()) {
-                real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
                 RegenerateEnd();
                 Read();
             } else {
                 current_page_ = page_list_.End();
-                real_offset_ = 0;
             }
         }
 
@@ -168,15 +166,13 @@ public:
               current_page_(it),
               id_(0) {
             if (!page_list_.IsEmpty()) {
-                real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
                 RegenerateEnd();
-                if (real_offset_ != end_offset_) {
+                if (GetRealOffset() != end_offset_) {
                     Read();
                     RegenerateId();
                 }
             } else {
                 current_page_ = page_list_.End();
-                real_offset_ = 0;
             }
         }
         NodeIterator& operator++() {
@@ -209,7 +205,11 @@ public:
         }
 
         bool operator==(const NodeIterator& other) const {
-            return real_offset_ == other.real_offset_;
+            if (current_page_ == page_list_.End() && current_page_ == other.current_page_) {
+                return true;
+            } else {
+                return current_page_ == other.current_page_ && inner_offset_ == other.inner_offset_;
+            }
         }
         bool operator!=(const NodeIterator& other) const {
             return !(*this == other);

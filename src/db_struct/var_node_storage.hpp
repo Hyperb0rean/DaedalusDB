@@ -18,13 +18,15 @@ public:
         mem::PageList::PageIterator current_page_;
 
         mem::Offset end_offset_;
-        mem::Offset real_offset_;
 
         std::shared_ptr<Node> curr_;
 
     public:
         [[nodiscard]] ObjectId Id() {
-            return file_->Read<ObjectId>(real_offset_ + sizeof(mem::Magic));
+            return file_->Read<ObjectId>(GetRealOffset() + sizeof(mem::Magic));
+        }
+        [[nodiscard]] mem::Offset GetRealOffset() {
+            return mem::GetOffset(current_page_->index_, inner_offset_);
         }
 
     private:
@@ -41,7 +43,7 @@ public:
         }
 
         ObjectState State() {
-            auto magic = file_->Read<mem::Magic>(real_offset_);
+            auto magic = file_->Read<mem::Magic>(GetRealOffset());
             if (magic == magic_) {
                 return ObjectState::kValid;
             } else if (magic == ~magic_) {
@@ -53,28 +55,24 @@ public:
         }
 
         void Read() {
-            curr_ = std::make_shared<Node>(magic_, node_class_, file_, real_offset_);
+            curr_ = std::make_shared<Node>(magic_, node_class_, file_, GetRealOffset());
         }
 
         void Advance() {
             if (State() == ObjectState::kValid) {
                 inner_offset_ += curr_->Size();
-                real_offset_ += curr_->Size();
             }
             while (State() != ObjectState::kValid) {
-                if (real_offset_ >= end_offset_) {
+                if (GetRealOffset() >= end_offset_) {
                     return;
                 }
-                auto offset = file_->Read<mem::PageOffset>(real_offset_ + sizeof(mem::Magic));
+                auto offset = file_->Read<mem::PageOffset>(GetRealOffset() + sizeof(mem::Magic));
                 // offset == 0
                 if (State() == ObjectState::kInvalid) {
                     ++current_page_;
                     inner_offset_ = current_page_->initialized_offset_;
-                    real_offset_ =
-                        mem::GetOffset(current_page_->index_, current_page_->initialized_offset_);
                 } else {
                     inner_offset_ = offset;
-                    real_offset_ = mem::GetOffset(current_page_->index_, inner_offset_);
                 }
             }
             if (State() == ObjectState::kValid) {
@@ -101,7 +99,6 @@ public:
               current_page_(page_list.IteratorTo(index)) {
 
             if (!page_list_.IsEmpty()) {
-                real_offset_ = mem::GetOffset(current_page_.Index(), inner_offset_);
                 RegenerateEnd();
                 Read();
                 while (State() == ObjectState::kFree) {
@@ -110,7 +107,6 @@ public:
 
             } else {
                 current_page_ = page_list_.End();
-                real_offset_ = 0;
             }
         }
 
@@ -132,7 +128,11 @@ public:
         }
 
         bool operator==(const NodeIterator& other) const {
-            return real_offset_ == other.real_offset_;
+            if (current_page_ == page_list_.End() && current_page_ == other.current_page_) {
+                return true;
+            } else {
+                return current_page_ == other.current_page_ && inner_offset_ == other.inner_offset_;
+            }
         }
         bool operator!=(const NodeIterator& other) const {
             return !(*this == other);
@@ -222,7 +222,10 @@ public:
     void RemoveNodesIf(Predicate predicate) {
         DEBUG("Removing nodes..");
         auto end = End();
-        size_t count = 0;
+
+        // Actually count for vals means id but not actually node storage size, probably should
+        // change for separate fields
+        // size_t count = 0;
         std::vector<mem::PageIndex> free_pages;
         for (auto node_it = Begin(); node_it != end;) {
             auto current_it = node_it++;
@@ -247,14 +250,14 @@ public:
                     INFO("Deallocated page", page);
                     free_pages.push_back(page.index_);
                 }
-                ++count;
+                // ++count;
             }
         }
         for (auto id : free_pages) {
             FreePage(id);
         }
-        auto header = GetHeader();
-        header.WriteNodeCount(alloc_->GetFile(), header.nodes_ - count);
+        // auto header = GetHeader();
+        // header.WriteNodeCount(alloc_->GetFile(), header.nodes_ - count);
     }
 };
 }  // namespace db

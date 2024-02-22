@@ -29,20 +29,21 @@ private:
     mem::Magic magic_;
     // Stores for valid objects their ids and for free  next free inpage offset
     std::variant<mem::PageOffset, ObjectId> meta_;
-    std::shared_ptr<ts::Object> data_;
+    ts::Object::Ptr data_;
     ObjectState state_;
 
 public:
     // Node(mem::Magic magic, mem::PageOffset free)
     //     : magic_(magic), meta_(free), state_(ObjectState::kFree) {
     // }
+    using Ptr = util::Ptr<Node>;
 
     template <ts::ObjectLike O>
-    Node(mem::Magic magic, ObjectId id, std::shared_ptr<O> data)
+    Node(mem::Magic magic, ObjectId id, util::Ptr<O> data)
         : magic_(magic), meta_(id), data_(data), state_(ObjectState::kValid) {
     }
 
-    size_t Size() const override {
+    virtual size_t Size() const override {
         switch (state_) {
             case ObjectState::kFree: {
                 return sizeof(mem::Magic) + sizeof(mem::PageOffset);
@@ -56,7 +57,7 @@ public:
         }
     }
 
-    mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
+    virtual mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const override {
         switch (state_) {
             case ObjectState::kFree:
                 file->Write<mem::Magic>(~magic_, offset);
@@ -75,7 +76,7 @@ public:
                 throw error::RuntimeError("Invalid state");
         }
     }
-    void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) override {
+    virtual void Read(mem::File::Ptr& file, mem::Offset offset) override {
         auto magic = file->Read<mem::Magic>(offset);
         offset += sizeof(mem::Magic);
 
@@ -91,7 +92,7 @@ public:
             state_ = ObjectState::kInvalid;
         }
     }
-    [[nodiscard]] std::string ToString() const override {
+    [[nodiscard]] virtual std::string ToString() const override {
         return std::string("NODE: ")
             .append("state: ")
             .append(ObjectStateToString(state_))
@@ -104,8 +105,7 @@ public:
             .append(" } ");
     }
 
-    Node(mem::Magic magic, std::shared_ptr<ts::Class> data_class, std::shared_ptr<mem::File>& file,
-         mem::Offset offset)
+    Node(mem::Magic magic, ts::Class::Ptr data_class, mem::File::Ptr& file, mem::Offset offset)
         : magic_(magic) {
 
         auto read_magic = file->Read<mem::Magic>(offset);
@@ -148,14 +148,14 @@ public:
         meta_ = meta;
     }
 
-    [[nodiscard]] ObjectId Id() const {
+    [[nodiscard]] virtual ObjectId Id() const {
         if (state_ != ObjectState::kValid) {
             throw error::BadArgument("Node has no id");
         }
         return std::get<ObjectId>(meta_);
     }
 
-    [[nodiscard]] mem::PageOffset NextFree() const {
+    [[nodiscard]] virtual mem::PageOffset NextFree() const {
         if (state_ != ObjectState::kFree) {
             throw error::BadArgument("Node has no next");
         }
@@ -167,7 +167,7 @@ public:
     }
 
     template <ts::ObjectLike O>
-    [[nodiscard]] std::shared_ptr<O> Data() const {
+    [[nodiscard]] util::Ptr<O> Data() const {
         switch (state_) {
             case ObjectState::kFree: {
                 throw error::RuntimeError("Use after free");

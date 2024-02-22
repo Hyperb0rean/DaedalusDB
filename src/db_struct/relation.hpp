@@ -1,5 +1,5 @@
 #pragma once
 
 namespace db {
-class Relation : public Object {}
+class Relation : public Node {}
 }  // namespace db

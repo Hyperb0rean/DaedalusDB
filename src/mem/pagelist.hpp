@@ -10,7 +10,7 @@ class PageList {
 
     DECLARE_LOGGER;
     std::string name_;
-    std::shared_ptr<File> file_;
+    File::Ptr file_;
     Offset sentinel_offset_;
     size_t pages_count_;
 
@@ -29,7 +29,7 @@ public:
     }
 
     class PageIterator {
-        std::shared_ptr<File> file_;
+        File::Ptr file_;
         Offset sentinel_offset_;
         Page curr_;
 
@@ -40,7 +40,7 @@ public:
         using pointer = Page*;
         using reference = Page&;
 
-        PageIterator(const std::shared_ptr<File>& file, PageIndex index, Offset sentinel_offset)
+        PageIterator(File::Ptr& file, PageIndex index, Offset sentinel_offset)
             : file_(file), sentinel_offset_(sentinel_offset) {
             curr_ = ReadPage(index);
         }
@@ -102,8 +102,7 @@ public:
     PageList() {
     }
 
-    PageList(std::string name, const std::shared_ptr<File>& file, Offset sentinel_offset,
-             DEFAULT_LOGGER(logger))
+    PageList(std::string name, File::Ptr& file, Offset sentinel_offset, DEFAULT_LOGGER(logger))
         : LOGGER(logger), name_(std::move(name)), file_(file), sentinel_offset_(sentinel_offset) {
         pages_count_ = file_->Read<size_t>(GetCountFromSentinel(sentinel_offset));
     }

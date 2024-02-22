@@ -7,7 +7,7 @@
 #include "utils.hpp"
 
 #define LOGGER logger_
-#define DECLARE_LOGGER std::shared_ptr<::util::Logger> LOGGER
+#define DECLARE_LOGGER ::util::Ptr<::util::Logger> LOGGER
 
 #define DEBUG(...) LOGGER->Log(::util::LogLevel::kDebug, __VA_ARGS__)
 #define INFO(...) LOGGER->Log(::util::LogLevel::kInfo, __VA_ARGS__)
@@ -56,7 +56,7 @@ public:
     virtual ~Logger(){};
 };
 
-#define DEFINE_LOGGER(logger) std::shared_ptr<::util::Logger> logger
+#define DEFINE_LOGGER(logger) ::util::Ptr<::util::Logger> logger
 
 class DebugLogger : public Logger {
 protected:
@@ -83,7 +83,7 @@ public:
     }
 };
 
-#define DEBUG_LOGGER std::make_shared<::util::DebugLogger>()
+#define DEBUG_LOGGER util::MakePtr<::util::DebugLogger>()
 
 class ConsoleLogger : public DebugLogger {
 public:
@@ -110,7 +110,7 @@ public:
     }
 };
 
-#define CONSOLE_LOGGER std::make_shared<::util::ConsoleLogger>()
+#define CONSOLE_LOGGER util::MakePtr<::util::ConsoleLogger>()
 
 class EmptyLogger : public Logger {
 
@@ -130,7 +130,7 @@ public:
     }
 };
 
-#define EMPTY_LOGGER std::make_shared<::util::EmptyLogger>()
+#define EMPTY_LOGGER util::MakePtr<::util::EmptyLogger>()
 
 #define DEFAULT_LOGGER(logger) DEFINE_LOGGER(logger) = EMPTY_LOGGER
 }  // namespace util

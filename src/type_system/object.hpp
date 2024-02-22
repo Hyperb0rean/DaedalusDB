@@ -23,20 +23,22 @@ namespace ts {
 
 class Object {
 protected:
-    std::shared_ptr<Class> class_;
+    Class::Ptr class_;
 
 public:
-    virtual std::shared_ptr<Class> GetClass() {
+    using Ptr = util::Ptr<Object>;
+
+    virtual Class::Ptr GetClass() {
         return class_;
     }
     virtual ~Object() = default;
     [[nodiscard]] virtual size_t Size() const {
         throw error::NotImplemented("Void Class");
     }
-    virtual mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const {
+    virtual mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const {
         throw error::NotImplemented("Void Class");
     }
-    virtual void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) {
+    virtual void Read(mem::File::Ptr& file, mem::Offset offset) {
         throw error::NotImplemented("Void Class");
     }
     [[nodiscard]] virtual std::string ToString() const {
@@ -48,7 +50,6 @@ template <typename O>
 concept ObjectLike = std::derived_from<O, Object>;
 
 class ClassObject : public Object {
-    std::shared_ptr<Class> class_holder_;
     std::string serialized_;
     using SizeType = u_int32_t;
 
@@ -63,7 +64,7 @@ class ClassObject : public Object {
         return result;
     }
 
-    std::shared_ptr<Class> Deserialize(std::stringstream& stream) {
+    Class::Ptr Deserialize(std::stringstream& stream) {
         char del;
         stream >> del;
         if (del == '>') {
@@ -81,7 +82,7 @@ class ClassObject : public Object {
                 throw error::TypeError("Can't read correct type by this address");
             }
 
-            auto result = std::make_shared<StructClass>(name);
+            auto result = util::MakePtr<StructClass>(name);
 
             auto field = Deserialize(stream);
             while (field != nullptr) {
@@ -90,7 +91,7 @@ class ClassObject : public Object {
             }
             return result;
         } else if (type == "string") {
-            return std::make_shared<StringClass>(ReadString(stream, '_'));
+            return util::MakePtr<StringClass>(ReadString(stream, '_'));
         } else {
 
             auto remove_spaces = [](const char* str) -> std::string {
@@ -98,9 +99,9 @@ class ClassObject : public Object {
                 return {s.begin(), remove_if(s.begin(), s.end(), isspace)};
             };
 
-#define DDB_DESERIALIZE_PRIMITIVE(P)                                         \
-    if (type == remove_spaces(#P)) {                                         \
-        return std::make_shared<PrimitiveClass<P>>(ReadString(stream, '_')); \
+#define DDB_DESERIALIZE_PRIMITIVE(P)                                      \
+    if (type == remove_spaces(#P)) {                                      \
+        return util::MakePtr<PrimitiveClass<P>>(ReadString(stream, '_')); \
     }
             DDB_PRIMITIVE_GENERATOR(DDB_DESERIALIZE_PRIMITIVE)
 #undef DESERIALIZE_PRIMITIVE
@@ -110,37 +111,40 @@ class ClassObject : public Object {
     }
 
 public:
+    using Ptr = util::Ptr<ClassObject>;
+
     ~ClassObject() = default;
     ClassObject(){};
-    virtual std::shared_ptr<Class> GetClass() {
-        return class_holder_;
+    virtual Class::Ptr GetClass() {
+        return class_;
     }
-    ClassObject(const std::shared_ptr<Class>& holder) : class_holder_(holder) {
-        serialized_ = class_holder_->Serialize();
+    ClassObject(const Class::Ptr& holder) {
+        class_ = holder;
+        serialized_ = class_->Serialize();
     }
     ClassObject(std::string string) : serialized_(string) {
         std::stringstream stream(serialized_);
-        class_holder_ = Deserialize(stream);
+        class_ = Deserialize(stream);
     }
     [[nodiscard]] size_t Size() const override {
         return serialized_.size() + sizeof(SizeType);
     }
-    mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
+    mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const override {
         auto new_offset = file->Write<SizeType>(serialized_.size(), offset) + sizeof(SizeType);
         return file->Write(serialized_, new_offset);
     }
-    void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) override {
+    void Read(mem::File::Ptr& file, mem::Offset offset) override {
         SizeType size = file->Read<SizeType>(offset);
         serialized_ = file->ReadString(offset + sizeof(SizeType), size);
         std::stringstream stream{serialized_};
-        class_holder_ = Deserialize(stream);
+        class_ = Deserialize(stream);
     }
     [[nodiscard]] std::string ToString() const override {
         return serialized_;
     }
 
     template <ClassLike C>
-    [[nodiscard]] bool Contains(std::shared_ptr<C> other_class) {
+    [[nodiscard]] bool Contains(util::Ptr<C> other_class) {
         return serialized_.contains(ClassObject(other_class).serialized_);
     }
 };
@@ -151,11 +155,13 @@ class Primitive : public Object {
     T value_;
 
 public:
+    using Ptr = util::Ptr<Primitive<T>>;
+
     ~Primitive() = default;
-    Primitive(const std::shared_ptr<PrimitiveClass<T>>& argclass, T value) : value_(value) {
+    Primitive(const PrimitiveClass<T>::Ptr& argclass, T value) : value_(value) {
         this->class_ = argclass;
     }
-    explicit Primitive(const std::shared_ptr<PrimitiveClass<T>>& argclass) : value_(T{}) {
+    explicit Primitive(const PrimitiveClass<T>::Ptr& argclass) : value_(T{}) {
         this->class_ = argclass;
     }
     [[nodiscard]] size_t Size() const override {
@@ -167,10 +173,10 @@ public:
     [[nodiscard]] T& Value() {
         return value_;
     }
-    mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
+    mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const override {
         return file->Write<T>(value_, offset);
     }
-    void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) override {
+    void Read(mem::File::Ptr& file, mem::Offset offset) override {
         value_ = file->Read<T>(offset);
     }
     [[nodiscard]] std::string ToString() const override {
@@ -186,12 +192,14 @@ class String : public Object {
     using SizeType = u_int32_t;
 
 public:
+    using Ptr = util::Ptr<String>;
+
     ~String() = default;
 
-    String(const std::shared_ptr<StringClass>& argclass, std::string str) : str_(std::move(str)) {
+    String(const StringClass::Ptr& argclass, std::string str) : str_(std::move(str)) {
         this->class_ = argclass;
     }
-    explicit String(const std::shared_ptr<StringClass>& argclass) : str_("") {
+    explicit String(const StringClass::Ptr& argclass) : str_("") {
         this->class_ = argclass;
     }
     [[nodiscard]] size_t Size() const override {
@@ -203,11 +211,11 @@ public:
     [[nodiscard]] std::string& Value() {
         return str_;
     }
-    mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
+    mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const override {
         auto new_offset = file->Write<SizeType>(str_.size(), offset) + sizeof(SizeType);
         return file->Write(str_, new_offset);
     }
-    void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) override {
+    void Read(mem::File::Ptr& file, mem::Offset offset) override {
         SizeType size = file->Read<SizeType>(offset);
         str_ = file->ReadString(offset + sizeof(SizeType), size);
     }
@@ -217,21 +225,23 @@ public:
 };
 
 class Struct : public Object {
-    std::vector<std::shared_ptr<Object>> fields_;
+    std::vector<Object::Ptr> fields_;
 
     template <ObjectLike O>
-    void AddFieldValue(const std::shared_ptr<O>& value) {
+    void AddFieldValue(const util::Ptr<O>& value) {
         fields_.push_back(value);
     }
 
 public:
+    using Ptr = util::Ptr<Struct>;
+
     template <ObjectLike O, ClassLike C, typename... Args>
-    friend std::shared_ptr<O> UnsafeNew(std::shared_ptr<C> object_class, Args&&... args);
+    friend util::Ptr<O> UnsafeNew(util::Ptr<C> object_class, Args&&... args);
     template <ObjectLike O, ClassLike C>
-    friend std::shared_ptr<O> DefaultNew(std::shared_ptr<C> object_class);
+    friend util::Ptr<O> DefaultNew(util::Ptr<C> object_class);
 
     ~Struct() = default;
-    Struct(const std::shared_ptr<StructClass>& argclass) {
+    Struct(const StructClass::Ptr& argclass) {
         this->class_ = argclass;
     }
     [[nodiscard]] size_t Size() const override {
@@ -242,12 +252,12 @@ public:
         return size;
     }
 
-    [[nodiscard]] std::vector<std::shared_ptr<Object>> GetFields() const {
+    [[nodiscard]] std::vector<Object::Ptr> GetFields() const {
         return fields_;
     }
 
     template <ObjectLike O>
-    [[nodiscard]] std::shared_ptr<O> GetField(std::string name) const {
+    [[nodiscard]] util::Ptr<O> GetField(std::string name) const {
         for (auto& field : fields_) {
             if (field->GetClass()->Name() == name) {
                 return util::As<O>(field);
@@ -256,7 +266,7 @@ public:
         throw error::RuntimeError("No such field");
     }
 
-    mem::Offset Write(std::shared_ptr<mem::File>& file, mem::Offset offset) const override {
+    mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const override {
         mem::Offset new_offset = offset;
         for (auto& field : fields_) {
             field->Write(file, new_offset);
@@ -264,7 +274,7 @@ public:
         }
         return new_offset;
     }
-    void Read(std::shared_ptr<mem::File>& file, mem::Offset offset) override {
+    void Read(mem::File::Ptr& file, mem::Offset offset) override {
         mem::Offset new_offset = offset;
         for (auto& field : fields_) {
             field->Read(file, new_offset);
@@ -285,10 +295,10 @@ public:
 };
 
 template <ObjectLike O, ClassLike C, typename... Args>
-[[nodiscard]] std::shared_ptr<O> UnsafeNew(std::shared_ptr<C> object_class, Args&&... args) {
+[[nodiscard]] util::Ptr<O> UnsafeNew(util::Ptr<C> object_class, Args&&... args) {
 
     if constexpr (std::is_same_v<O, Struct>) {
-        auto new_object = std::make_shared<Struct>(object_class);
+        auto new_object = util::MakePtr<Struct>(object_class);
         auto it = util::As<StructClass>(object_class)->GetFields().begin();
         (
             [&it, &args, &new_object] {
@@ -317,15 +327,15 @@ template <ObjectLike O, ClassLike C, typename... Args>
             ...);
         return new_object;
     } else if constexpr (std::is_same_v<O, String>) {
-        return std::make_shared<String>(object_class, std::move(std::get<0>(std::tuple(args...))));
+        return util::MakePtr<String>(object_class, std::move(std::get<0>(std::tuple(args...))));
     } else {
-        return std::make_shared<O>(object_class, std::get<0>(std::tuple(args...)));
+        return util::MakePtr<O>(object_class, std::get<0>(std::tuple(args...)));
     }
     throw error::TypeError("Can't create object");
 }
 
 template <ObjectLike O, ClassLike C, typename... Args>
-[[nodiscard]] std::shared_ptr<O> New(std::shared_ptr<C> object_class, Args&&... args) {
+[[nodiscard]] util::Ptr<O> New(util::Ptr<C> object_class, Args&&... args) {
 
     if (object_class->Count() != sizeof...(Args)) {
         throw error::BadArgument("Wrong number of arguments");
@@ -335,10 +345,10 @@ template <ObjectLike O, ClassLike C, typename... Args>
 }
 
 template <ObjectLike O, ClassLike C>
-[[nodiscard]] std::shared_ptr<O> DefaultNew(std::shared_ptr<C> object_class) {
+[[nodiscard]] util::Ptr<O> DefaultNew(util::Ptr<C> object_class) {
 
     if constexpr (std::is_same_v<O, Struct>) {
-        auto new_object = std::make_shared<Struct>(object_class);
+        auto new_object = util::MakePtr<Struct>(object_class);
         auto fields = util::As<StructClass>(object_class)->GetFields();
         for (auto it = fields.begin(); it != fields.end(); ++it) {
             if (util::Is<StructClass>(*it)) {
@@ -359,16 +369,16 @@ template <ObjectLike O, ClassLike C>
         }
         return new_object;
     } else if constexpr (std::is_same_v<O, String>) {
-        return std::make_shared<String>(object_class);
+        return util::MakePtr<String>(object_class);
     } else {
-        return std::make_shared<O>(object_class);
+        return util::MakePtr<O>(object_class);
     }
     throw error::TypeError("Can't create object");
 }
 
 template <ObjectLike O, ClassLike C>
-[[nodiscard]] std::shared_ptr<O> ReadNew(std::shared_ptr<C> object_class,
-                                         std::shared_ptr<mem::File>& file, mem::Offset offset) {
+[[nodiscard]] util::Ptr<O> ReadNew(util::Ptr<C> object_class, mem::File::Ptr& file,
+                                   mem::Offset offset) {
 
     auto new_object = DefaultNew<O, C>(object_class);
     new_object->Read(file, offset);

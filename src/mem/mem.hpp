@@ -28,7 +28,7 @@ public:
     Page class_list_sentinel_;
     size_t class_list_count_;
 
-    void CheckConsistency(std::shared_ptr<File>& file) {
+    void CheckConsistency(File::Ptr& file) {
         try {
             auto magic = file->Read<GlobalMagic>();
             if (magic != kMagic) {
@@ -42,14 +42,14 @@ public:
         }
     }
 
-    Superblock& ReadSuperblock(std::shared_ptr<File>& file) {
+    Superblock& ReadSuperblock(File::Ptr& file) {
         CheckConsistency(file);
         auto header = file->Read<Superblock>(sizeof(kMagic));
         std::swap(header, *this);
         return *this;
     }
 
-    Superblock& InitSuperblock(std::shared_ptr<File>& file) {
+    Superblock& InitSuperblock(File::Ptr& file) {
         file->Write<GlobalMagic>(kMagic);
         free_list_sentinel_ = Page(kSentinelIndex);
         free_list_sentinel_.type_ = PageType::kSentinel;
@@ -62,7 +62,7 @@ public:
         file->Write<Superblock>(*this, sizeof(kMagic));
         return *this;
     }
-    Superblock& WriteSuperblock(std::shared_ptr<File>& file) {
+    Superblock& WriteSuperblock(File::Ptr& file) {
         CheckConsistency(file);
         file->Write<Superblock>(*this, sizeof(kMagic));
         return *this;
@@ -115,34 +115,34 @@ public:
 
     // Should think about structure alignment in 4 following methods
 
-    ClassHeader& WriteNodeCount(std::shared_ptr<File>& file, size_t count) {
+    ClassHeader& WriteNodeCount(File::Ptr& file, size_t count) {
         nodes_ = count;
         file->Write<size_t>(nodes_, GetOffset(index_, 2 * sizeof(Page) + sizeof(size_t)));
         return *this;
     }
 
-    ClassHeader& WriteMagic(std::shared_ptr<File>& file, Magic magic) {
+    ClassHeader& WriteMagic(File::Ptr& file, Magic magic) {
         magic_ = magic;
         file->Write<Magic>(magic_, GetOffset(index_, 2 * sizeof(Page) + 2 * sizeof(size_t)));
         return *this;
     }
 
-    ClassHeader& ReadNodeCount(std::shared_ptr<File>& file) {
+    ClassHeader& ReadNodeCount(File::Ptr& file) {
         nodes_ = file->Read<size_t>(GetOffset(index_, 2 * sizeof(Page) + sizeof(size_t)));
         return *this;
     }
 
-    ClassHeader& ReadMagic(std::shared_ptr<File>& file) {
+    ClassHeader& ReadMagic(File::Ptr& file) {
         magic_ = file->Read<Magic>(GetOffset(index_, 2 * sizeof(Page) + 2 * sizeof(size_t)));
         return *this;
     }
 
-    ClassHeader& ReadClassHeader(std::shared_ptr<File>& file) {
+    ClassHeader& ReadClassHeader(File::Ptr& file) {
         auto header = file->Read<ClassHeader>(GetPageAddress(index_));
         std::swap(header, *this);
         return *this;
     }
-    ClassHeader& InitClassHeader(std::shared_ptr<File>& file, size_t size = 0) {
+    ClassHeader& InitClassHeader(File::Ptr& file, size_t size = 0) {
         this->type_ = PageType::kClassHeader;
         this->initialized_offset_ = sizeof(ClassHeader) + size;
         this->free_offset_ = sizeof(ClassHeader);
@@ -155,19 +155,19 @@ public:
         file->Write<ClassHeader>(*this, GetPageAddress(index_));
         return *this;
     }
-    ClassHeader& WriteClassHeader(std::shared_ptr<File>& file) {
+    ClassHeader& WriteClassHeader(File::Ptr& file) {
         file->Write<ClassHeader>(*this, GetPageAddress(index_));
         return *this;
     }
 };
 
-Page ReadPage(Page other, std::shared_ptr<File>& file) {
+Page ReadPage(Page other, File::Ptr& file) {
     auto page = file->Read<Page>(GetPageAddress(other.index_));
     std::swap(page, other);
     return other;
 }
 
-Page WritePage(Page other, std::shared_ptr<File>& file) {
+Page WritePage(Page other, File::Ptr& file) {
     file->Write<Page>(other, GetPageAddress(other.index_));
     return other;
 }

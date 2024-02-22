@@ -32,6 +32,8 @@ class File {
     }
 
 public:
+    using Ptr = util::Ptr<mem::File>;
+
     explicit File(std::string&& fileName, DEFAULT_LOGGER(logger))
         : LOGGER(logger), fileName_(std::move(fileName)) {
         fd_ = open(fileName_.c_str(), O_RDWR | O_CREAT, S_IRWXU | S_IRGRP | S_IROTH);

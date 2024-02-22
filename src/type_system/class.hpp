@@ -35,6 +35,7 @@ protected:
     }
 
 public:
+    using Ptr = util::Ptr<Class>;
     explicit Class(std::string name) : name_(std::move(name)) {
         Validate();
     }
@@ -57,6 +58,8 @@ template <typename T>
 requires std::is_arithmetic_v<T>
 class PrimitiveClass : public Class {
 public:
+    using Ptr = util::Ptr<PrimitiveClass<T>>;
+
     explicit PrimitiveClass(std::string name) : Class(std::move(name)) {
     }
     [[nodiscard]] std::string Serialize() const override {
@@ -76,6 +79,8 @@ public:
 
 class StringClass : public Class {
 public:
+    using Ptr = util::Ptr<StringClass>;
+
     explicit StringClass(std::string name) : Class(std::move(name)) {
     }
     [[nodiscard]] std::string Serialize() const override {
@@ -91,18 +96,15 @@ public:
 };
 
 class StructClass : public Class {
-    std::vector<std::shared_ptr<Class>> fields_;
+    std::vector<Class::Ptr> fields_;
 
 public:
+    using Ptr = util::Ptr<StructClass>;
+
     StructClass(std::string name) : Class(std::move(name)) {
     }
-    template <ClassLike C>
-    void AddField(C field) {
-        fields_.push_back(std::make_shared<C>(field));
-    }
 
-    template <ClassLike C>
-    void AddField(const std::shared_ptr<C>& field) {
+    void AddField(const Class::Ptr& field) {
         fields_.push_back(field);
     }
 
@@ -128,7 +130,7 @@ public:
         return result;
     }
 
-    [[nodiscard]] std::vector<std::shared_ptr<Class>>& GetFields() {
+    [[nodiscard]] std::vector<Class::Ptr>& GetFields() {
         return fields_;
     }
 
@@ -142,14 +144,14 @@ public:
 };
 
 template <ClassLike C, typename... Classes>
-[[nodiscard]] std::shared_ptr<C> NewClass(std::string&& name, Classes&&... classes) {
+[[nodiscard]] util::Ptr<C> NewClass(std::string&& name, Classes&&... classes) {
     if constexpr (std::is_same_v<C, StructClass>) {
-        auto new_class = std::make_shared<C>(std::move(name));
+        auto new_class = util::MakePtr<C>(std::move(name));
         (new_class->AddField(classes), ...);
         return new_class;
     } else {
         static_assert(sizeof...(classes) == 0);
-        return std::make_shared<C>(std::move(name));
+        return util::MakePtr<C>(std::move(name));
     }
 }
 

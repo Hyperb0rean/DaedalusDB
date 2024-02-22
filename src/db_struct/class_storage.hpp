@@ -12,7 +12,7 @@ enum class DataMode { kCache, kFile };
 class ClassStorage {
 private:
     DECLARE_LOGGER;
-    std::shared_ptr<mem::PageAllocator> alloc_;
+    mem::PageAllocator::Ptr alloc_;
     mem::PageList class_list_;
 
     using ClassCache = std::unordered_map<std::string, mem::PageIndex>;
@@ -48,12 +48,12 @@ private:
     }
 
     template <ts::ClassLike C>
-    std::shared_ptr<ts::ClassObject> MakeClassHolder(std::shared_ptr<C>& new_class) {
-        return std::make_shared<ts::ClassObject>(new_class);
+    ts::ClassObject::Ptr MakeClassHolder(util::Ptr<C>& new_class) {
+        return util::MakePtr<ts::ClassObject>(new_class);
     }
 
     mem::ClassHeader InitializeClassHeader(mem::PageIndex index,
-                                           std::shared_ptr<ts::ClassObject>& class_object) {
+                                           ts::ClassObject::Ptr& class_object) {
         return mem::ClassHeader(index)
             .ReadClassHeader(alloc_->GetFile())
             .InitClassHeader(alloc_->GetFile(), class_object->Size())
@@ -61,7 +61,9 @@ private:
     }
 
 public:
-    ClassStorage(std::shared_ptr<mem::PageAllocator>& alloc, DEFAULT_LOGGER(logger))
+    using Ptr = util::Ptr<ClassStorage>;
+
+    ClassStorage(mem::PageAllocator::Ptr& alloc, DEFAULT_LOGGER(logger))
         : LOGGER(logger), alloc_(alloc) {
 
         DEBUG("Class list sentinel offset:", mem::kClassListSentinelOffset);
@@ -77,7 +79,7 @@ public:
     }
 
     template <ts::ClassLike C>
-    std::optional<mem::PageIndex> FindClass(std::shared_ptr<C> new_class,
+    std::optional<mem::PageIndex> FindClass(util::Ptr<C> new_class,
                                             DataMode mode = DataMode::kCache) {
         auto class_object = MakeClassHolder(new_class);
         auto serialized = class_object->ToString();
@@ -105,7 +107,7 @@ public:
     }
 
     template <ts::ClassLike C>
-    void AddClass(std::shared_ptr<C>& new_class) {
+    void AddClass(util::Ptr<C>& new_class) {
         INFO("Adding new class..");
 
         auto class_object = MakeClassHolder(new_class);
@@ -145,7 +147,7 @@ public:
     }
 
     template <ts::ClassLike C>
-    void RemoveClass(std::shared_ptr<C>& new_class) {
+    void RemoveClass(util::Ptr<C>& new_class) {
         INFO("Removing class..");
 
         auto index = FindClass(new_class, DataMode::kFile);

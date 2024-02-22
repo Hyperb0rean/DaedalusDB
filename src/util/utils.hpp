@@ -30,13 +30,21 @@ public:
     }
 };
 
+template <typename T>
+using Ptr = ::std::shared_ptr<T>;
+
+template <typename T, typename... Args>
+[[nodiscard]] inline Ptr<T> MakePtr(Args&&... args) {
+    return std::make_shared<T>(std::forward<Args>(args)...);
+}
+
 template <typename T, typename Base>
-inline bool Is(const std::shared_ptr<Base>& obj) {
+inline bool Is(const util::Ptr<Base>& obj) {
     return dynamic_cast<T*>(obj.get()) != nullptr;
 }
 
 template <typename T, typename Base>
-inline std::shared_ptr<T> As(const std::shared_ptr<Base>& obj) {
+inline util::Ptr<T> As(const util::Ptr<Base>& obj) {
     if (Is<T>(obj)) {
         return std::dynamic_pointer_cast<T>(obj);
     } else {

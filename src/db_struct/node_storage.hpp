@@ -8,9 +8,9 @@ namespace db {
 class NodeStorage {
 protected:
     DECLARE_LOGGER;
-    std::shared_ptr<ts::Class> nodes_class_;
-    std::shared_ptr<ClassStorage> class_storage_;
-    std::shared_ptr<mem::PageAllocator> alloc_;
+    ts::Class::Ptr nodes_class_;
+    ClassStorage::Ptr class_storage_;
+    mem::PageAllocator::Ptr alloc_;
     mem::PageList data_page_list_;
 
     mem::Page AllocatePage() {
@@ -51,8 +51,8 @@ protected:
 
 public:
     template <ts::ClassLike C>
-    NodeStorage(std::shared_ptr<C> nodes_class, std::shared_ptr<ClassStorage>& class_storage,
-                std::shared_ptr<mem::PageAllocator>& alloc, DEFAULT_LOGGER(logger))
+    NodeStorage(util::Ptr<C> nodes_class, ClassStorage::Ptr& class_storage,
+                mem::PageAllocator::Ptr& alloc, DEFAULT_LOGGER(logger))
         : LOGGER(logger), nodes_class_(nodes_class), class_storage_(class_storage), alloc_(alloc) {
 
         data_page_list_ = mem::PageList(nodes_class->Name(), alloc_->GetFile(),

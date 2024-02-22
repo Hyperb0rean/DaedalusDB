@@ -9,7 +9,7 @@ class PageAllocator {
 private:
     DECLARE_LOGGER;
     size_t pages_count_;
-    std::shared_ptr<File> file_;
+    File::Ptr file_;
     PageList free_list_;
 
     PageIndex AllocateNewPage() {
@@ -55,8 +55,9 @@ private:
     }
 
 public:
-    PageAllocator(std::shared_ptr<mem::File>& file, DEFAULT_LOGGER(logger))
-        : LOGGER(logger), file_(file) {
+    using Ptr = util::Ptr<PageAllocator>;
+
+    PageAllocator(mem::File::Ptr& file, DEFAULT_LOGGER(logger)) : LOGGER(logger), file_(file) {
 
         DEBUG("Free list count: ", file->Read<size_t>(kPagesCountOffset));
         pages_count_ = file_->Read<size_t>(kPagesCountOffset);
@@ -73,7 +74,7 @@ public:
         return pages_count_;
     }
 
-    [[nodiscard]] std::shared_ptr<mem::File>& GetFile() {
+    [[nodiscard]] mem::File::Ptr& GetFile() {
         return file_;
     }
 

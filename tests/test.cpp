@@ -8,7 +8,7 @@
 using namespace std::string_literals;
 
 TEST(TypeTests, SimpleReadWrite) {
-    auto file = std::make_shared<mem::File>("test.data");
+    auto file = util::MakePtr<mem::File>("test.data");
     file->Clear();
     auto name = ts::NewClass<ts::StringClass>("name");
     auto node = ts::New<ts::String>(name, "Greg");
@@ -27,7 +27,7 @@ TEST(TypeTests, InvalidClasses) {
 }
 
 TEST(TypeTests, ReadWrite) {
-    auto file = std::make_shared<mem::File>("test.data");
+    auto file = util::MakePtr<mem::File>("test.data");
     file->Clear();
     auto person_class = ts::NewClass<ts::StructClass>(
         "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
@@ -48,7 +48,7 @@ TEST(TypeTests, ReadWrite) {
 }
 
 TEST(TypeTests, SafeNew) {
-    auto file = std::make_shared<mem::File>("test.data");
+    auto file = util::MakePtr<mem::File>("test.data");
     file->Clear();
     auto person_class = ts::NewClass<ts::StructClass>(
         "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
@@ -60,7 +60,7 @@ TEST(TypeTests, SafeNew) {
 }
 
 TEST(TypeTests, DefaultNew) {
-    auto file = std::make_shared<mem::File>("test.data");
+    auto file = util::MakePtr<mem::File>("test.data");
     file->Clear();
     auto person_class = ts::NewClass<ts::StructClass>(
         "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
@@ -73,7 +73,7 @@ TEST(TypeTests, DefaultNew) {
 }
 
 TEST(TypeTests, ReadNew) {
-    auto file = std::make_shared<mem::File>("test.data");
+    auto file = util::MakePtr<mem::File>("test.data");
     file->Clear();
     auto person_class = ts::NewClass<ts::StructClass>(
         "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
@@ -89,13 +89,19 @@ TEST(TypeTests, ReadNew) {
 }
 
 TEST(TypeTests, TypeDump) {
-    auto file = std::make_shared<mem::File>("test.data");
+    auto file = util::MakePtr<mem::File>("test.data");
     file->Clear();
-    auto person_class = std::make_shared<ts::StructClass>("person");
-    person_class->AddField(ts::StringClass("name"));
-    person_class->AddField(ts::StringClass("surname"));
-    person_class->AddField(ts::PrimitiveClass<int>("age"));
-    person_class->AddField(ts::PrimitiveClass<uint64_t>("money"));
+    // old syntax
+    // auto person_class = util::MakePtr<ts::StructClass>("person");
+    // person_class->AddField(ts::StringClass("name"));
+    // person_class->AddField(ts::StringClass("surname"));
+    // person_class->AddField(ts::PrimitiveClass<int>("age"));
+    // person_class->AddField(ts::PrimitiveClass<uint64_t>("money"));
+
+    auto person_class = ts::NewClass<ts::StructClass>(
+        "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
+        ts::NewClass<ts::PrimitiveClass<int>>("age"),
+        ts::NewClass<ts::PrimitiveClass<uint64_t>>("money"));
 
     ts::ClassObject(person_class).Write(file, 1488);
     ASSERT_EQ(ts::ClassObject(person_class).ToString(),
@@ -112,10 +118,13 @@ TEST(TypeTests, Metadata) {
         ts::NewClass<ts::PrimitiveClass<int>>("age"),
         ts::NewClass<ts::PrimitiveClass<bool>>("male"));
 
-    ASSERT_TRUE(ts::ClassObject(person_class).Contains(ts::NewClass<ts::StringClass>("surname")));
+    ASSERT_TRUE(ts::ClassObject(person_class)
+                    .Contains<ts::StringClass>(ts::NewClass<ts::StringClass>("surname")));
     ASSERT_FALSE(
-        ts::ClassObject(person_class).Contains(ts::NewClass<ts::PrimitiveClass<int>>("surname")));
-    ASSERT_FALSE(ts::ClassObject(person_class).Contains(ts::NewClass<ts::StringClass>("address")));
+        ts::ClassObject(person_class)
+            .Contains<ts::PrimitiveClass<int>>(ts::NewClass<ts::PrimitiveClass<int>>("surname")));
+    ASSERT_FALSE(ts::ClassObject(person_class)
+                     .Contains<ts::StringClass>(ts::NewClass<ts::StringClass>("address")));
 }
 
 TEST(ClassStorage, ClassAddition) {
@@ -131,15 +140,15 @@ TEST(ClassStorage, ClassAddition) {
     auto city_class = ts::NewClass<ts::StructClass>("city", ts::NewClass<ts::StringClass>("name"),
                                                     coordinates_class);
 
-    auto database = db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite,
-                                 std::make_shared<util::ConsoleLogger>());
+    auto database =
+        db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, CONSOLE_LOGGER);
     database.AddClass(person_class);
     database.AddClass(coordinates_class);
     database.AddClass(city_class);
 }
 
 TEST(ClassStorage, PrintClasses) {
-    auto database = db::Database(std::make_shared<mem::File>("test.data"));
+    auto database = db::Database(util::MakePtr<mem::File>("test.data"));
     database.PrintAllClasses();
 }
 
@@ -156,8 +165,8 @@ TEST(ClassStorage, ClassRemoval) {
     auto city_class = ts::NewClass<ts::StructClass>("city", ts::NewClass<ts::StringClass>("name"),
                                                     coordinates_class);
 
-    auto database = db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kRead,
-                                 std::make_shared<util::ConsoleLogger>());
+    auto database =
+        db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kRead, CONSOLE_LOGGER);
     database.RemoveClass(person_class);
     database.RemoveClass(coordinates_class);
     // database.RemoveClass(city_class);
@@ -165,7 +174,7 @@ TEST(ClassStorage, ClassRemoval) {
 }
 
 TEST(Node, ReadWriteNode) {
-    auto file = std::make_shared<mem::File>("test.data", std::make_shared<util::ConsoleLogger>());
+    auto file = util::MakePtr<mem::File>("test.data", CONSOLE_LOGGER);
     file->Clear();
     auto coords =
         ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
@@ -178,7 +187,7 @@ TEST(Node, ReadWriteNode) {
 }
 
 TEST(Node, NodeVarious) {
-    auto file = std::make_shared<mem::File>("test.data", std::make_shared<util::ConsoleLogger>());
+    auto file = util::MakePtr<mem::File>("test.data", CONSOLE_LOGGER);
     file->Clear();
     auto coords =
         ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
@@ -214,7 +223,7 @@ TEST(ValNodeStorage, NodeAddition) {
                                       ts::NewClass<ts::PrimitiveClass<double>>("lon"));
 
     auto database =
-        db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
+        db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
     database.AddClass(coords);
 
     database.AddNode(ts::New<ts::Struct>(coords, 1., 0.));
@@ -226,8 +235,8 @@ TEST(ValNodeStorage, NodeAddditionWithAllocation) {
         ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
                                       ts::NewClass<ts::PrimitiveClass<double>>("lon"));
 
-    auto database = db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite,
-                                 CONSOLE_LOGGER);
+    auto database =
+        db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, CONSOLE_LOGGER);
     database.AddClass(coords);
 
     for (size_t i = 0; i < 200; ++i) {
@@ -241,8 +250,8 @@ TEST(ValNodeStorage, PrintNodes) {
         ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
                                       ts::NewClass<ts::PrimitiveClass<double>>("lon"));
 
-    auto database = db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite,
-                                 CONSOLE_LOGGER);
+    auto database =
+        db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, CONSOLE_LOGGER);
     database.AddClass(coords);
 
     for (size_t i = 0; i < 10; ++i) {
@@ -259,7 +268,7 @@ TEST(ValNodeStorage, RemoveNodes) {
                                       ts::NewClass<ts::PrimitiveClass<double>>("lon"));
 
     auto database =
-        db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
+        db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
     database.AddClass(coords);
 
     for (size_t i = 0; i < 10; ++i) {
@@ -277,7 +286,7 @@ TEST(ValNodeStorage, RemoveThenAddNodes) {
                                       ts::NewClass<ts::PrimitiveClass<double>>("lon"));
 
     auto database =
-        db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
+        db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
     database.AddClass(coords);
 
     for (size_t i = 0; i < 10; ++i) {
@@ -300,7 +309,7 @@ TEST(ValNodeStorage, FreeUnusedDataPages) {
                                       ts::NewClass<ts::PrimitiveClass<double>>("lon"));
 
     auto database =
-        db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
+        db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
     database.AddClass(coords);
 
     for (size_t i = 0; i < 1000; ++i) {
@@ -316,8 +325,8 @@ TEST(ValNodeStorage, Select) {
         ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
                                       ts::NewClass<ts::PrimitiveClass<double>>("lon"));
 
-    auto database = db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite,
-                                 CONSOLE_LOGGER);
+    auto database =
+        db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, CONSOLE_LOGGER);
     database.AddClass(coords);
 
     for (size_t i = 0; i < 100; ++i) {
@@ -334,7 +343,7 @@ TEST(VarNodeStorage, NodeAddition) {
     auto name = ts::NewClass<ts::StringClass>("name");
 
     auto database =
-        db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
+        db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
     database.AddClass(name);
 
     database.AddNode(ts::New<ts::String>(name, "Greg"));
@@ -347,7 +356,7 @@ TEST(VarNodeStorage, NodeAdditionWithAllocation) {
     auto name = ts::NewClass<ts::StringClass>("name");
 
     auto database =
-        db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
+        db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
     database.AddClass(name);
 
     for (size_t i = 0; i < 150; ++i) {
@@ -363,7 +372,7 @@ TEST(VarNodeStorage, NodeDeletion) {
     auto name = ts::NewClass<ts::StringClass>("name");
 
     auto database =
-        db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
+        db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
     database.AddClass(name);
 
     for (size_t i = 0; i < 50; ++i) {
@@ -381,7 +390,7 @@ TEST(VarNodeStorage, NodeDeletionWithDeallocation) {
     auto name = ts::NewClass<ts::StringClass>("name");
 
     auto database =
-        db::Database(std::make_shared<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
+        db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
     database.AddClass(name);
 
     for (size_t i = 0; i < 150; ++i) {

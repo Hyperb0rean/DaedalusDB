@@ -13,9 +13,9 @@ class Database {
 
     DECLARE_LOGGER;
     mem::Superblock superblock_;
-    std::shared_ptr<mem::File> file_;
-    std::shared_ptr<mem::PageAllocator> alloc_;
-    std::shared_ptr<ClassStorage> class_storage_;
+    mem::File::Ptr file_;
+    mem::PageAllocator::Ptr alloc_;
+    ClassStorage::Ptr class_storage_;
 
     void InitializeSuperblock(OpenMode mode) {
         switch (mode) {
@@ -43,15 +43,14 @@ class Database {
     }
 
 public:
-    Database(const std::shared_ptr<mem::File>& file, OpenMode mode = OpenMode::kDefault,
-             DEFAULT_LOGGER(logger))
+    Database(const mem::File::Ptr& file, OpenMode mode = OpenMode::kDefault, DEFAULT_LOGGER(logger))
         : LOGGER(logger), file_(file) {
 
         InitializeSuperblock(mode);
 
-        alloc_ = std::make_shared<mem::PageAllocator>(file_, LOGGER);
+        alloc_ = util::MakePtr<mem::PageAllocator>(file_, LOGGER);
         INFO("Allocator initialized");
-        class_storage_ = std::make_shared<ClassStorage>(alloc_, LOGGER);
+        class_storage_ = util::MakePtr<ClassStorage>(alloc_, LOGGER);
     }
 
     ~Database() {
@@ -59,12 +58,12 @@ public:
     };
 
     template <ts::ClassLike C>
-    void AddClass(std::shared_ptr<C>& new_class) {
+    void AddClass(util::Ptr<C>& new_class) {
         class_storage_->AddClass(new_class);
     }
 
     template <ts::ClassLike C>
-    void RemoveClass(std::shared_ptr<C>& new_class) {
+    void RemoveClass(util::Ptr<C>& new_class) {
         class_storage_->RemoveClass(new_class);
     }
 
@@ -79,7 +78,7 @@ public:
     }
 
     template <ts::ObjectLike O>
-    requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(std::shared_ptr<O> node) {
+    requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(util::Ptr<O> node) {
         if (node->GetClass()->Size().has_value()) {
             ValNodeStorage(node->GetClass(), class_storage_, alloc_, LOGGER).AddNode(node);
         } else {
@@ -88,7 +87,7 @@ public:
     }
 
     template <ts::ClassLike C, typename Predicate>
-    void RemoveNodesIf(std::shared_ptr<C> node_class, Predicate predicate) {
+    void RemoveNodesIf(util::Ptr<C> node_class, Predicate predicate) {
         if (node_class->Size().has_value()) {
             if constexpr (std::is_invocable_r_v<bool, Predicate, ValNodeIterator>) {
                 ValNodeStorage(node_class, class_storage_, alloc_, LOGGER).RemoveNodesIf(predicate);
@@ -106,8 +105,7 @@ public:
     }
 
     template <ts::ClassLike C, typename Predicate>
-    void PrintNodesIf(std::shared_ptr<C>& node_class, Predicate predicate,
-                      std::ostream& os = std::cout) {
+    void PrintNodesIf(util::Ptr<C>& node_class, Predicate predicate, std::ostream& os = std::cout) {
 
         auto print = [&os](Node node) { os << node.ToString() << std::endl; };
 
@@ -130,7 +128,7 @@ public:
     }
 
     template <ts::ClassLike C>
-    void PrintAllNodes(std::shared_ptr<C>& node_class) {
+    void PrintAllNodes(util::Ptr<C>& node_class) {
         PrintNodesIf(node_class, [](auto) { return true; });
     }
 };

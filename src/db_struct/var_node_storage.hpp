@@ -10,8 +10,8 @@ public:
     class NodeIterator {
     private:
         mem::Magic magic_;
-        std::shared_ptr<ts::Class> node_class_;
-        std::shared_ptr<mem::File> file_;
+        ts::Class::Ptr node_class_;
+        mem::File::Ptr file_;
         mem::PageList& page_list_;
 
         mem::PageOffset inner_offset_;
@@ -19,7 +19,7 @@ public:
 
         mem::Offset end_offset_;
 
-        std::shared_ptr<Node> curr_;
+        Node::Ptr curr_;
 
     public:
         [[nodiscard]] ObjectId Id() {
@@ -55,7 +55,7 @@ public:
         }
 
         void Read() {
-            curr_ = std::make_shared<Node>(magic_, node_class_, file_, GetRealOffset());
+            curr_ = util::MakePtr<Node>(magic_, node_class_, file_, GetRealOffset());
         }
 
         void Advance() {
@@ -85,12 +85,11 @@ public:
         using iterator_category = std::forward_iterator_tag;
         using value_type = Node;
         using difference_type = ObjectId;
-        using pointer = std::shared_ptr<Node>;
+        using pointer = Node::Ptr;
         using reference = Node&;
 
-        NodeIterator(mem::Magic magic, std::shared_ptr<ts::Class>& node_class,
-                     std::shared_ptr<mem::File>& file, mem::PageList& page_list,
-                     mem::PageIndex index, mem::Offset inner_offset)
+        NodeIterator(mem::Magic magic, ts::Class::Ptr& node_class, mem::File::Ptr& file,
+                     mem::PageList& page_list, mem::PageIndex index, mem::Offset inner_offset)
             : magic_(magic),
               node_class_(node_class),
               file_(file),
@@ -140,8 +139,8 @@ public:
     };
 
     template <ts::ClassLike C>
-    VarNodeStorage(std::shared_ptr<C> nodes_class, std::shared_ptr<ClassStorage>& class_storage,
-                   std::shared_ptr<mem::PageAllocator>& alloc, DEFAULT_LOGGER(logger))
+    VarNodeStorage(util::Ptr<C> nodes_class, util::Ptr<ClassStorage>& class_storage,
+                   mem::PageAllocator::Ptr& alloc, DEFAULT_LOGGER(logger))
         : NodeStorage(nodes_class, class_storage, alloc, logger) {
         DEBUG("Var Node storage initialized with class: ", ts::ClassObject(nodes_class).ToString());
     }
@@ -171,7 +170,7 @@ private:
 
 public:
     template <ts::ObjectLike O>
-    requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(std::shared_ptr<O>& node) {
+    requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(util::Ptr<O>& node) {
 
         if (node->Size() + sizeof(mem::Magic) + sizeof(ObjectId) + sizeof(mem::Page) >=
             mem::kPageSize) {

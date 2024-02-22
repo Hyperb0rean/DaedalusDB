@@ -10,8 +10,8 @@ public:
     class NodeIterator {
     private:
         mem::Magic magic_;
-        std::shared_ptr<ts::Class> node_class_;
-        std::shared_ptr<mem::File> file_;
+        ts::Class::Ptr node_class_;
+        mem::File::Ptr file_;
         mem::PageList& page_list_;
 
         mem::PageOffset inner_offset_;
@@ -20,7 +20,7 @@ public:
 
         mem::Offset end_offset_;
 
-        std::shared_ptr<Node> curr_;
+        Node::Ptr curr_;
 
         [[nodiscard]] mem::PageOffset InPageOffset() const noexcept {
             return inner_offset_;
@@ -114,7 +114,7 @@ public:
         }
 
         void Read() {
-            curr_ = std::make_shared<Node>(magic_, node_class_, file_, GetRealOffset());
+            curr_ = util::MakePtr<Node>(magic_, node_class_, file_, GetRealOffset());
         }
 
     public:
@@ -122,11 +122,11 @@ public:
         using iterator_category = std::bidirectional_iterator_tag;
         using value_type = Node;
         using difference_type = ObjectId;
-        using pointer = std::shared_ptr<Node>;
+        using pointer = Node::Ptr;
         using reference = Node&;
 
-        NodeIterator(mem::Magic magic, std::shared_ptr<ts::Class>& node_class,
-                     std::shared_ptr<mem::File>& file, mem::PageList& page_list, ObjectId id)
+        NodeIterator(mem::Magic magic, ts::Class::Ptr& node_class, mem::File::Ptr& file,
+                     mem::PageList& page_list, ObjectId id)
             : magic_(magic),
               node_class_(node_class),
               file_(file),
@@ -155,9 +155,9 @@ public:
             }
         }
 
-        NodeIterator(mem::Magic magic, std::shared_ptr<ts::Class>& node_class,
-                     std::shared_ptr<mem::File>& file, mem::PageList& page_list,
-                     mem::PageList::PageIterator it, mem::PageOffset offset)
+        NodeIterator(mem::Magic magic, ts::Class::Ptr& node_class, mem::File::Ptr& file,
+                     mem::PageList& page_list, mem::PageList::PageIterator it,
+                     mem::PageOffset offset)
             : magic_(magic),
               node_class_(node_class),
               file_(file),
@@ -217,8 +217,8 @@ public:
     };
 
     template <ts::ClassLike C>
-    ValNodeStorage(std::shared_ptr<C> nodes_class, std::shared_ptr<ClassStorage>& class_storage,
-                   std::shared_ptr<mem::PageAllocator>& alloc, DEFAULT_LOGGER(logger))
+    ValNodeStorage(util::Ptr<C> nodes_class, ClassStorage::Ptr& class_storage,
+                   mem::PageAllocator::Ptr& alloc, DEFAULT_LOGGER(logger))
         : NodeStorage(nodes_class, class_storage, alloc, logger) {
         DEBUG("Val Node storage initialized with class: ", ts::ClassObject(nodes_class).ToString());
     }
@@ -237,7 +237,7 @@ public:
 private:
     template <ts::ObjectLike O>
     ObjectId WrtiteIntoFree(mem::Page& back, mem::ClassHeader& header, Node& next_free,
-                            std::shared_ptr<O>& node) {
+                            util::Ptr<O>& node) {
         auto id = NodeIterator(header.ReadMagic(alloc_->GetFile()).magic_, nodes_class_,
                                alloc_->GetFile(), data_page_list_,
                                data_page_list_.IteratorTo(back.index_), back.free_offset_)
@@ -252,7 +252,7 @@ private:
     }
 
     template <ts::ObjectLike O>
-    ObjectId WriteIntoInvalid(mem::Page& back, mem::ClassHeader& header, std::shared_ptr<O>& node) {
+    ObjectId WriteIntoInvalid(mem::Page& back, mem::ClassHeader& header, util::Ptr<O>& node) {
         auto count = header.ReadNodeCount(alloc_->GetFile()).nodes_;
         auto metaobject = Node(header.ReadMagic(alloc_->GetFile()).magic_, count, node);
         if (back.initialized_offset_ + metaobject.Size() >= mem::kPageSize) {
@@ -272,7 +272,7 @@ private:
 
 public:
     template <ts::ObjectLike O>
-    requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(std::shared_ptr<O>& node) {
+    requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(util::Ptr<O>& node) {
 
         if (node->Size() + sizeof(mem::Magic) + sizeof(ObjectId) + sizeof(mem::Page) >=
             mem::kPageSize) {

@@ -39,12 +39,12 @@ template <typename T, typename... Args>
 }
 
 template <typename T, typename Base>
-inline bool Is(const util::Ptr<Base>& obj) {
+[[nodiscard]] inline bool Is(const util::Ptr<Base>& obj) {
     return dynamic_cast<T*>(obj.get()) != nullptr;
 }
 
 template <typename T, typename Base>
-inline util::Ptr<T> As(const util::Ptr<Base>& obj) {
+[[nodiscard]] inline util::Ptr<T> As(const util::Ptr<Base>& obj) {
     if (Is<T>(obj)) {
         return std::dynamic_pointer_cast<T>(obj);
     } else {

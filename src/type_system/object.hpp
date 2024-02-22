@@ -28,22 +28,14 @@ protected:
 public:
     using Ptr = util::Ptr<Object>;
 
-    virtual Class::Ptr GetClass() {
+    [[nodiscard]] virtual Class::Ptr GetClass() {
         return class_;
     }
     virtual ~Object() = default;
-    [[nodiscard]] virtual size_t Size() const {
-        throw error::NotImplemented("Void Class");
-    }
-    virtual mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const {
-        throw error::NotImplemented("Void Class");
-    }
-    virtual void Read(mem::File::Ptr& file, mem::Offset offset) {
-        throw error::NotImplemented("Void Class");
-    }
-    [[nodiscard]] virtual std::string ToString() const {
-        throw error::NotImplemented("Void Class");
-    }
+    [[nodiscard]] virtual size_t Size() const = 0;
+    virtual mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const = 0;
+    virtual void Read(mem::File::Ptr& file, mem::Offset offset) = 0;
+    [[nodiscard]] virtual std::string ToString() const = 0;
 };
 
 template <typename O>
@@ -53,7 +45,7 @@ class ClassObject : public Object {
     std::string serialized_;
     using SizeType = u_int32_t;
 
-    std::string ReadString(std::stringstream& stream, char end) {
+    [[nodiscard]] std::string ReadString(std::stringstream& stream, char end) const {
         std::string result;
         char c;
         stream >> c;
@@ -64,7 +56,7 @@ class ClassObject : public Object {
         return result;
     }
 
-    Class::Ptr Deserialize(std::stringstream& stream) {
+    [[nodiscard]] Class::Ptr Deserialize(std::stringstream& stream) const {
         char del;
         stream >> del;
         if (del == '>') {
@@ -115,14 +107,12 @@ public:
 
     ~ClassObject() = default;
     ClassObject(){};
-    virtual Class::Ptr GetClass() {
-        return class_;
-    }
+
     ClassObject(const Class::Ptr& holder) {
         class_ = holder;
         serialized_ = class_->Serialize();
     }
-    ClassObject(std::string string) : serialized_(string) {
+    ClassObject(std::string string) : serialized_(std::move(string)) {
         std::stringstream stream(serialized_);
         class_ = Deserialize(stream);
     }
@@ -144,7 +134,7 @@ public:
     }
 
     template <ClassLike C>
-    [[nodiscard]] bool Contains(util::Ptr<C> other_class) {
+    [[nodiscard]] bool Contains(util::Ptr<C> other_class) const {
         return serialized_.contains(ClassObject(other_class).serialized_);
     }
 };
@@ -205,7 +195,7 @@ public:
     [[nodiscard]] size_t Size() const override {
         return str_.size() + sizeof(SizeType);
     }
-    [[nodiscard]] std::string Value() const {
+    [[nodiscard]] std::string_view Value() const {
         return str_;
     }
     [[nodiscard]] std::string& Value() {
@@ -252,7 +242,7 @@ public:
         return size;
     }
 
-    [[nodiscard]] std::vector<Object::Ptr> GetFields() const {
+    [[nodiscard]] const std::vector<Object::Ptr> GetFields() const {
         return fields_;
     }
 
@@ -296,7 +286,6 @@ public:
 
 template <ObjectLike O, ClassLike C, typename... Args>
 [[nodiscard]] util::Ptr<O> UnsafeNew(util::Ptr<C> object_class, Args&&... args) {
-
     if constexpr (std::is_same_v<O, Struct>) {
         auto new_object = util::MakePtr<Struct>(object_class);
         auto it = util::As<StructClass>(object_class)->GetFields().begin();
@@ -314,13 +303,16 @@ template <ObjectLike O, ClassLike C, typename... Args>
                 } else {
                     if constexpr (!std::is_convertible_v<std::remove_reference_t<decltype(args)>,
                                                          std::string_view>) {
+#define DDB_ADD_PRIMITIVE(P)                                                     \
+    else if (util::Is<PrimitiveClass<P>>(class_)) {                              \
+        new_object->AddFieldValue(                                               \
+            UnsafeNew<Primitive<P>>(util::As<PrimitiveClass<P>>(class_), args)); \
+    }
 
-                        // TODO: May cause bugs e.g. passed 0 as double, decltype(0) = int;
-                        new_object->AddFieldValue(
-                            UnsafeNew<Primitive<std::remove_reference_t<decltype(args)>>>(
-                                util::As<PrimitiveClass<std::remove_reference_t<decltype(args)>>>(
-                                    class_),
-                                args));
+                        if (false) {
+                        }
+                        DDB_PRIMITIVE_GENERATOR(DDB_ADD_PRIMITIVE)
+#undef DDB_ADD_PRIMITIVE
                     }
                 }
             }(),
@@ -362,7 +354,7 @@ template <ObjectLike O, ClassLike C>
         continue;                                                                              \
     }
                 DDB_PRIMITIVE_GENERATOR(DDB_ADD_PRIMITIVE)
-#undef ADD_PRIMITIVE
+#undef DDB_ADD_PRIMITIVE
 
                 throw error::TypeError("Class can't be defaulted");
             }

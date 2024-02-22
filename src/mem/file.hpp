@@ -120,7 +120,7 @@ public:
         Offset offset = 0, StructOffset struct_offset = 0,
         StructOffset count = sizeof(T)) const requires std::is_default_constructible_v<T> {
         count = std::min(count, sizeof(T) - struct_offset);
-        auto new_offset = Seek(offset);
+        Seek(offset);
         T data{};
         auto result = read(fd_, reinterpret_cast<char*>(&data) + struct_offset, count);
         if (result == -1) {
@@ -133,7 +133,7 @@ public:
     }
 
     [[nodiscard]] std::string ReadString(Offset offset = 0, size_t count = 0) const {
-        auto new_offset = Seek(offset);
+        Seek(offset);
         std::string str;
         str.resize(count);
         auto result = read(fd_, str.data(), count);

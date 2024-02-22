@@ -11,7 +11,7 @@ namespace ts {
 
 // TODO: May be compiler dependent
 template <typename T>
-constexpr std::string_view type_name() {
+[[nodiscard]] constexpr std::string_view type_name() {
     constexpr auto prefix = std::string_view{"[with T = "};
     constexpr auto suffix = std::string_view{";"};
     constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
@@ -26,7 +26,8 @@ class Class {
 protected:
     std::string name_;
 
-    void Validate() {
+    // Is it necessary in Class definition ?
+    void Validate() const {
         for (auto& c : name_) {
             if (c == '@' || c == '_' || c == '<' || c == '>') {
                 throw error::TypeError("Invalid class name");
@@ -36,6 +37,7 @@ protected:
 
 public:
     using Ptr = util::Ptr<Class>;
+
     explicit Class(std::string name) : name_(std::move(name)) {
         Validate();
     }
@@ -130,7 +132,7 @@ public:
         return result;
     }
 
-    [[nodiscard]] std::vector<Class::Ptr>& GetFields() {
+    [[nodiscard]] const std::vector<Class::Ptr>& GetFields() const {
         return fields_;
     }
 

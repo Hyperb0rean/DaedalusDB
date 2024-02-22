@@ -39,15 +39,15 @@ inline std::string_view LevelToString(LogLevel level) noexcept {
 
 class Logger {
 protected:
-    virtual void LogImpl(LogLevel, PrintableAny&&) = 0;
-    virtual void LogHeader(LogLevel) = 0;
-    virtual void LogFooter(LogLevel) = 0;
+    virtual void LogImpl(LogLevel, PrintableAny&&) const = 0;
+    virtual void LogHeader(LogLevel) const = 0;
+    virtual void LogFooter(LogLevel) const = 0;
 
 public:
     Logger() = default;
 
     template <typename... Args>
-    void Log(LogLevel level, Args&&... args) {
+    void Log(LogLevel level, Args&&... args) const {
         LogHeader(level);
         (LogImpl(level, PrintableAny(std::forward<Args>(args))), ...);
         LogFooter(level);
@@ -70,15 +70,15 @@ public:
         : cout_(cout), cerr_(cerr) {
     }
 
-    void LogFooter(LogLevel level) override {
+    void LogFooter([[maybe_unused]] LogLevel level) const override {
         cout_ << std::endl;
     }
 
-    void LogHeader(LogLevel level) override {
+    void LogHeader(LogLevel level) const override {
         cout_ << GetCurrentTime() << " | " << LevelToString(level) << " | ";
     }
 
-    void LogImpl(LogLevel level, PrintableAny&& data) override {
+    void LogImpl([[maybe_unused]] LogLevel level, PrintableAny&& data) const override {
         cout_ << data;
     }
 };
@@ -91,19 +91,19 @@ public:
         : DebugLogger(cout, cerr) {
     }
 
-    void LogFooter(LogLevel level) override {
+    void LogFooter(LogLevel level) const override {
         if (level != LogLevel::kDebug) {
             cout_ << std::endl;
         }
     }
 
-    void LogHeader(LogLevel level) override {
+    void LogHeader(LogLevel level) const override {
         if (level != LogLevel::kDebug) {
             cout_ << GetCurrentTime() << " | " << LevelToString(level) << " | ";
         }
     }
 
-    void LogImpl(LogLevel level, PrintableAny&& data) override {
+    void LogImpl(LogLevel level, PrintableAny&& data) const override {
         if (level != LogLevel::kDebug) {
             cout_ << data;
         }
@@ -120,13 +120,14 @@ public:
     EmptyLogger() {
     }
 
-    void LogFooter(LogLevel level) override {
+    void LogFooter([[maybe_unused]] LogLevel level) const override {
     }
 
-    void LogHeader(LogLevel level) override {
+    void LogHeader([[maybe_unused]] LogLevel level) const override {
     }
 
-    void LogImpl(LogLevel level, PrintableAny&& data) override {
+    void LogImpl([[maybe_unused]] LogLevel level,
+                 [[maybe_unused]] PrintableAny&& data) const override {
     }
 };
 

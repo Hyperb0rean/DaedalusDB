@@ -1,20 +1,19 @@
 #pragma once
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
-#include <memory>
 #include <string>
 #include <type_traits>
 #include <vector>
 
-#include "error.hpp"
-#include "logger.hpp"
+#include "../util/logger.hpp"
 
 namespace mem {
 
 using FileDescriptor = int32_t;
-using Offset = size_t;
+using Offset = off64_t;
 using StructOffset = size_t;
 
 class File {
@@ -24,7 +23,7 @@ class File {
     std::string fileName_;
 
     Offset Seek(Offset offset) const {
-        Offset new_offset = lseek(fd_, offset, SEEK_SET);
+        Offset new_offset = lseek64(fd_, offset, SEEK_SET);
         if (new_offset == offset - 1) {
             throw error::BadArgument("Wrong arguments");
         }
@@ -52,7 +51,7 @@ public:
         return fileName_;
     }
 
-    [[nodiscard]] size_t GetSize() const {
+    [[nodiscard]] Offset GetSize() const {
 
         // TODO: Adapt for Windows
         struct stat64 file_stat;
@@ -149,7 +148,7 @@ public:
     template <typename T>
     [[nodiscard]] std::vector<T> ReadVector(
         Offset offset = 0, size_t count = 0) const requires std::is_default_constructible_v<T> {
-        auto new_offset = Seek(offset);
+        Seek(offset);
         std::vector<T> vec(count);
         auto result = read(fd_, vec.data(), count * sizeof(T));
         if (result == -1) {

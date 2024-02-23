@@ -1,5 +1,6 @@
 #pragma once
 
+#include "node.hpp"
 #include "node_storage.hpp"
 
 namespace db {
@@ -23,7 +24,8 @@ public:
 
     public:
         [[nodiscard]] ObjectId Id() {
-            return file_->Read<ObjectId>(GetRealOffset() + sizeof(mem::Magic));
+            return file_->Read<ObjectId>(GetRealOffset() +
+                                         static_cast<mem::Offset>(sizeof(mem::Magic)));
         }
         [[nodiscard]] mem::Offset GetRealOffset() {
             return mem::GetOffset(current_page_->index_, inner_offset_);
@@ -66,7 +68,8 @@ public:
                 if (GetRealOffset() >= end_offset_) {
                     return;
                 }
-                auto offset = file_->Read<mem::PageOffset>(GetRealOffset() + sizeof(mem::Magic));
+                auto offset = file_->Read<mem::PageOffset>(
+                    GetRealOffset() + static_cast<mem::PageOffset>(sizeof(mem::Magic)));
                 // offset == 0
                 if (State() == ObjectState::kInvalid) {
                     ++current_page_;
@@ -89,7 +92,7 @@ public:
         using reference = Node&;
 
         NodeIterator(mem::Magic magic, ts::Class::Ptr& node_class, mem::File::Ptr& file,
-                     mem::PageList& page_list, mem::PageIndex index, mem::Offset inner_offset)
+                     mem::PageList& page_list, mem::PageIndex index, mem::PageOffset inner_offset)
             : magic_(magic),
               node_class_(node_class),
               file_(file),
@@ -239,7 +242,7 @@ public:
                 // page for some optimizations
                 page.initialized_offset_ =
                     std::min(current_it.InPageOffset(), page.initialized_offset_);
-                node.Free(current_it.InPageOffset() + node.Size());
+                node.Free(current_it.InPageOffset() + static_cast<mem::PageOffset>(node.Size()));
                 node.Write(alloc_->GetFile(),
                            mem::GetOffset(current_it.Page()->index_, current_it.InPageOffset()));
 

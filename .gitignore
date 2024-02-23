@@ -5,3 +5,6 @@ database.data
 peda-session-database.txt
 .gdb_history
 test*.data
+.cache*
+compile_commands.json
+

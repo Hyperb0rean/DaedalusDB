@@ -1,19 +1,17 @@
 #pragma once
 #include <algorithm>
 #include <optional>
-#include <sstream>
-#include <typeinfo>
+#include <vector>
 
-#include "file.hpp"
-#include "utils.hpp"
+#include "../util/utils.hpp"
 
 namespace ts {
 
-// TODO: May be compiler dependent
+// WARN: Is compiler dependent
 template <typename T>
 [[nodiscard]] constexpr std::string_view type_name() {
-    constexpr auto prefix = std::string_view{"[with T = "};
-    constexpr auto suffix = std::string_view{";"};
+    constexpr auto prefix = std::string_view{"[T = "};
+    constexpr auto suffix = std::string_view{"]"};
     constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
     constexpr auto start = function.find(prefix) + prefix.size();
     constexpr auto end = function.rfind(suffix);

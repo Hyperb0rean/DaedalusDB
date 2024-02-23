@@ -5,8 +5,8 @@
 #include "file.hpp"
 
 namespace mem {
+inline const Offset kPageSize = 4096;
 
-inline const size_t kPageSize = 4096;
 enum class PageType { kClassHeader, kData, kFree, kSentinel };
 
 constexpr inline std::string_view PageTypeToString(PageType type) {

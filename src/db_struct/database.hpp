@@ -43,6 +43,8 @@ class Database {
     }
 
 public:
+    using Ptr = util::Ptr<Database>;
+
     Database(const mem::File::Ptr& file, OpenMode mode = OpenMode::kDefault, DEFAULT_LOGGER(logger))
         : LOGGER(logger), file_(file) {
 

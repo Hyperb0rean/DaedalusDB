@@ -2,7 +2,8 @@
 
 #include <variant>
 
-#include "object.hpp"
+#include "../mem/mem.hpp"
+#include "../type_system/object.hpp"
 
 namespace db {
 

@@ -1,5 +1,5 @@
-#include <memory>
-#include <vector>
+#pragma once
+#include <cstddef>
 
 #include "file.hpp"
 #include "page.hpp"
@@ -7,16 +7,17 @@
 namespace mem {
 
 using GlobalMagic = uint64_t;
-constexpr GlobalMagic kMagic = 0xDEADBEEF;
+constexpr inline GlobalMagic kMagic = 0xDEADBEEF;
 
 // Constant offsets of some data in superblock for more precise changes
 constexpr Offset kFreeListSentinelOffset = sizeof(GlobalMagic);
-constexpr Offset kFreePagesCountOffset = kFreeListSentinelOffset + sizeof(Page);
-constexpr Offset kPagesCountOffset = kFreePagesCountOffset + sizeof(Offset);
-constexpr Offset kClassListSentinelOffset = kPagesCountOffset + sizeof(size_t);
-constexpr Offset kClassListCount = kClassListSentinelOffset + sizeof(Page);
+constexpr Offset kFreePagesCountOffset =
+    kFreeListSentinelOffset + static_cast<Offset>(sizeof(Page));
+constexpr Offset kPagesCountOffset = kFreePagesCountOffset + static_cast<Offset>(sizeof(Offset));
+constexpr Offset kClassListSentinelOffset = kPagesCountOffset + static_cast<Offset>(sizeof(size_t));
+constexpr Offset kClassListCount = kClassListSentinelOffset + static_cast<Offset>(sizeof(Page));
 
-constexpr Offset kPagetableOffset = kClassListCount + sizeof(size_t);
+constexpr Offset kPagetableOffset = kClassListCount + static_cast<Offset>(sizeof(size_t));
 
 constexpr PageIndex kSentinelIndex = SIZE_MAX;
 
@@ -70,26 +71,26 @@ public:
 };
 
 constexpr inline Offset GetCountFromSentinel(Offset sentinel) {
-    return sentinel + sizeof(Page);
+    return sentinel + static_cast<Offset>(sizeof(Page));
 }
 
 constexpr inline Offset GetSentinelIndex(Offset sentinel) {
-    return sentinel + sizeof(PageType);
+    return sentinel + static_cast<Offset>(sizeof(PageType));
 }
 
 constexpr inline Offset GetOffset(PageIndex index, PageOffset virt_offset) {
     if (virt_offset >= mem::kPageSize) {
         throw error::BadArgument("Invalid virtual offset");
     }
-    return kPagetableOffset + index * mem::kPageSize + virt_offset;
+    return kPagetableOffset + static_cast<Offset>(index) * mem::kPageSize + virt_offset;
 }
 
-constexpr inline size_t GetIndex(Offset offset) {
-    return (offset - kPagetableOffset) / kPageSize;
+constexpr inline PageIndex GetIndex(Offset offset) {
+    return static_cast<PageIndex>((offset - kPagetableOffset) / kPageSize);
 }
 
 constexpr inline Offset GetPageAddress(PageIndex index) {
-    return kPagetableOffset + index * kPageSize;
+    return kPagetableOffset + static_cast<Offset>(index) * kPageSize;
 }
 
 using Magic = uint64_t;
@@ -144,7 +145,7 @@ public:
     }
     ClassHeader& InitClassHeader(File::Ptr& file, size_t size = 0) {
         this->type_ = PageType::kClassHeader;
-        this->initialized_offset_ = sizeof(ClassHeader) + size;
+        this->initialized_offset_ = static_cast<PageOffset>(sizeof(ClassHeader) + size);
         this->free_offset_ = sizeof(ClassHeader);
         this->actual_size_ = size;
         node_list_sentinel_ = Page(kSentinelIndex);
@@ -161,13 +162,13 @@ public:
     }
 };
 
-Page ReadPage(Page other, File::Ptr& file) {
+inline Page ReadPage(Page other, File::Ptr& file) {
     auto page = file->Read<Page>(GetPageAddress(other.index_));
     std::swap(page, other);
     return other;
 }
 
-Page WritePage(Page other, File::Ptr& file) {
+inline Page WritePage(Page other, File::Ptr& file) {
     file->Write<Page>(other, GetPageAddress(other.index_));
     return other;
 }

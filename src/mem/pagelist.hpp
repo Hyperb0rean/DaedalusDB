@@ -1,7 +1,4 @@
 #pragma once
-
-#include <iostream>
-
 #include "mem.hpp"
 
 namespace mem {
@@ -202,11 +199,11 @@ public:
     }
 };
 
-PageList::PageIterator begin(PageList& list) {
+inline PageList::PageIterator begin(PageList& list) {
     return list.Begin();
 }
 
-PageList::PageIterator end(PageList& list) {
+inline PageList::PageIterator end(PageList& list) {
     return list.End();
 }
 

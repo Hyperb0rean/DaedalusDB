@@ -1,6 +1,7 @@
 #pragma once
-#include <cerrno>
-#include <stdexcept>
+#include <string>
+
+#include "time.h"
 
 namespace util {
 inline const std::string GetCurrentTime() {

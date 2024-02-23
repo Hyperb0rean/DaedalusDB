@@ -1,5 +1,10 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+#include <sstream>
+
+#include "../mem/file.hpp"
 #include "class.hpp"
 
 #define DDB_PRIMITIVE_GENERATOR(MACRO) \
@@ -17,6 +22,7 @@
     MACRO(char)                        \
     MACRO(signed char)                 \
     MACRO(unsigned char)               \
+    MACRO(unsigned long)               \
     MACRO(wchar_t)
 
 namespace ts {
@@ -43,7 +49,7 @@ concept ObjectLike = std::derived_from<O, Object>;
 
 class ClassObject : public Object {
     std::string serialized_;
-    using SizeType = u_int32_t;
+    using SizeType = uint32_t;
 
     [[nodiscard]] std::string ReadString(std::stringstream& stream, char end) const {
         std::string result;
@@ -98,7 +104,7 @@ class ClassObject : public Object {
             DDB_PRIMITIVE_GENERATOR(DDB_DESERIALIZE_PRIMITIVE)
 #undef DESERIALIZE_PRIMITIVE
 
-            throw error::NotImplemented("Unsupported for deserialization type");
+            throw error::NotImplemented("Unsupported for deserialization type " + type);
         }
     }
 
@@ -120,12 +126,13 @@ public:
         return serialized_.size() + sizeof(SizeType);
     }
     mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const override {
-        auto new_offset = file->Write<SizeType>(serialized_.size(), offset) + sizeof(SizeType);
+        auto new_offset = file->Write<SizeType>(static_cast<SizeType>(serialized_.size()), offset) +
+                          static_cast<mem::Offset>(sizeof(SizeType));
         return file->Write(serialized_, new_offset);
     }
     void Read(mem::File::Ptr& file, mem::Offset offset) override {
         SizeType size = file->Read<SizeType>(offset);
-        serialized_ = file->ReadString(offset + sizeof(SizeType), size);
+        serialized_ = file->ReadString(offset + static_cast<mem::Offset>(sizeof(SizeType)), size);
         std::stringstream stream{serialized_};
         class_ = Deserialize(stream);
     }
@@ -202,12 +209,13 @@ public:
         return str_;
     }
     mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const override {
-        auto new_offset = file->Write<SizeType>(str_.size(), offset) + sizeof(SizeType);
+        auto new_offset = file->Write<SizeType>(static_cast<SizeType>(str_.size()), offset) +
+                          static_cast<mem::Offset>(sizeof(SizeType));
         return file->Write(str_, new_offset);
     }
     void Read(mem::File::Ptr& file, mem::Offset offset) override {
         SizeType size = file->Read<SizeType>(offset);
-        str_ = file->ReadString(offset + sizeof(SizeType), size);
+        str_ = file->ReadString(offset + static_cast<mem::Offset>(sizeof(SizeType)), size);
     }
     [[nodiscard]] std::string ToString() const override {
         return class_->Name() + ": \"" + str_ + "\"";

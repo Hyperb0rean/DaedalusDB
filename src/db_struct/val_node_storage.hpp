@@ -1,5 +1,8 @@
 #pragma once
 
+#include "../mem/pagelist.hpp"
+#include "../type_system/object.hpp"
+#include "node.hpp"
 #include "node_storage.hpp"
 
 namespace db {
@@ -108,7 +111,8 @@ public:
                     inner_offset_ -= Size();
                 } else {
                     --current_page_;
-                    inner_offset_ = Size() * (GetNodesInPage() - 1) + sizeof(mem::Page);
+                    inner_offset_ = static_cast<mem::PageOffset>(Size() * (GetNodesInPage() - 1) +
+                                                                 sizeof(mem::Page));
                 }
             } while (State() != ObjectState::kValid);
         }

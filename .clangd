@@ -1,0 +1,15 @@
+CompileFlags:
+  Compiler: clang++-16
+  Add:
+    - -I./src/util/ -I./src/mem/
+    - -Werror -Wall -Wextra
+    - -Weffc++ -Wsign-compare -Wshadow -Wwrite-strings
+    - -Wpointer-arith -Winit-self -Wconversion
+    - -Wno-sign-conversion -Wundefined-inline
+Diagnostics:
+  UnusedIncludes: Strict
+
+InlayHints:
+  Designators: No
+  Enabled: No
+  DeducedTypes: No

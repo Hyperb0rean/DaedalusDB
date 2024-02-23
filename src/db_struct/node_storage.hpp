@@ -1,7 +1,7 @@
 #pragma once
 
+#include "../mem/allocator.hpp"
 #include "class_storage.hpp"
-#include "node.hpp"
 
 namespace db {
 

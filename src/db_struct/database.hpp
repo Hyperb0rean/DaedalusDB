@@ -132,14 +132,15 @@ public:
         }
     }
 
-    template <ts::ClassLike C, typename Predicate, typename Container = std::vector<util::Ptr<C>>>
+    template <ts::ObjectLike O, typename Container = std::vector<util::Ptr<O>>, ts::ClassLike C,
+              typename Predicate>
     Container CollectNodesIf(util::Ptr<C>& node_class, Predicate predicate) {
         Container result{};
-
-        auto insert = [&result](auto it) { result.insert(it->Data()); };
+        auto insert = [&result](Node node) { result.push_back(node.Data<O>()); };
 
         if (node_class->Size().has_value()) {
             if constexpr (std::is_invocable_r_v<bool, Predicate, ValNodeIterator>) {
+
                 ValNodeStorage(node_class, class_storage_, alloc_, LOGGER)
                     .VisitNodes(predicate, insert);
             } else {

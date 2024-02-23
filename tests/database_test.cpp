@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <format>
+#include <list>
 #include <string>
 
 #include "class.hpp"
@@ -23,5 +24,17 @@ TEST(Database, Collect) {
     for (size_t i = 0; i < 100; ++i) {
         database->AddNode(ts::New<ts::Struct>(person_class, std::format("Greg {}", i), "Sosnovtsev",
                                               19, "Saint-Petersburg", "Lomonosova", i));
+    }
+
+    auto list = database->CollectNodesIf<ts::Struct, std::list<ts::Struct::Ptr>>(
+        person_class, [](db::VarNodeIterator it) {
+            return it->Data<ts::Struct>()
+                       ->GetField<ts::Struct>("address")
+                       ->GetField<ts::Primitive<size_t>>("house")
+                       ->Value() > 90;
+        });
+
+    for (auto& ptr : list) {
+        std::cout << ptr->ToString() << std::endl;
     }
 }

@@ -1,8 +1,7 @@
 CompileFlags:
-  Compiler: clang++-16
+  Compiler: clang++-18
   Add:
-    - -I./src/util/ -I./src/mem/
-    - -Werror -Wall -Wextra
+    - -Werror -Wall -Wextra 
     - -Weffc++ -Wsign-compare -Wshadow -Wwrite-strings
     - -Wpointer-arith -Winit-self -Wconversion
     - -Wno-sign-conversion -Wundefined-inline

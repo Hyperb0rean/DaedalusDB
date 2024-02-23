@@ -1,8 +1,12 @@
 #pragma once
 
+#include <any>
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 #include <sstream>
+#include <string>
+#include <tuple>
 
 #include "../mem/file.hpp"
 #include "class.hpp"
@@ -233,8 +237,9 @@ class Struct : public Object {
 public:
     using Ptr = util::Ptr<Struct>;
 
-    template <ObjectLike O, ClassLike C, typename... Args>
-    friend util::Ptr<O> UnsafeNew(util::Ptr<C> object_class, Args&&... args);
+    template <ObjectLike O, ClassLike C>
+    friend util::Ptr<O> UnsafeNew(util::Ptr<C> object_class,
+                                  std::initializer_list<std::any>::iterator& args);
     template <ObjectLike O, ClassLike C>
     friend util::Ptr<O> DefaultNew(util::Ptr<C> object_class);
 
@@ -292,47 +297,66 @@ public:
     }
 };
 
-template <ObjectLike O, ClassLike C, typename... Args>
-[[nodiscard]] util::Ptr<O> UnsafeNew(util::Ptr<C> object_class, Args&&... args) {
+template <ObjectLike O, ClassLike C>
+[[nodiscard]] util::Ptr<O> UnsafeNew(util::Ptr<C> object_class,
+                                     std::initializer_list<std::any>::iterator& arg_it) {
     if constexpr (std::is_same_v<O, Struct>) {
         auto new_object = util::MakePtr<Struct>(object_class);
         auto it = util::As<StructClass>(object_class)->GetFields().begin();
-        (
-            [&it, &args, &new_object] {
-                auto class_ = *it++;
-                if (util::Is<StructClass>(class_)) {
-                    new_object->AddFieldValue(
-                        UnsafeNew<Struct>(util::As<StructClass>(class_), args));
-                } else if (util::Is<StringClass>(class_)) {
-                    if constexpr (std::is_convertible_v<decltype(args), std::string_view>) {
-                        new_object->AddFieldValue(
-                            UnsafeNew<String>(util::As<StringClass>(class_), args));
-                    }
-                } else {
-                    if constexpr (!std::is_convertible_v<std::remove_reference_t<decltype(args)>,
-                                                         std::string_view>) {
-#define DDB_ADD_PRIMITIVE(P)                                                     \
-    else if (util::Is<PrimitiveClass<P>>(class_)) {                              \
-        new_object->AddFieldValue(                                               \
-            UnsafeNew<Primitive<P>>(util::As<PrimitiveClass<P>>(class_), args)); \
+        auto end = util::As<StructClass>(object_class)->GetFields().end();
+
+        for (; it != end; ++it) {
+            if (util::Is<StructClass>(*it)) {
+                new_object->AddFieldValue(UnsafeNew<Struct>(util::As<StructClass>(*it), arg_it));
+            } else if (util::Is<StringClass>(*it)) {
+                try {
+                    new_object->AddFieldValue(util::MakePtr<String>(
+                        util::As<StringClass>(*it), std::any_cast<std::string>(*arg_it)));
+                } catch (...) {
+                    new_object->AddFieldValue(util::MakePtr<String>(
+                        util::As<StringClass>(*it), std::any_cast<const char*>(*arg_it)));
+                }
+                ++arg_it;
+            } else {
+
+#define DDB_ADD_PRIMITIVE(P)                                                                    \
+    else if (util::Is<PrimitiveClass<P>>(*it)) {                                                \
+                                                                                                \
+        new_object->AddFieldValue(util::MakePtr<Primitive<P>>(util::As<PrimitiveClass<P>>(*it), \
+                                                              std::any_cast<P>(*arg_it++)));    \
     }
 
-                        if (false) {
-                        }
-                        DDB_PRIMITIVE_GENERATOR(DDB_ADD_PRIMITIVE)
-#undef DDB_ADD_PRIMITIVE
-                    }
+                if (false) {
                 }
-            }(),
-            ...);
+                DDB_PRIMITIVE_GENERATOR(DDB_ADD_PRIMITIVE)
+#undef DDB_ADD_PRIMITIVE
+            }
+        }
+
         return new_object;
     } else if constexpr (std::is_same_v<O, String>) {
-        return util::MakePtr<String>(object_class, std::move(std::get<0>(std::tuple(args...))));
+        try {
+            return util::MakePtr<String>(object_class,
+                                         std::move(std::any_cast<std::string>(*arg_it)));
+
+        } catch (...) {
+            return util::MakePtr<String>(object_class,
+                                         std::move(std::any_cast<const char*>(*arg_it)));
+        }
     } else {
-        return util::MakePtr<O>(object_class, std::get<0>(std::tuple(args...)));
+
+#define DDB_ADD_PRIMITIVE(P)                                                          \
+    if (util::Is<PrimitiveClass<P>>(object_class)) {                                  \
+        return util::MakePtr<Primitive<P>>(util::As<PrimitiveClass<P>>(object_class), \
+                                           std::any_cast<P>(*arg_it));                \
     }
-    throw error::TypeError("Can't create object");
-}
+
+        DDB_PRIMITIVE_GENERATOR(DDB_ADD_PRIMITIVE)
+#undef DDB_ADD_PRIMITIVE
+
+        throw error::TypeError("Can't create object");
+    }
+}  // namespace ts
 
 template <ObjectLike O, ClassLike C, typename... Args>
 [[nodiscard]] util::Ptr<O> New(util::Ptr<C> object_class, Args&&... args) {
@@ -340,8 +364,9 @@ template <ObjectLike O, ClassLike C, typename... Args>
     if (object_class->Count() != sizeof...(Args)) {
         throw error::BadArgument("Wrong number of arguments");
     }
-
-    return UnsafeNew<O>(object_class, args...);
+    std::initializer_list<std::any> list = {args...};
+    std::initializer_list<std::any>::iterator it = list.begin();
+    return UnsafeNew<O>(object_class, it);
 }
 
 template <ObjectLike O, ClassLike C>

@@ -13,8 +13,9 @@ project(
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
   set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+  set(DLIBCXX_ENABLE_INCOMPLETE_FEATURES ON)
     
-  set(CXX_COMMON_FLAGS "-std=c++23 -Isrc/util:/src/mem -Wall -Wextra -Werror")
+  set(CXX_COMMON_FLAGS "-std=c++23 -Isrc/util:/src/mem -g -fexperimental-library -stdlib=libc++ -Wall -Wextra -Werror")
   set(CXX_COMMON_FLAGS "${CXX_COMMON_FLAGS} -Weffc++ -Wsign-compare -Wshadow")
   set(CXX_COMMON_FLAGS "${CXX_COMMON_FLAGS} -Wwrite-strings -Wpointer-arith")
   # set(CXX_COMMON_FLAGS "${CXX_COMMON_FLAGS} -Winit-self -Wconversion")

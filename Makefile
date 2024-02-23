@@ -1,13 +1,14 @@
 TARGET=database
+COMPILER=/usr/bin/clang++-18 
 
 configure:
-	export CXX=/usr/bin/clang++-16 && cmake -S . -B build
+	export CXX=$(COMPILER) && cmake -S  . -B build
 
 configure-asan:
-	export CXX=/usr/bin/clang++-16 && cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=ASAN
+	export CXX=$(COMPILER) && cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=ASAN
 
 configure-release:
-	export CXX=/usr/bin/clang++-16 && cmake -S . -B build-release -DCMAKE_BUILD_TYPE=release
+	export CXX=$(COMPILER) && cmake -S . -B build-release -DCMAKE_BUILD_TYPE=release
 
 compile: configure
 	cmake --build build

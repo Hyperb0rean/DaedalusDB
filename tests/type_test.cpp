@@ -4,7 +4,7 @@ TEST(TypeSystem, SimpleReadWrite) {
     auto file = util::MakePtr<mem::File>("test.data");
     file->Clear();
     auto name = ts::NewClass<ts::StringClass>("name");
-    auto node = ts::New<ts::String>(name, "Greg");
+    auto node = ts::New<ts::String>(name, "Greg"s);
     node->Write(file, 0);
     file->Write("Cool", 4, 0, 4);
 
@@ -27,7 +27,7 @@ TEST(TypeSystem, ReadWrite) {
         ts::NewClass<ts::PrimitiveClass<int>>("age"),
         ts::NewClass<ts::PrimitiveClass<bool>>("male"));
 
-    auto node = ts::New<ts::Struct>(person_class, "Greg", "Sosnovtsev", 19, true);
+    auto node = ts::New<ts::Struct>(person_class, "Greg"s, "Sosnovtsev"s, 19, true);
 
     node->Write(file, 0);
     file->Write("Cool", 4, 0, 4);
@@ -48,7 +48,7 @@ TEST(TypeSystem, SafeNew) {
         ts::NewClass<ts::PrimitiveClass<int>>("age"),
         ts::NewClass<ts::PrimitiveClass<bool>>("male"));
 
-    ASSERT_THROW(auto node = ts::New<ts::Struct>(person_class, "Greg", "Sosnovtsev"),
+    ASSERT_THROW(auto node = ts::New<ts::Struct>(person_class, "Greg"s, "Sosnovtsev"s),
                  error::BadArgument);
 }
 
@@ -73,7 +73,7 @@ TEST(TypeSystem, ReadNew) {
         ts::NewClass<ts::PrimitiveClass<int>>("age"),
         ts::NewClass<ts::PrimitiveClass<bool>>("male"));
 
-    auto node = ts::New<ts::Struct>(person_class, "Greg", "Sosnovtsev", 19, true);
+    auto node = ts::New<ts::Struct>(person_class, "Greg"s, "Sosnovtsev"s, 19, true);
     node->Write(file, 0);
     ASSERT_EQ("person: { name: \"Greg\", surname: \"Sosnovtsev\", age: 19, male: true }",
               node->ToString());

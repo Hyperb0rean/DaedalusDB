@@ -1,5 +1,8 @@
 #pragma once
 
+#include <ranges>
+#include <vector>
+
 #include "val_node_storage.hpp"
 #include "var_node_storage.hpp"
 
@@ -127,6 +130,30 @@ public:
                 ERROR("Bad predicate");
             }
         }
+    }
+
+    template <ts::ClassLike C, typename Predicate, typename Container = std::vector<util::Ptr<C>>>
+    Container CollectNodesIf(util::Ptr<C>& node_class, Predicate predicate) {
+        Container result{};
+
+        auto insert = [&result](auto it) { result.insert(it->Data()); };
+
+        if (node_class->Size().has_value()) {
+            if constexpr (std::is_invocable_r_v<bool, Predicate, ValNodeIterator>) {
+                ValNodeStorage(node_class, class_storage_, alloc_, LOGGER)
+                    .VisitNodes(predicate, insert);
+            } else {
+                ERROR("Bad predicate");
+            }
+        } else {
+            if constexpr (std::is_invocable_r_v<bool, Predicate, VarNodeIterator>) {
+                VarNodeStorage(node_class, class_storage_, alloc_, LOGGER)
+                    .VisitNodes(predicate, insert);
+            } else {
+                ERROR("Bad predicate");
+            }
+        }
+        return result;
     }
 
     template <ts::ClassLike C>

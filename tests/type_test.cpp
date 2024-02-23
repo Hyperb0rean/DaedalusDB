@@ -1,6 +1,6 @@
 #include "test.hpp"
 
-TEST(TypeTests, SimpleReadWrite) {
+TEST(TypeSystem, SimpleReadWrite) {
     auto file = util::MakePtr<mem::File>("test.data");
     file->Clear();
     auto name = ts::NewClass<ts::StringClass>("name");
@@ -13,13 +13,13 @@ TEST(TypeTests, SimpleReadWrite) {
     ASSERT_EQ("name: \"Cool\"", node->ToString());
 }
 
-TEST(TypeTests, InvalidClasses) {
+TEST(TypeSystem, InvalidClasses) {
     ASSERT_THROW(auto name = ts::NewClass<ts::StringClass>("name_"), error::TypeError);
     ASSERT_THROW(auto name = ts::NewClass<ts::StringClass>("n@me"), error::TypeError);
     ASSERT_THROW(auto name = ts::NewClass<ts::StringClass>("<name>"), error::TypeError);
 }
 
-TEST(TypeTests, ReadWrite) {
+TEST(TypeSystem, ReadWrite) {
     auto file = util::MakePtr<mem::File>("test.data");
     file->Clear();
     auto person_class = ts::NewClass<ts::StructClass>(
@@ -40,7 +40,7 @@ TEST(TypeTests, ReadWrite) {
               node->ToString());
 }
 
-TEST(TypeTests, SafeNew) {
+TEST(TypeSystem, SafeNew) {
     auto file = util::MakePtr<mem::File>("test.data");
     file->Clear();
     auto person_class = ts::NewClass<ts::StructClass>(
@@ -52,7 +52,7 @@ TEST(TypeTests, SafeNew) {
                  error::BadArgument);
 }
 
-TEST(TypeTests, DefaultNew) {
+TEST(TypeSystem, DefaultNew) {
     auto file = util::MakePtr<mem::File>("test.data");
     file->Clear();
     auto person_class = ts::NewClass<ts::StructClass>(
@@ -65,7 +65,7 @@ TEST(TypeTests, DefaultNew) {
     ASSERT_EQ("person: { name: \"\", surname: \"\", age: 0, male: false }", node->ToString());
 }
 
-TEST(TypeTests, ReadNew) {
+TEST(TypeSystem, ReadNew) {
     auto file = util::MakePtr<mem::File>("test.data");
     file->Clear();
     auto person_class = ts::NewClass<ts::StructClass>(
@@ -81,7 +81,7 @@ TEST(TypeTests, ReadNew) {
     ASSERT_EQ(node->ToString(), new_node->ToString());
 }
 
-TEST(TypeTests, TypeDump) {
+TEST(TypeSystem, TypeDump) {
     auto file = util::MakePtr<mem::File>("test.data");
     file->Clear();
     // old syntax
@@ -105,7 +105,7 @@ TEST(TypeTests, TypeDump) {
     ASSERT_EQ(read_class.ToString(), ts::ClassObject(person_class).ToString());
 }
 
-TEST(TypeTests, Metadata) {
+TEST(TypeSystem, Metadata) {
     auto person_class = ts::NewClass<ts::StructClass>(
         "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
         ts::NewClass<ts::PrimitiveClass<int>>("age"),

@@ -1,19 +1,17 @@
 #pragma once
 
 #include <any>
-#include <cstdint>
 #include <initializer_list>
 #include <string>
 
 #include "primitive.hpp"
-#include "relation.hpp"
 #include "string.hpp"
 #include "struct.hpp"
 
 namespace ts {
 
 // Should be twice size of mem::PageOffset;
-using ObjectId = Id;
+using ObjectId = uint64_t;
 
 template <ClassLike C, typename... Classes>
 [[nodiscard]] util::Ptr<C> NewClass(std::string&& name, Classes&&... classes) {

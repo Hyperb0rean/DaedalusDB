@@ -2,7 +2,6 @@
 
 #include "node.hpp"
 #include "node_storage.hpp"
-#include "object.hpp"
 #include "pagelist.hpp"
 
 namespace db {

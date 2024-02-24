@@ -57,3 +57,24 @@ TEST(Relation, RelationObject) {
     std::cerr << object->ToString() << std::endl;
     ASSERT_EQ(old, object->ToString());
 }
+
+TEST(Relation, AddRelation) {
+    auto len = ts::NewClass<ts::PrimitiveClass<double>>("len");
+    auto point =
+        ts::NewClass<ts::StructClass>("point", ts::NewClass<ts::PrimitiveClass<double>>("x"),
+                                      ts::NewClass<ts::PrimitiveClass<double>>("y"));
+    auto connected = ts::NewClass<ts::RelationClass>("connected", point, point);
+
+    auto database = util::MakePtr<db::Database>(util::MakePtr<mem::File>("test.data"),
+                                                db::OpenMode::kWrite, DEBUG_LOGGER);
+    database->AddClass(point);
+    database->AddClass(connected);
+
+    database->AddNode(ts::New<ts::Struct>(point, 0.0, 1.0));
+    database->AddNode(ts::New<ts::Struct>(point, 0.0, 0.0));
+    database->AddNode(ts::New<ts::Relation>(connected, ID(1), ID(0)));
+
+    database->AddNode(ts::New<ts::Relation>(connected, ID(0), ID(1)));
+
+    database->PrintNodesIf(connected, db::kAll);
+}

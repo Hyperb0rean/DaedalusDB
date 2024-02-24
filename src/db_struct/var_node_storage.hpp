@@ -181,23 +181,22 @@ public:
         }
 
         INFO("Addding node: ", node->ToString());
-        auto count = GetHeader().ReadNodeCount(alloc_->GetFile()).nodes_;
-        // TODO: fix id's uniqueness
-        auto metaobject = Node(GetHeader().ReadMagic(alloc_->GetFile()).magic_, count, node);
+        auto id = GetHeader().ReadNodeId(alloc_->GetFile()).id_;
+        auto metaobject = Node(GetHeader().ReadMagic(alloc_->GetFile()).magic_, id, node);
         auto node_offset = GetNewNodeOffset(metaobject.Size());
         auto back = GetBack();
-        DEBUG("Initializing new memory on id: ", count, ", offset: ", node_offset);
+        DEBUG("Initializing new memory on id: ", id, ", offset: ", node_offset);
 
         metaobject.Write(alloc_->GetFile(), node_offset);
         back.free_offset_ += metaobject.Size();
         back.actual_size_ += metaobject.Size();
 
-        INFO("Successfully added node with id: ", count);
+        INFO("Successfully added node with id: ", id);
 
         mem::WritePage(back, alloc_->GetFile());
         DEBUG("Back ", back);
-        GetHeader().WriteNodeCount(alloc_->GetFile(), ++count);
-        DEBUG("Count ", GetHeader().nodes_);
+        GetHeader().WriteNodeId(alloc_->GetFile(), ++id);
+        DEBUG("Count ", GetHeader().id_);
     }
 
     template <typename Predicate, typename Functor>

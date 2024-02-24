@@ -12,6 +12,8 @@ namespace db {
  * Node a1 were deleted (due to lazy removal R1 is dangling but JOIN on R will be correct)
  * New node a1' was created and its id is a1
  * JOIN on R will produce Incorrect Behaviour
+ *
+ * Currently fixed but need to review it later cause I'm not sure that remade logic correct
  */
 
 class ValNodeStorage : public NodeStorage {
@@ -26,7 +28,6 @@ public:
 
         mem::PageOffset inner_offset_;
         mem::PageList::PageIterator current_page_;
-        ts::ObjectId id_;
 
         mem::Offset end_offset_;
 
@@ -52,30 +53,16 @@ public:
             return sizeof(mem::Magic) + sizeof(ts::ObjectId) + node_class_->Size().value();
         }
 
-        [[nodiscard]] ts::ObjectId Id() const noexcept {
-            return id_;
+        [[nodiscard]] ts::ObjectId Id() {
+            return file_->Read<ts::ObjectId>(GetRealOffset() +
+                                             static_cast<mem::Offset>(sizeof(mem::Magic)));
         }
+
         [[nodiscard]] mem::Offset GetRealOffset() {
             return mem::GetOffset(current_page_->index_, inner_offset_);
         }
 
     private:
-        NodeIterator& RegenerateId() {
-            switch (curr_->State()) {
-                case ObjectState::kFree: {
-                    id_ = (page_list_.GetPagesCount() - 1) * GetNodesInPage() + GetInPageIndex();
-                    return *this;
-                }
-                case ObjectState::kValid: {
-                    id_ = curr_->Id();
-                    return *this;
-                }
-                case ObjectState::kInvalid:
-                default:
-                    throw error::BadArgument("No id");
-            }
-        }
-
         void RegenerateEnd() {
             auto back = mem::ReadPage(mem::Page(page_list_.Back()), file_);
             end_offset_ = mem::GetOffset(back.index_, back.initialized_offset_);
@@ -94,11 +81,11 @@ public:
         }
 
         void Advance() {
+            RegenerateEnd();
             do {
                 if (GetRealOffset() >= end_offset_) {
                     return;
                 }
-                ++id_;
                 if (GetInPageIndex() + 1 <= GetNodesInPage()) {
                     inner_offset_ += Size();
                 } else {
@@ -109,11 +96,12 @@ public:
         }
 
         void Retreat() {
+            RegenerateEnd();
             do {
-                if (id_ == 0) {
+                if (page_list_.Front() == current_page_->index_ &&
+                    inner_offset_ == sizeof(mem::Page)) {
                     return;
                 }
-                --id_;
                 if (GetInPageIndex() >= 1) {
                     inner_offset_ -= Size();
                 } else {
@@ -137,36 +125,6 @@ public:
         using reference = Node&;
 
         NodeIterator(mem::Magic magic, ts::Class::Ptr& node_class, mem::File::Ptr& file,
-                     mem::PageList& page_list, ts::ObjectId id)
-            : magic_(magic),
-              node_class_(node_class),
-              file_(file),
-              page_list_(page_list),
-              inner_offset_(sizeof(mem::Page)),
-              current_page_(page_list.Begin()),
-              id_(0) {
-
-            for (auto page_it = page_list_.Begin(); page_it != page_list.End(); ++page_it) {
-                if (id_ + GetNodesInPage() <= id) {
-                    current_page_ = page_it;
-                    id_ += GetNodesInPage();
-                } else {
-                    break;
-                }
-            }
-            while (id_ < id) {
-                inner_offset_ += Size();
-                ++id_;
-            }
-            if (!page_list_.IsEmpty()) {
-                RegenerateEnd();
-                Read();
-            } else {
-                current_page_ = page_list_.End();
-            }
-        }
-
-        NodeIterator(mem::Magic magic, ts::Class::Ptr& node_class, mem::File::Ptr& file,
                      mem::PageList& page_list, mem::PageList::PageIterator it,
                      mem::PageOffset offset)
             : magic_(magic),
@@ -174,13 +132,14 @@ public:
               file_(file),
               page_list_(page_list),
               inner_offset_(offset),
-              current_page_(it),
-              id_(0) {
+              current_page_(it) {
             if (!page_list_.IsEmpty()) {
                 RegenerateEnd();
+                while (State() == ObjectState::kFree) {
+                    Advance();
+                }
                 if (GetRealOffset() != end_offset_) {
                     Read();
-                    RegenerateId();
                 }
             } else {
                 current_page_ = page_list_.End();
@@ -236,7 +195,7 @@ public:
 
     NodeIterator Begin() {
         return NodeIterator(GetHeader().magic_, nodes_class_, alloc_->GetFile(), data_page_list_,
-                            0);
+                            data_page_list_.Begin(), sizeof(mem::Page));
     }
 
     NodeIterator End() {
@@ -249,15 +208,10 @@ private:
     template <ts::ObjectLike O>
     ts::ObjectId WrtiteIntoFree(mem::Page& back, mem::ClassHeader& header, Node& next_free,
                                 util::Ptr<O>& node) {
-        // TODO: See above
-        auto count = header.ReadNodeCount(alloc_->GetFile()).nodes_;
-        // auto id = NodeIterator(header.ReadMagic(alloc_->GetFile()).magic_, nodes_class_,
-        //                        alloc_->GetFile(), data_page_list_,
-        //                        data_page_list_.IteratorTo(back.index_), back.free_offset_)
-        //   .Id();
-        DEBUG("Rewrited id: ", count);
+        auto id = header.ReadNodeId(alloc_->GetFile()).id_;
+        DEBUG("Rewrited id: ", id);
         DEBUG("Found free space: ", next_free.NextFree());
-        auto metaobject = Node(header.ReadMagic(alloc_->GetFile()).magic_, count, node);
+        auto metaobject = Node(header.ReadMagic(alloc_->GetFile()).magic_, id, node);
         metaobject.Write(alloc_->GetFile(), mem::GetOffset(back.index_, back.free_offset_));
         back.free_offset_ = next_free.NextFree();
         back.actual_size_ += metaobject.Size();
@@ -266,14 +220,14 @@ private:
 
     template <ts::ObjectLike O>
     ts::ObjectId WriteIntoInvalid(mem::Page& back, mem::ClassHeader& header, util::Ptr<O>& node) {
-        auto count = header.ReadNodeCount(alloc_->GetFile()).nodes_;
-        auto metaobject = Node(header.ReadMagic(alloc_->GetFile()).magic_, count, node);
+        auto id = header.ReadNodeId(alloc_->GetFile()).id_;
+        auto metaobject = Node(header.ReadMagic(alloc_->GetFile()).magic_, id, node);
         if (back.initialized_offset_ + metaobject.Size() >= mem::kPageSize) {
             DEBUG("Allocation");
             AllocatePage();
             back = GetBack();
         }
-        DEBUG("Initializing new memory on id: ", count,
+        DEBUG("Initializing new memory on id: ", id,
               ", offset: ", mem::GetOffset(back.index_, back.initialized_offset_));
 
         metaobject.Write(alloc_->GetFile(), mem::GetOffset(back.index_, back.free_offset_));
@@ -316,8 +270,8 @@ public:
 
         mem::WritePage(back, alloc_->GetFile());
         DEBUG("Back ", back);
-        header.WriteNodeCount(alloc_->GetFile(), ++header.ReadNodeCount(alloc_->GetFile()).nodes_);
-        DEBUG("Count ", GetHeader().nodes_);
+        header.WriteNodeId(alloc_->GetFile(), ++header.ReadNodeId(alloc_->GetFile()).id_);
+        DEBUG("Id: ", GetHeader().id_);
     }
 
     template <typename Predicate, typename Functor>

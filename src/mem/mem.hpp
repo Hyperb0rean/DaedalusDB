@@ -99,7 +99,7 @@ class ClassHeader : public Page {
 public:
     Page node_list_sentinel_;
     size_t node_pages_count_;
-    size_t nodes_;
+    size_t id_;
     Magic magic_;
 
     ClassHeader() : Page() {
@@ -116,9 +116,9 @@ public:
 
     // Should think about structure alignment in 4 following methods
 
-    ClassHeader& WriteNodeCount(File::Ptr& file, size_t count) {
-        nodes_ = count;
-        file->Write<size_t>(nodes_, GetOffset(index_, 2 * sizeof(Page) + sizeof(size_t)));
+    ClassHeader& WriteNodeId(File::Ptr& file, size_t count) {
+        id_ = count;
+        file->Write<size_t>(id_, GetOffset(index_, 2 * sizeof(Page) + sizeof(size_t)));
         return *this;
     }
 
@@ -128,8 +128,8 @@ public:
         return *this;
     }
 
-    ClassHeader& ReadNodeCount(File::Ptr& file) {
-        nodes_ = file->Read<size_t>(GetOffset(index_, 2 * sizeof(Page) + sizeof(size_t)));
+    ClassHeader& ReadNodeId(File::Ptr& file) {
+        id_ = file->Read<size_t>(GetOffset(index_, 2 * sizeof(Page) + sizeof(size_t)));
         return *this;
     }
 
@@ -151,7 +151,7 @@ public:
         node_list_sentinel_ = Page(kSentinelIndex);
         node_list_sentinel_.type_ = PageType::kSentinel;
         node_pages_count_ = 0;
-        nodes_ = 0;
+        id_ = 0;
         magic_ = 0;
         file->Write<ClassHeader>(*this, GetPageAddress(index_));
         return *this;

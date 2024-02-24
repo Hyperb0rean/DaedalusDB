@@ -2,6 +2,7 @@
 
 #include <any>
 #include <initializer_list>
+#include <ostream>
 #include <string>
 
 #include "primitive.hpp"
@@ -9,7 +10,12 @@
 #include "string.hpp"
 #include "struct.hpp"
 
+#define ID(id) static_cast<ts::ObjectId>(id)
+
 namespace ts {
+
+/* TODO: Make support of creation of attributed relations
+ */
 
 // Should be twice size of mem::PageOffset;
 using ObjectId = uint64_t;
@@ -22,7 +28,7 @@ template <ClassLike C, typename... Classes>
         return new_class;
     } else if constexpr (std::is_same_v<C, RelationClass>) {
         static_assert(sizeof...(classes) == 2 || sizeof...(classes) == 3);
-        auto new_class = util::MakePtr<C>(std::move(name), classes...);
+        return util::MakePtr<C>(std::move(name), classes...);
     } else {
         static_assert(sizeof...(classes) == 0);
         return util::MakePtr<C>(std::move(name));
@@ -88,10 +94,16 @@ template <ObjectLike O, ClassLike C>
             "Incorrect cast or attempt to implicit type conversion of argument type " +
             std::string(arg_it->type().name()) + " to class type" + object_class->Serialize());
     } else if constexpr (std::is_same_v<O, Relation>) {
-        throw error::NotImplemented("Relation creation");
+        auto in_id = std::any_cast<ObjectId>(*arg_it++);
+        auto out_id = std::any_cast<ObjectId>(*arg_it++);
+        if (util::As<RelationClass>(object_class)->AttributesClass().has_value()) {
+            throw error::NotImplemented(": ) Attributed relations not implemented yet");
+        } else {
+            return util::MakePtr<Relation>(object_class, in_id, out_id);
+        }
     } else {
 #define DDB_ADD_PRIMITIVE(P)                                                                \
-    if (util::Is<PrimitiveClass<P>>(object_class)) {                                        \
+    if constexpr (std::is_same_v<O, Primitive<P>>) {                                        \
         if (arg_it->type() == typeid(P)) {                                                  \
             return util::MakePtr<Primitive<P>>(util::As<PrimitiveClass<P>>(object_class),   \
                                                std::any_cast<P>(*arg_it));                  \
@@ -104,9 +116,8 @@ template <ObjectLike O, ClassLike C>
 
         DDB_PRIMITIVE_GENERATOR(DDB_ADD_PRIMITIVE)
 #undef DDB_ADD_PRIMITIVE
-
-        throw error::TypeError("Can't create object for type " + object_class->Name());
     }
+    throw error::TypeError("Can't create object for type " + object_class->Serialize());
 }
 
 template <ObjectLike O, ClassLike C, typename... Args>
@@ -146,6 +157,13 @@ template <ObjectLike O, ClassLike C>
         return new_object;
     } else if constexpr (std::is_same_v<O, String>) {
         return util::MakePtr<String>(object_class);
+    } else if constexpr (std::is_same_v<O, Relation>) {
+        auto attribute_class = util::As<RelationClass>(object_class)->AttributesClass();
+        if (attribute_class.has_value()) {
+            throw error::NotImplemented(": ) Attributed relations not implemented yet");
+        } else {
+            return util::MakePtr<Relation>(object_class, ID(0), ID(0));
+        }
     } else {
         return util::MakePtr<O>(object_class);
     }

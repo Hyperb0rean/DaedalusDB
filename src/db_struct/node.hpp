@@ -118,6 +118,9 @@ public:
             } else if (util::Is<ts::StringClass>(data_class)) {
                 data_ =
                     ts::ReadNew<ts::String>(util::As<ts::StringClass>(data_class), file, offset);
+            } else if (util::Is<ts::RelationClass>(data_class)) {
+                data_ = ts::ReadNew<ts::Relation>(util::As<ts::RelationClass>(data_class), file,
+                                                  offset);
             } else {
 
 #define DDB_CREATE_PRIMITIVE(P)                                                                  \

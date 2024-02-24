@@ -121,3 +121,29 @@ TEST(ValNodeStorage, Select) {
                it->Data<ts::Struct>()->GetField<ts::Primitive<double>>("lon")->Value();
     });
 }
+
+TEST(ValNodeStorage, IdLogic) {
+    auto coords =
+        ts::NewClass<ts::StructClass>("coords", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
+                                      ts::NewClass<ts::PrimitiveClass<double>>("lon"));
+
+    auto database =
+        db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, CONSOLE_LOGGER);
+    database.AddClass(coords);
+
+    for (size_t i = 0; i < 1000; ++i) {
+        database.AddNode(ts::New<ts::Struct>(coords, 10., 1000.));
+    }
+
+    database.RemoveNodesIf(coords, [](db::ValNodeIterator it) { return it->Id() < 50; });
+    database.RemoveNodesIf(coords, [](db::ValNodeIterator it) { return it->Id() >= 150; });
+
+    for (size_t i = 0; i < 100; ++i) {
+        database.AddNode(ts::New<ts::Struct>(coords, 50., 2000.));
+    }
+
+    database.PrintNodesIf(coords, [](db::ValNodeIterator it) {
+        std::cerr << it.GetRealOffset() << std::endl;
+        return true;
+    });
+}

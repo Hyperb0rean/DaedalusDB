@@ -4,7 +4,7 @@
 #include <unordered_map>
 
 #include "allocator.hpp"
-#include "object.hpp"
+#include "class_object.hpp"
 
 namespace db {
 

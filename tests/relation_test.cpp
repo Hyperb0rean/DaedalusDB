@@ -16,4 +16,11 @@ TEST(Relation, RelationClass) {
     holder->Write(file, 0);
     holder->Read(file, 0);
     std::cerr << holder->ToString() << std::endl;
+
+    auto name_to_age_aged = util::MakePtr<ts::RelationClass>("name-to-age-aged", name, age, age);
+    holder = util::MakePtr<ts::ClassObject>(name_to_age_aged);
+    std::cerr << holder->ToString() << std::endl;
+    holder->Write(file, 0);
+    holder->Read(file, 0);
+    std::cerr << holder->ToString() << std::endl;
 }

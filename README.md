@@ -12,3 +12,4 @@ Current progress:
 - 10% Test Coverage - Smoke tests only
 
 
+If you want to contribute you are welcome :)

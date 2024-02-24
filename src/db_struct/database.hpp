@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ranges>
 #include <vector>
 
 #include "val_node_storage.hpp"
@@ -109,15 +108,18 @@ public:
         }
     }
 
-    template <ts::ClassLike C, typename Predicate>
-    void PrintNodesIf(util::Ptr<C>& node_class, Predicate predicate, std::ostream& os = std::cout) {
+    // I'm thinking about implementing some sort of Java StreamAPI-like API in future it requires
+    // additional entity Stream or Sequence that will manage several Iterator's and some constraints
+    // on them. It will introduce possibilities to chain predicates, zip iterators and do other
+    // functional stuff but currently i'll focus on must-have functionality. Maybe somebody or
+    // future me will implement this.
 
-        auto print = [&os](Node node) { os << node.ToString() << std::endl; };
-
+    template <ts::ClassLike C, typename Predicate, typename Functor>
+    void VisitNodes(util::Ptr<C>& node_class, Predicate predicate, Functor functor) {
         if (node_class->Size().has_value()) {
             if constexpr (std::is_invocable_r_v<bool, Predicate, ValNodeIterator>) {
                 ValNodeStorage(node_class, class_storage_, alloc_, LOGGER)
-                    .VisitNodes(predicate, print);
+                    .VisitNodes(predicate, functor);
             } else {
                 ERROR("Bad predicate");
             }
@@ -125,11 +127,17 @@ public:
         } else {
             if constexpr (std::is_invocable_r_v<bool, Predicate, VarNodeIterator>) {
                 VarNodeStorage(node_class, class_storage_, alloc_, LOGGER)
-                    .VisitNodes(predicate, print);
+                    .VisitNodes(predicate, functor);
             } else {
                 ERROR("Bad predicate");
             }
         }
+    }
+
+    template <ts::ClassLike C, typename Predicate>
+    void PrintNodesIf(util::Ptr<C>& node_class, Predicate predicate, std::ostream& os = std::cout) {
+        auto print = [&os](Node node) { os << node.ToString() << std::endl; };
+        VisitNodes(node_class, predicate, print);
     }
 
     template <ts::ObjectLike O, typename Container = std::vector<util::Ptr<O>>, ts::ClassLike C,
@@ -137,23 +145,7 @@ public:
     Container CollectNodesIf(util::Ptr<C>& node_class, Predicate predicate) {
         Container result{};
         auto insert = [&result](Node node) { result.push_back(node.Data<O>()); };
-
-        if (node_class->Size().has_value()) {
-            if constexpr (std::is_invocable_r_v<bool, Predicate, ValNodeIterator>) {
-
-                ValNodeStorage(node_class, class_storage_, alloc_, LOGGER)
-                    .VisitNodes(predicate, insert);
-            } else {
-                ERROR("Bad predicate");
-            }
-        } else {
-            if constexpr (std::is_invocable_r_v<bool, Predicate, VarNodeIterator>) {
-                VarNodeStorage(node_class, class_storage_, alloc_, LOGGER)
-                    .VisitNodes(predicate, insert);
-            } else {
-                ERROR("Bad predicate");
-            }
-        }
+        VisitNodes(node_class, predicate, insert);
         return result;
     }
 

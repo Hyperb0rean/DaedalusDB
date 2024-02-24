@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../mem/pagelist.hpp"
-#include "../type_system/object.hpp"
 #include "node.hpp"
 #include "node_storage.hpp"
+#include "object.hpp"
+#include "pagelist.hpp"
 
 namespace db {
 
@@ -19,7 +19,7 @@ public:
 
         mem::PageOffset inner_offset_;
         mem::PageList::PageIterator current_page_;
-        ObjectId id_;
+        ts::ObjectId id_;
 
         mem::Offset end_offset_;
 
@@ -36,16 +36,16 @@ public:
             return (mem::kPageSize - sizeof(mem::Page)) / Size();
         }
 
-        [[nodiscard]] ObjectId GetInPageIndex() const {
+        [[nodiscard]] ts::ObjectId GetInPageIndex() const {
             return (inner_offset_ - sizeof(mem::Page)) / Size();
         }
 
     public:
         [[nodiscard]] size_t Size() const {
-            return sizeof(mem::Magic) + sizeof(ObjectId) + node_class_->Size().value();
+            return sizeof(mem::Magic) + sizeof(ts::ObjectId) + node_class_->Size().value();
         }
 
-        [[nodiscard]] ObjectId Id() const noexcept {
+        [[nodiscard]] ts::ObjectId Id() const noexcept {
             return id_;
         }
         [[nodiscard]] mem::Offset GetRealOffset() {
@@ -125,12 +125,12 @@ public:
         friend ValNodeStorage;
         using iterator_category = std::bidirectional_iterator_tag;
         using value_type = Node;
-        using difference_type = ObjectId;
+        using difference_type = ts::ObjectId;
         using pointer = Node::Ptr;
         using reference = Node&;
 
         NodeIterator(mem::Magic magic, ts::Class::Ptr& node_class, mem::File::Ptr& file,
-                     mem::PageList& page_list, ObjectId id)
+                     mem::PageList& page_list, ts::ObjectId id)
             : magic_(magic),
               node_class_(node_class),
               file_(file),
@@ -240,8 +240,8 @@ public:
 
 private:
     template <ts::ObjectLike O>
-    ObjectId WrtiteIntoFree(mem::Page& back, mem::ClassHeader& header, Node& next_free,
-                            util::Ptr<O>& node) {
+    ts::ObjectId WrtiteIntoFree(mem::Page& back, mem::ClassHeader& header, Node& next_free,
+                                util::Ptr<O>& node) {
         auto id = NodeIterator(header.ReadMagic(alloc_->GetFile()).magic_, nodes_class_,
                                alloc_->GetFile(), data_page_list_,
                                data_page_list_.IteratorTo(back.index_), back.free_offset_)
@@ -256,7 +256,7 @@ private:
     }
 
     template <ts::ObjectLike O>
-    ObjectId WriteIntoInvalid(mem::Page& back, mem::ClassHeader& header, util::Ptr<O>& node) {
+    ts::ObjectId WriteIntoInvalid(mem::Page& back, mem::ClassHeader& header, util::Ptr<O>& node) {
         auto count = header.ReadNodeCount(alloc_->GetFile()).nodes_;
         auto metaobject = Node(header.ReadMagic(alloc_->GetFile()).magic_, count, node);
         if (back.initialized_offset_ + metaobject.Size() >= mem::kPageSize) {
@@ -278,7 +278,7 @@ public:
     template <ts::ObjectLike O>
     requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(util::Ptr<O>& node) {
 
-        if (node->Size() + sizeof(mem::Magic) + sizeof(ObjectId) + sizeof(mem::Page) >=
+        if (node->Size() + sizeof(mem::Magic) + sizeof(ts::ObjectId) + sizeof(mem::Page) >=
             mem::kPageSize) {
             throw error::NotImplemented("Too big Object");
         }
@@ -290,7 +290,7 @@ public:
                               alloc_->GetFile(), mem::GetOffset(back.index_, back.free_offset_));
         DEBUG("Free: ", next_free.ToString());
 
-        ObjectId id;
+        ts::ObjectId id;
         switch (next_free.State()) {
             case ObjectState::kFree: {
                 id = WrtiteIntoFree(back, header, next_free, node);

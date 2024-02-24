@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../mem/allocator.hpp"
+#include "allocator.hpp"
 #include "class_storage.hpp"
 
 namespace db {

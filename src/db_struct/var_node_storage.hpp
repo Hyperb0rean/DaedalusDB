@@ -23,9 +23,9 @@ public:
         Node::Ptr curr_;
 
     public:
-        [[nodiscard]] ObjectId Id() {
-            return file_->Read<ObjectId>(GetRealOffset() +
-                                         static_cast<mem::Offset>(sizeof(mem::Magic)));
+        [[nodiscard]] ts::ObjectId Id() {
+            return file_->Read<ts::ObjectId>(GetRealOffset() +
+                                             static_cast<mem::Offset>(sizeof(mem::Magic)));
         }
         [[nodiscard]] mem::Offset GetRealOffset() {
             return mem::GetOffset(current_page_->index_, inner_offset_);
@@ -87,7 +87,7 @@ public:
         friend VarNodeStorage;
         using iterator_category = std::forward_iterator_tag;
         using value_type = Node;
-        using difference_type = ObjectId;
+        using difference_type = ts::ObjectId;
         using pointer = Node::Ptr;
         using reference = Node&;
 
@@ -175,7 +175,7 @@ public:
     template <ts::ObjectLike O>
     requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(util::Ptr<O>& node) {
 
-        if (node->Size() + sizeof(mem::Magic) + sizeof(ObjectId) + sizeof(mem::Page) >=
+        if (node->Size() + sizeof(mem::Magic) + sizeof(ts::ObjectId) + sizeof(mem::Page) >=
             mem::kPageSize) {
             throw error::NotImplemented("Too big Object");
         }

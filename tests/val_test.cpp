@@ -96,7 +96,7 @@ TEST(ValNodeStorage, FreeUnusedDataPages) {
     database.AddClass(coords);
 
     for (size_t i = 0; i < 1000; ++i) {
-        database.AddNode(ts::New<ts::Struct>(coords, 13, 46));
+        database.AddNode(ts::New<ts::Struct>(coords, 13., 46.));
     }
 
     database.RemoveNodesIf(coords, []() { return true; });
@@ -113,7 +113,7 @@ TEST(ValNodeStorage, Select) {
     database.AddClass(coords);
 
     for (size_t i = 0; i < 100; ++i) {
-        database.AddNode(ts::New<ts::Struct>(coords, i * 10, 1000 - i));
+        database.AddNode(ts::New<ts::Struct>(coords, i * 10., 1000. - i));
     }
 
     database.PrintNodesIf(coords, [](db::ValNodeIterator it) {

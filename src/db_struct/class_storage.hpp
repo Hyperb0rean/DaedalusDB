@@ -3,8 +3,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "../mem/allocator.hpp"
-#include "../type_system/object.hpp"
+#include "allocator.hpp"
+#include "object.hpp"
 
 namespace db {
 

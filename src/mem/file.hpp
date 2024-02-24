@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "../util/logger.hpp"
+#include "logger.hpp"
 
 namespace mem {
 

@@ -2,8 +2,8 @@
 
 #include <variant>
 
-#include "../mem/mem.hpp"
-#include "../type_system/object.hpp"
+#include "mem.hpp"
+#include "object.hpp"
 
 namespace db {
 
@@ -22,35 +22,29 @@ enum class ObjectState { kFree, kValid, kInvalid };
     }
 }
 
-// Should be twice size of mem::PageOffset;
-using ObjectId = uint64_t;
-
-class Node : public ts::Object {
+class Node {
 private:
     mem::Magic magic_;
     // Stores for valid objects their ids and for free  next free inpage offset
-    std::variant<mem::PageOffset, ObjectId> meta_;
+    std::variant<mem::PageOffset, ts::ObjectId> meta_;
     ts::Object::Ptr data_;
     ObjectState state_;
 
 public:
-    // Node(mem::Magic magic, mem::PageOffset free)
-    //     : magic_(magic), meta_(free), state_(ObjectState::kFree) {
-    // }
     using Ptr = util::Ptr<Node>;
 
     template <ts::ObjectLike O>
-    Node(mem::Magic magic, ObjectId id, util::Ptr<O> data)
+    Node(mem::Magic magic, ts::ObjectId id, util::Ptr<O> data)
         : magic_(magic), meta_(id), data_(data), state_(ObjectState::kValid) {
     }
 
-    virtual size_t Size() const override {
+    size_t Size() const {
         switch (state_) {
             case ObjectState::kFree: {
                 return sizeof(mem::Magic) + sizeof(mem::PageOffset);
             }
             case ObjectState::kValid:
-                return sizeof(mem::Magic) + sizeof(ObjectId) + data_->Size();
+                return sizeof(mem::Magic) + sizeof(ts::ObjectId) + data_->Size();
             case ObjectState::kInvalid:
                 throw error::BadArgument("Invalid object has no size");
             default:
@@ -58,7 +52,7 @@ public:
         }
     }
 
-    virtual mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const override {
+    mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const {
         switch (state_) {
             case ObjectState::kFree:
                 file->Write<mem::Magic>(~magic_, offset);
@@ -68,8 +62,8 @@ public:
             case ObjectState::kValid:
                 file->Write<mem::Magic>(magic_, offset);
                 offset += sizeof(mem::Magic);
-                file->Write(std::get<ObjectId>(meta_), offset);
-                offset += sizeof(ObjectId);
+                file->Write(std::get<ts::ObjectId>(meta_), offset);
+                offset += sizeof(ts::ObjectId);
                 return data_->Write(file, offset);
             case ObjectState::kInvalid:
                 throw error::BadArgument("Trying to write invalid object");
@@ -77,14 +71,14 @@ public:
                 throw error::RuntimeError("Invalid state");
         }
     }
-    virtual void Read(mem::File::Ptr& file, mem::Offset offset) override {
+    void Read(mem::File::Ptr& file, mem::Offset offset) {
         auto magic = file->Read<mem::Magic>(offset);
         offset += sizeof(mem::Magic);
 
         if (magic == magic_) {
             state_ = ObjectState::kValid;
-            meta_ = file->Read<ObjectId>(offset);
-            offset += sizeof(ObjectId);
+            meta_ = file->Read<ts::ObjectId>(offset);
+            offset += sizeof(ts::ObjectId);
             data_->Read(file, offset);
         } else if (magic == ~magic_) {
             state_ = ObjectState::kFree;
@@ -93,14 +87,15 @@ public:
             state_ = ObjectState::kInvalid;
         }
     }
-    [[nodiscard]] virtual std::string ToString() const override {
+    [[nodiscard]] std::string ToString() const {
         return std::string("NODE: ")
             .append("state: ")
             .append(ObjectStateToString(state_))
-            .append(std::holds_alternative<ObjectId>(meta_)
-                        ? std::string(", id: ").append(std::to_string(std::get<ObjectId>(meta_)))
-                        : std::string(", next_free: ")
-                              .append(std::to_string(std::get<mem::PageOffset>(meta_))))
+            .append(
+                std::holds_alternative<ts::ObjectId>(meta_)
+                    ? std::string(", id: ").append(std::to_string(std::get<ts::ObjectId>(meta_)))
+                    : std::string(", next_free: ")
+                          .append(std::to_string(std::get<mem::PageOffset>(meta_))))
             .append(", data: { ")
             .append(state_ == ObjectState::kValid ? data_->ToString() : ObjectStateToString(state_))
             .append(" } ");
@@ -114,8 +109,8 @@ public:
 
         if (read_magic == magic_) {
             state_ = ObjectState::kValid;
-            meta_ = file->Read<ObjectId>(offset);
-            offset += sizeof(ObjectId);
+            meta_ = file->Read<ts::ObjectId>(offset);
+            offset += sizeof(ts::ObjectId);
 
             if (util::Is<ts::StructClass>(data_class)) {
                 data_ =
@@ -149,14 +144,14 @@ public:
         meta_ = meta;
     }
 
-    [[nodiscard]] virtual ObjectId Id() const {
+    [[nodiscard]] ts::ObjectId Id() const {
         if (state_ != ObjectState::kValid) {
             throw error::BadArgument("Node has no id");
         }
-        return std::get<ObjectId>(meta_);
+        return std::get<ts::ObjectId>(meta_);
     }
 
-    [[nodiscard]] virtual mem::PageOffset NextFree() const {
+    [[nodiscard]] mem::PageOffset NextFree() const {
         if (state_ != ObjectState::kFree) {
             throw error::BadArgument("Node has no next");
         }

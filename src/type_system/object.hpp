@@ -6,10 +6,9 @@
 #include <initializer_list>
 #include <sstream>
 #include <string>
-#include <tuple>
 
-#include "../mem/file.hpp"
 #include "class.hpp"
+#include "file.hpp"
 
 #define DDB_PRIMITIVE_GENERATOR(MACRO) \
     MACRO(int)                         \
@@ -91,7 +90,23 @@ class ClassObject : public Object {
                 result->AddField(field);
                 field = Deserialize(stream);
             }
+            stream >> del;
+            if (del != '_') {
+                throw error::TypeError("Can't read correct type by this address");
+            }
             return result;
+        } else if (type == "relation") {
+            auto name = ReadString(stream, '_');
+            auto ingress = Deserialize(stream);
+            auto egress = Deserialize(stream);
+            stream >> del;
+            if (del == '1') {
+                return util::MakePtr<RelationClass>(name, ingress, egress, Deserialize(stream));
+            } else if (del == '_') {
+                return util::MakePtr<RelationClass>(name, ingress, egress);
+            } else {
+                throw error::TypeError("Can't read correct type by this address");
+            }
         } else if (type == "string") {
             return util::MakePtr<StringClass>(ReadString(stream, '_'));
         } else {
@@ -304,30 +319,40 @@ template <ObjectLike O, ClassLike C>
         auto new_object = util::MakePtr<Struct>(object_class);
         auto it = util::As<StructClass>(object_class)->GetFields().begin();
         auto end = util::As<StructClass>(object_class)->GetFields().end();
-
         for (; it != end; ++it) {
             if (util::Is<StructClass>(*it)) {
                 new_object->AddFieldValue(UnsafeNew<Struct>(util::As<StructClass>(*it), arg_it));
             } else if (util::Is<StringClass>(*it)) {
-                try {
-                    new_object->AddFieldValue(util::MakePtr<String>(
-                        util::As<StringClass>(*it), std::any_cast<std::string>(*arg_it)));
-                } catch (...) {
-                    new_object->AddFieldValue(util::MakePtr<String>(
-                        util::As<StringClass>(*it), std::any_cast<const char*>(*arg_it)));
+                if (arg_it->type() == typeid(std::string)) {
+                    new_object->AddFieldValue(
+                        util::MakePtr<String>(util::As<StringClass>(*it),
+                                              std::move(std::any_cast<std::string>(*arg_it))));
+                } else if (arg_it->type() == typeid(const char*)) {
+                    new_object->AddFieldValue(
+                        util::MakePtr<String>(util::As<StringClass>(*it),
+                                              std::move(std::any_cast<const char*>(*arg_it))));
+                } else {
+                    throw error::TypeError(
+                        "Incorrect cast or attempt to implicit type conversion of argument type " +
+                        std::string(arg_it->type().name()) + " to class type" +
+                        util::As<StringClass>(*it)->Serialize());
                 }
                 ++arg_it;
             } else {
 
-#define DDB_ADD_PRIMITIVE(P)                                                                    \
-    else if (util::Is<PrimitiveClass<P>>(*it)) {                                                \
-                                                                                                \
-        new_object->AddFieldValue(util::MakePtr<Primitive<P>>(util::As<PrimitiveClass<P>>(*it), \
-                                                              std::any_cast<P>(*arg_it++)));    \
+#define DDB_ADD_PRIMITIVE(P)                                                                \
+    if (util::Is<PrimitiveClass<P>>(*it)) {                                                 \
+        if (arg_it->type() == typeid(P)) {                                                  \
+            new_object->AddFieldValue(util::MakePtr<Primitive<P>>(                          \
+                util::As<PrimitiveClass<P>>(*it), std::any_cast<P>(*arg_it++)));            \
+            continue;                                                                       \
+        } else                                                                              \
+            throw error::TypeError(                                                         \
+                "Incorrect cast or attempt to implicit type conversion of argument type " + \
+                std::string(arg_it->type().name()) + " to class type" +                     \
+                util::As<PrimitiveClass<P>>(*it)->Serialize());                             \
     }
 
-                if (false) {
-                }
                 DDB_PRIMITIVE_GENERATOR(DDB_ADD_PRIMITIVE)
 #undef DDB_ADD_PRIMITIVE
             }
@@ -335,28 +360,35 @@ template <ObjectLike O, ClassLike C>
 
         return new_object;
     } else if constexpr (std::is_same_v<O, String>) {
-        try {
+        if (arg_it->type() == typeid(std::string)) {
             return util::MakePtr<String>(object_class,
                                          std::move(std::any_cast<std::string>(*arg_it)));
-
-        } catch (...) {
+        } else if (arg_it->type() == typeid(const char*)) {
             return util::MakePtr<String>(object_class,
                                          std::move(std::any_cast<const char*>(*arg_it)));
         }
+        throw error::TypeError(
+            "Incorrect cast or attempt to implicit type conversion of argument type " +
+            std::string(arg_it->type().name()) + " to class type" + object_class->Serialize());
     } else {
-
-#define DDB_ADD_PRIMITIVE(P)                                                          \
-    if (util::Is<PrimitiveClass<P>>(object_class)) {                                  \
-        return util::MakePtr<Primitive<P>>(util::As<PrimitiveClass<P>>(object_class), \
-                                           std::any_cast<P>(*arg_it));                \
+#define DDB_ADD_PRIMITIVE(P)                                                                \
+    if (util::Is<PrimitiveClass<P>>(object_class)) {                                        \
+        if (arg_it->type() == typeid(P)) {                                                  \
+            return util::MakePtr<Primitive<P>>(util::As<PrimitiveClass<P>>(object_class),   \
+                                               std::any_cast<P>(*arg_it));                  \
+        } else                                                                              \
+            throw error::TypeError(                                                         \
+                "Incorrect cast or attempt to implicit type conversion of argument type " + \
+                std::string(arg_it->type().name()) + " to class type" +                     \
+                object_class->Serialize());                                                 \
     }
 
         DDB_PRIMITIVE_GENERATOR(DDB_ADD_PRIMITIVE)
 #undef DDB_ADD_PRIMITIVE
 
-        throw error::TypeError("Can't create object");
+        throw error::TypeError("Can't create object for type " + object_class->Name());
     }
-}  // namespace ts
+}
 
 template <ObjectLike O, ClassLike C, typename... Args>
 [[nodiscard]] util::Ptr<O> New(util::Ptr<C> object_class, Args&&... args) {

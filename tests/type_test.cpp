@@ -98,7 +98,7 @@ TEST(TypeSystem, TypeDump) {
 
     ts::ClassObject(person_class).Write(file, 1488);
     ASSERT_EQ(ts::ClassObject(person_class).ToString(),
-              "_struct@person_<_string@name__string@surname__int@age__unsignedlong@money_>");
+              "_struct@person_<_string@name__string@surname__int@age__unsignedlong@money_>_");
 
     ts::ClassObject read_class;
     read_class.Read(file, 1488);

@@ -38,3 +38,21 @@ TEST(Database, Collect) {
         std::cout << ptr->ToString() << std::endl;
     }
 }
+
+TEST(Database, Drop) {
+    auto database = util::MakePtr<db::Database>(util::MakePtr<mem::File>("test.data"),
+                                                db::OpenMode::kWrite, DEBUG_LOGGER);
+
+    auto address_class = ts::NewClass<ts::StructClass>(
+        "address", ts::NewClass<ts::StringClass>("city"), ts::NewClass<ts::StringClass>("street"),
+        ts::NewClass<ts::PrimitiveClass<size_t>>("house"));
+
+    database->AddClass(address_class);
+    database->PrintAllClasses();
+    for (size_t i = 0; i < 10000; ++i) {
+        database->AddNode(ts::New<ts::Struct>(address_class, "Saint-Petersburg", "Lomonosova", i));
+    }
+    ASSERT_TRUE(database->Contains(address_class));
+    database->RemoveClass(address_class);
+    ASSERT_FALSE(database->Contains(address_class));
+}

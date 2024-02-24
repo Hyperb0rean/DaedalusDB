@@ -5,6 +5,14 @@
 #include "pagelist.hpp"
 
 namespace db {
+/* TODO: Currently id generation supports reusing of old id numbers, that were previously removed,
+ * need to delete this feature due to occuring conflicts with lazy relation removal, scenario:
+ * Node a1, a2 were created
+ * Relation R1(a1,a2) was created
+ * Node a1 were deleted (due to lazy removal R1 is dangling but JOIN on R will be correct)
+ * New node a1' was created and its id is a1
+ * JOIN on R will produce Incorrect Behaviour
+ */
 
 class ValNodeStorage : public NodeStorage {
 
@@ -241,13 +249,15 @@ private:
     template <ts::ObjectLike O>
     ts::ObjectId WrtiteIntoFree(mem::Page& back, mem::ClassHeader& header, Node& next_free,
                                 util::Ptr<O>& node) {
-        auto id = NodeIterator(header.ReadMagic(alloc_->GetFile()).magic_, nodes_class_,
-                               alloc_->GetFile(), data_page_list_,
-                               data_page_list_.IteratorTo(back.index_), back.free_offset_)
-                      .Id();
-        DEBUG("Rewrited id: ", id);
+        // TODO: See above
+        auto count = header.ReadNodeCount(alloc_->GetFile()).nodes_;
+        // auto id = NodeIterator(header.ReadMagic(alloc_->GetFile()).magic_, nodes_class_,
+        //                        alloc_->GetFile(), data_page_list_,
+        //                        data_page_list_.IteratorTo(back.index_), back.free_offset_)
+        //   .Id();
+        DEBUG("Rewrited id: ", count);
         DEBUG("Found free space: ", next_free.NextFree());
-        auto metaobject = Node(header.ReadMagic(alloc_->GetFile()).magic_, id, node);
+        auto metaobject = Node(header.ReadMagic(alloc_->GetFile()).magic_, count, node);
         metaobject.Write(alloc_->GetFile(), mem::GetOffset(back.index_, back.free_offset_));
         back.free_offset_ = next_free.NextFree();
         back.actual_size_ += metaobject.Size();
@@ -334,7 +344,7 @@ public:
         DEBUG("Removing nodes..");
 
         auto end = End();
-        size_t count = 0;
+        // size_t count = 0;
         std::vector<mem::PageIndex> free_pages;
         for (auto node_it = Begin(); node_it != end; ++node_it) {
             if (predicate(node_it)) {
@@ -355,14 +365,15 @@ public:
                     INFO("Deallocated page", page);
                     free_pages.push_back(page.index_);
                 }
-                ++count;
+                // ++count;
             }
         }
         for (auto id : free_pages) {
             FreePage(id);
         }
-        auto header = GetHeader();
-        header.WriteNodeCount(alloc_->GetFile(), header.nodes_ - count);
+        // TODO: see above
+        // auto header = GetHeader();
+        // header.WriteNodeCount(alloc_->GetFile(), header.nodes_ - count);
     }
 };
 }  // namespace db

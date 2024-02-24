@@ -1,5 +1,6 @@
 #pragma once
 
+#include <type_traits>
 #include <vector>
 
 #include "val_node_storage.hpp"
@@ -7,7 +8,10 @@
 
 namespace db {
 
+constexpr auto kAll = [](auto) { return true; };
+
 enum class OpenMode { kDefault, kRead, kWrite };
+
 using ValNodeIterator = db::ValNodeStorage::NodeIterator;
 using VarNodeIterator = db::VarNodeStorage::NodeIterator;
 
@@ -67,8 +71,24 @@ public:
     }
 
     template <ts::ClassLike C>
-    void RemoveClass(util::Ptr<C>& new_class) {
-        class_storage_->RemoveClass(new_class);
+    void RemoveClass(util::Ptr<C>& node_class) {
+        NodeStorage(node_class, class_storage_, alloc_, LOGGER).Drop();
+        class_storage_->RemoveClass(node_class);
+    }
+
+    template <ts::ClassLike C>
+    bool Contains(util::Ptr<C>& node_class) {
+        bool found = 0;
+        std::string serialized = node_class->Serialize();
+        class_storage_->VisitClasses([&found, &serialized](ts::Class::Ptr stored_class) {
+            if (found) {
+                return;
+            }
+            if (stored_class->Serialize() == serialized) {
+                found = true;
+            }
+        });
+        return found;
     }
 
     void PrintAllClasses(std::ostream& os = std::cout) {
@@ -108,11 +128,11 @@ public:
         }
     }
 
-    // I'm thinking about implementing some sort of Java StreamAPI-like API in future it requires
-    // additional entity Stream or Sequence that will manage several Iterator's and some constraints
-    // on them. It will introduce possibilities to chain predicates, zip iterators and do other
-    // functional stuff but currently i'll focus on must-have functionality. Maybe somebody or
-    // future me will implement this.
+    // TODO: I'm thinking about implementing some sort of Java StreamAPI-like API in future it
+    // requires additional entity Stream or Sequence that will manage several Iterator's and some
+    // constraints on them. It will introduce possibilities to chain predicates, zip iterators and
+    // do other functional stuff but currently i'll focus on must-have functionality. Maybe somebody
+    // or future me will implement this.
 
     template <ts::ClassLike C, typename Predicate, typename Functor>
     void VisitNodes(util::Ptr<C>& node_class, Predicate predicate, Functor functor) {
@@ -151,7 +171,10 @@ public:
 
     template <ts::ClassLike C>
     void PrintAllNodes(util::Ptr<C>& node_class) {
-        PrintNodesIf(node_class, [](auto) { return true; });
+        PrintNodesIf(node_class, kAll);
+    }
+
+    void Join() {
     }
 };
 

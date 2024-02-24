@@ -167,7 +167,6 @@ public:
             return;
         }
 
-        // TODO: REMOVE ALL NODES OF CLASS
         class_list_.Unlink(index.value());
         alloc_->FreePage(index.value());
     }
@@ -181,13 +180,13 @@ public:
     }
 
     template <typename Functor>
-    requires std::invocable<Functor, ts::Class>
+    requires std::invocable<Functor, ts::Class::Ptr>
     void VisitClasses(Functor functor) {
         for (auto& class_header : class_list_) {
             ts::ClassObject class_object;
             class_object.Read(alloc_->GetFile(),
                               mem::GetOffset(class_header.index_, class_header.free_offset_));
-            functor(class_object.GetClass().get());
+            functor(class_object.GetClass());
         }
     }
 };

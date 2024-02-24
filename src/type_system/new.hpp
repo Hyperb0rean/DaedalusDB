@@ -5,6 +5,7 @@
 #include <string>
 
 #include "primitive.hpp"
+#include "relation.hpp"
 #include "string.hpp"
 #include "struct.hpp"
 
@@ -19,6 +20,9 @@ template <ClassLike C, typename... Classes>
         auto new_class = util::MakePtr<C>(std::move(name));
         (new_class->AddField(classes), ...);
         return new_class;
+    } else if constexpr (std::is_same_v<C, RelationClass>) {
+        static_assert(sizeof...(classes) == 2 || sizeof...(classes) == 3);
+        auto new_class = util::MakePtr<C>(std::move(name), classes...);
     } else {
         static_assert(sizeof...(classes) == 0);
         return util::MakePtr<C>(std::move(name));
@@ -83,6 +87,8 @@ template <ObjectLike O, ClassLike C>
         throw error::TypeError(
             "Incorrect cast or attempt to implicit type conversion of argument type " +
             std::string(arg_it->type().name()) + " to class type" + object_class->Serialize());
+    } else if constexpr (std::is_same_v<O, Relation>) {
+        throw error::NotImplemented("Relation creation");
     } else {
 #define DDB_ADD_PRIMITIVE(P)                                                                \
     if (util::Is<PrimitiveClass<P>>(object_class)) {                                        \

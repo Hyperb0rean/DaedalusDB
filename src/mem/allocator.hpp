@@ -93,7 +93,7 @@ public:
         }
         free_list_.PushBack(index);
 
-        // Rearranding list;
+        // TODO: compression;
     }
 };
 

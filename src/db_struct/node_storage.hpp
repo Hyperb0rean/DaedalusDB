@@ -58,6 +58,17 @@ public:
         data_page_list_ = mem::PageList(nodes_class->Name(), alloc_->GetFile(),
                                         GetHeader().GetNodeListSentinelOffset(), LOGGER);
     }
+
+    void Drop() {
+        std::vector<mem::PageIndex> indicies;
+        for (auto& page : data_page_list_) {
+            DEBUG("Freeing page: ", page);
+            indicies.push_back(page.index_);
+        }
+        for (auto index : indicies) {
+            FreePage(index);
+        }
+    }
 };
 
 }  // namespace db

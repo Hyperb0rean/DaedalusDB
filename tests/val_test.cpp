@@ -60,7 +60,7 @@ TEST(ValNodeStorage, RemoveNodes) {
     }
 
     database.RemoveNodesIf(coords, [](auto it) { return it.Id() % 2 == 0; });
-    database.PrintNodesIf(coords, []() { return true; });
+    database.PrintNodesIf(coords, db::kAll);
 }
 
 TEST(ValNodeStorage, RemoveThenAddNodes) {
@@ -83,7 +83,7 @@ TEST(ValNodeStorage, RemoveThenAddNodes) {
         database.AddNode(ts::New<ts::Struct>(coords, i * 1., -1. * i));
     }
 
-    database.PrintNodesIf(coords, []() { return true; });
+    database.PrintNodesIf(coords, db::kAll);
 }
 
 TEST(ValNodeStorage, FreeUnusedDataPages) {
@@ -99,8 +99,8 @@ TEST(ValNodeStorage, FreeUnusedDataPages) {
         database.AddNode(ts::New<ts::Struct>(coords, 13., 46.));
     }
 
-    database.RemoveNodesIf(coords, []() { return true; });
-    database.PrintNodesIf(coords, []() { return true; });
+    database.RemoveNodesIf(coords, db::kAll);
+    database.PrintNodesIf(coords, db::kAll);
 }
 
 TEST(ValNodeStorage, Select) {

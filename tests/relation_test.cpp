@@ -103,9 +103,41 @@ TEST(Relation, PatternMatchSimpleEdge) {
 
     database->PrintNodesIf(connected, db::kAll);
 
-    auto map = database->PatternMatch(pattern);
+    auto result = database->PatternMatch(pattern);
     std::cerr << "RESULT" << std::endl;
-    for (auto& [id, structure] : map) {
-        std::cerr << id << " " << structure->ToString() << std::endl;
+    for (auto& structure : result) {
+        std::cerr << structure->ToString() << std::endl;
+    }
+}
+
+TEST(Relation, PatternMatchAngle) {
+    auto point =
+        ts::NewClass<ts::StructClass>("point", ts::NewClass<ts::PrimitiveClass<double>>("x"),
+                                      ts::NewClass<ts::PrimitiveClass<double>>("y"));
+    auto connected = ts::NewClass<ts::RelationClass>("connected", point, point);
+
+    auto database = util::MakePtr<db::Database>(util::MakePtr<mem::File>("test.data"),
+                                                db::OpenMode::kWrite, DEBUG_LOGGER);
+    database->AddClass(point);
+    database->AddClass(connected);
+
+    database->AddNode(ts::New<ts::Struct>(point, 0.0, 1.0));
+    database->AddNode(ts::New<ts::Struct>(point, 0.0, 0.0));
+    database->AddNode(ts::New<ts::Struct>(point, 1.0, 0.0));
+    database->AddNode(ts::New<ts::Relation>(connected, ID(1), ID(0)));
+    database->AddNode(ts::New<ts::Relation>(connected, ID(0), ID(1)));
+    database->AddNode(ts::New<ts::Relation>(connected, ID(2), ID(1)));
+    database->AddNode(ts::New<ts::Relation>(connected, ID(1), ID(2)));
+
+    auto pattern = util::MakePtr<db::Pattern>(point);
+    pattern->AddRelation(connected, [](db::Node, db::Node) { return true; });
+    pattern->AddRelation(connected, [](db::Node, db::Node) { return true; });
+
+    database->PrintNodesIf(connected, db::kAll);
+
+    auto result = database->PatternMatch(pattern);
+    std::cerr << "RESULT" << std::endl;
+    for (auto& structure : result) {
+        std::cerr << structure->ToString() << std::endl;
     }
 }

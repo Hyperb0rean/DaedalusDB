@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iterator>
+#include <optional>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
@@ -16,6 +17,7 @@ enum class OpenMode { kDefault, kRead, kWrite };
 
 using ValNodeIterator = db::ValNodeStorage::NodeIterator;
 using VarNodeIterator = db::VarNodeStorage::NodeIterator;
+using PatterMatchResult = std::vector<ts::Struct::Ptr>;
 
 class Database {
 
@@ -48,6 +50,93 @@ class Database {
                 superblock_.InitSuperblock(file_);
             } break;
         }
+    }
+
+    using PatterMatchResultImpl = std::unordered_map<ts::ObjectId, ts::Struct::Ptr>;
+    void IntersectPatterMatchResults(PatterMatchResultImpl& mut_map,
+                                     PatterMatchResultImpl& immut_map) {
+        std::vector<PatterMatchResultImpl::iterator> for_erasure;
+        for (auto it = mut_map.begin(); it != mut_map.end(); ++it) {
+            if (immut_map.contains(it->first)) {
+                it->second->AddFieldValue(immut_map[it->first]->GetFields()[1]);
+            } else {
+                // for_erasure.push_back(it);
+            }
+        }
+        for (auto& it : for_erasure) {
+            mut_map.erase(it);
+        }
+    }
+
+    // Very heavy operation
+    // Definitly needed review and rethinking
+    std::optional<PatterMatchResultImpl> PatternMatchImpl(Pattern::Ptr pattern) {
+        std::optional<PatterMatchResultImpl> result = std::nullopt;
+        for (auto& end : pattern->GetRelations()) {
+            auto pattern_result = PatternMatchImpl(util::As<Pattern>(end.pattern));
+            std::unordered_map<ts::ObjectId, mem::Offset> from_index;
+            std::unordered_map<ts::ObjectId, mem::Offset> to_index;
+
+            auto fill_from = [&from_index](auto node) {
+                from_index.insert({node.Id(), node.GetRealOffset()});
+            };
+            auto fill_to = [&to_index](auto node) {
+                to_index.insert({node.Id(), node.GetRealOffset()});
+            };
+
+            VisitNodes(end.relation->FromClass(), kAll, fill_from);
+            VisitNodes(end.relation->ToClass(), kAll, fill_to);
+
+            auto from_magic =
+                mem::ClassHeader(class_storage_->FindClass(end.relation->FromClass()).value())
+                    .ReadMagic(alloc_->GetFile())
+                    .magic_;
+
+            auto to_magic =
+                mem::ClassHeader(class_storage_->FindClass(end.relation->ToClass()).value())
+                    .ReadMagic(alloc_->GetFile())
+                    .magic_;
+
+            auto& file = alloc_->GetFile();
+            auto structure_class = ts::NewClass<ts::StructClass>(
+                end.relation->Name(), end.relation->FromClass(),
+                pattern_result.has_value() ? pattern_result.value().begin()->second->GetClass()
+                                           : end.relation->ToClass());
+
+            //  TODO: Manage lazy deletion
+
+            PatterMatchResultImpl inner_map;
+            auto merge = [&from_index, &to_index, &pattern_result, &inner_map, &end, &file,
+                          &from_magic, &to_magic, &structure_class](auto relation_node) {
+                auto from = relation_node->template Data<ts::Relation>()->FromId();
+                auto to = relation_node->template Data<ts::Relation>()->ToId();
+
+                auto from_node =
+                    Node(from_magic, end.relation->FromClass(), file, from_index[from]);
+                auto to_node = Node(to_magic, end.relation->ToClass(), file, to_index[to]);
+
+                if (end.predicate_(from_node, to_node)) {
+                    auto new_struct = util::MakePtr<ts::Struct>(structure_class);
+                    new_struct->AddFieldValue(from_node.Data<ts::Object>());
+                    if (pattern_result.has_value()) {
+                        new_struct->AddFieldValue(pattern_result.value()[to]);
+                    } else {
+                        new_struct->AddFieldValue(to_node.Data<ts::Object>());
+                    }
+
+                    // TODO: using map for inner result will lead to overwrites of previous matches
+                    inner_map.insert({from, new_struct});
+                }
+            };
+
+            VisitNodes(end.relation, kAll, merge);
+            if (result.has_value()) {
+                IntersectPatterMatchResults(result.value(), inner_map);
+            } else {
+                result = inner_map;
+            }
+        }
+        return result;
     }
 
 public:
@@ -174,65 +263,13 @@ public:
 
     // Very heavy operation
     // Definitly needed review and rethinking
-    std::unordered_map<ts::ObjectId, ts::Struct::Ptr> PatternMatch(Pattern::Ptr pattern) {
-        std::unordered_map<ts::ObjectId, ts::Struct::Ptr> result{};
-        auto relations = pattern->GetRelations();
-        for (auto& [name, end] : relations) {
-
-            auto pattern_result = PatternMatch(util::As<Pattern>(end.pattern));
-            bool is_terminal = util::As<Pattern>(end.pattern)->GetRelations().empty();
-            std::unordered_map<ts::ObjectId, mem::Offset> from_index;
-            std::unordered_map<ts::ObjectId, mem::Offset> to_index;
-
-            auto fill_from = [&from_index](auto node) {
-                from_index.insert({node.Id(), node.GetRealOffset()});
-            };
-            auto fill_to = [&to_index](auto node) {
-                to_index.insert({node.Id(), node.GetRealOffset()});
-            };
-
-            VisitNodes(end.relation->FromClass(), kAll, fill_from);
-            VisitNodes(end.relation->ToClass(), kAll, fill_to);
-            auto from_magic =
-                mem::ClassHeader(class_storage_->FindClass(end.relation->FromClass()).value())
-                    .ReadClassHeader(alloc_->GetFile())
-                    .magic_;
-
-            auto to_magic =
-                mem::ClassHeader(class_storage_->FindClass(end.relation->ToClass()).value())
-                    .ReadClassHeader(alloc_->GetFile())
-                    .magic_;
-
-            auto& file = alloc_->GetFile();
-            auto structure_class = ts::NewClass<ts::StructClass>(
-                end.relation->Name(), end.relation->FromClass(),
-                is_terminal ? end.relation->ToClass() : pattern_result.begin()->second->GetClass());
-
-            //  TODO: Manage lazy deletion
-
-            auto merge = [&from_index, &to_index, &pattern_result, &result, &end, &file,
-                          &from_magic, &to_magic, is_terminal,
-                          &structure_class](auto relation_node) {
-                auto from = relation_node->template Data<ts::Relation>()->FromId();
-                auto to = relation_node->template Data<ts::Relation>()->ToId();
-                auto from_node =
-                    Node(from_magic, end.relation->FromClass(), file, from_index[from]);
-                auto to_node = Node(to_magic, end.relation->ToClass(), file, to_index[to]);
-
-                if (end.predicate_(from_node, to_node)) {
-                    auto new_struct = util::MakePtr<ts::Struct>(structure_class);
-                    if (is_terminal) {
-                        new_struct->AddFieldValue(from_node.Data<ts::Object>());
-                        new_struct->AddFieldValue(to_node.Data<ts::Object>());
-                    } else {
-                        new_struct->AddFieldValue(from_node.Data<ts::Object>());
-                        new_struct->AddFieldValue(pattern_result[to]);
-                    }
-                    result.insert({from, new_struct});
-                }
-            };
-
-            VisitNodes(end.relation, kAll, merge);
+    PatterMatchResult PatternMatch(Pattern::Ptr pattern) {
+        auto result_impl = PatternMatchImpl(pattern);
+        PatterMatchResult result{};
+        if (result_impl.has_value()) {
+            for (auto& [id, ptr] : result_impl.value()) {
+                result.emplace_back(ptr);
+            }
         }
         return result;
     }

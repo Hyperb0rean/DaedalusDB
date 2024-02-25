@@ -14,13 +14,13 @@ int main() {
     database.AddNode(ts::New<ts::Struct>(coordinates_class, 31., 55.));
     database.AddNode(ts::DefaultNew<ts::Struct>(coordinates_class));
 
-    database.PrintAllClasses();
-    database.PrintAllNodes(coordinates_class);
+    database.PrintClasses();
+    database.PrintNodesIf(coordinates_class, db::kAll);
 
     database.RemoveNodesIf(coordinates_class, [](db::ValNodeIterator it) { return it.Id() != 0; });
     database.AddNode(ts::New<ts::Struct>(coordinates_class, 31., 55.));
 
-    database.PrintAllNodes(coordinates_class);
+    database.PrintNodesIf(coordinates_class, db::kAll);
     database.RemoveClass(coordinates_class);
 
     return 0;

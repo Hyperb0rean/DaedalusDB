@@ -2,7 +2,6 @@
 
 #include <any>
 #include <initializer_list>
-#include <ostream>
 #include <string>
 
 #include "primitive.hpp"

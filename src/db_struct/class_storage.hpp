@@ -49,7 +49,7 @@ private:
     }
 
     template <ts::ClassLike C>
-    ts::ClassObject::Ptr MakeClassHolder(util::Ptr<C>& new_class) {
+    ts::ClassObject::Ptr MakeClassHolder(const util::Ptr<C>& new_class) {
         return util::MakePtr<ts::ClassObject>(new_class);
     }
 
@@ -108,7 +108,7 @@ public:
     }
 
     template <ts::ClassLike C>
-    void AddClass(util::Ptr<C>& new_class) {
+    void AddClass(const util::Ptr<C>& new_class) {
         INFO("Adding new class..");
 
         auto class_object = MakeClassHolder(new_class);
@@ -148,7 +148,7 @@ public:
     }
 
     template <ts::ClassLike C>
-    void RemoveClass(util::Ptr<C>& new_class) {
+    void RemoveClass(const util::Ptr<C>& new_class) {
         INFO("Removing class..");
 
         auto index = FindClass(new_class, DataMode::kFile);

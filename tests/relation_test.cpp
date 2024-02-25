@@ -78,3 +78,34 @@ TEST(Relation, AddRelation) {
 
     database->PrintNodesIf(connected, db::kAll);
 }
+
+TEST(Relation, PatternMatchSimpleEdge) {
+    auto point =
+        ts::NewClass<ts::StructClass>("point", ts::NewClass<ts::PrimitiveClass<double>>("x"),
+                                      ts::NewClass<ts::PrimitiveClass<double>>("y"));
+    auto connected = ts::NewClass<ts::RelationClass>("connected", point, point);
+
+    auto database = util::MakePtr<db::Database>(util::MakePtr<mem::File>("test.data"),
+                                                db::OpenMode::kWrite, DEBUG_LOGGER);
+    database->AddClass(point);
+    database->AddClass(connected);
+
+    database->AddNode(ts::New<ts::Struct>(point, 0.0, 1.0));
+    database->AddNode(ts::New<ts::Struct>(point, 0.0, 0.0));
+    database->AddNode(ts::New<ts::Relation>(connected, ID(1), ID(0)));
+    database->AddNode(ts::New<ts::Relation>(connected, ID(0), ID(1)));
+
+    auto pattern = util::MakePtr<db::Pattern>(point);
+    pattern->AddRelation(connected, [](db::Node point_a, db::Node point_b) {
+        return point_a.Data<ts::Struct>()->GetField<ts::Primitive<double>>("y")->Value() >
+               point_b.Data<ts::Struct>()->GetField<ts::Primitive<double>>("y")->Value();
+    });
+
+    database->PrintNodesIf(connected, db::kAll);
+
+    auto map = database->PatternMatch(pattern);
+    std::cerr << "RESULT" << std::endl;
+    for (auto& [id, structure] : map) {
+        std::cerr << id << " " << structure->ToString() << std::endl;
+    }
+}

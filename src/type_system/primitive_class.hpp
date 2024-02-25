@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cctype>
+
 #include "class.hpp"
 
 namespace ts {
@@ -15,7 +17,8 @@ public:
         std::string result = "_";
         result += type_name<T>();
         result.append("@").append(name_).append("_");
-        return {result.begin(), std::remove_if(result.begin(), result.end(), isspace)};
+        result.erase(std::remove_if(result.begin(), result.end(), isspace), result.end());
+        return result;
     }
     [[nodiscard]] std::optional<size_t> Size() const override {
         return sizeof(T);

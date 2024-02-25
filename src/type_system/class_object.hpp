@@ -56,13 +56,13 @@ class ClassObject : public Object {
             return result;
         } else if (type == "relation") {
             auto name = ReadString(stream, '_');
-            auto ingress = Deserialize(stream);
-            auto egress = Deserialize(stream);
+            auto from = Deserialize(stream);
+            auto to = Deserialize(stream);
             stream >> del;
             if (del == '1') {
-                return util::MakePtr<RelationClass>(name, ingress, egress, Deserialize(stream));
+                return util::MakePtr<RelationClass>(name, from, to, Deserialize(stream));
             } else if (del == '_') {
-                return util::MakePtr<RelationClass>(name, ingress, egress);
+                return util::MakePtr<RelationClass>(name, from, to);
             } else {
                 throw error::TypeError("Can't read correct type by this address");
             }

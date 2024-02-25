@@ -7,19 +7,8 @@ namespace ts {
 class Struct : public Object {
     std::vector<Object::Ptr> fields_;
 
-    template <ObjectLike O>
-    void AddFieldValue(const util::Ptr<O>& value) {
-        fields_.push_back(value);
-    }
-
 public:
     using Ptr = util::Ptr<Struct>;
-
-    template <ObjectLike O, ClassLike C>
-    friend util::Ptr<O> UnsafeNew(util::Ptr<C> object_class,
-                                  std::initializer_list<std::any>::iterator& args);
-    template <ObjectLike O, ClassLike C>
-    friend util::Ptr<O> DefaultNew(util::Ptr<C> object_class);
 
     ~Struct() = default;
     Struct(const StructClass::Ptr& argclass) {
@@ -31,6 +20,11 @@ public:
             size += field->Size();
         }
         return size;
+    }
+
+    template <ObjectLike O>
+    void AddFieldValue(const util::Ptr<O>& value) {
+        fields_.push_back(value);
     }
 
     [[nodiscard]] const std::vector<Object::Ptr> GetFields() const {

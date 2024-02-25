@@ -10,7 +10,7 @@ TEST(VarNodeStorage, NodeAddition) {
     database.AddNode(ts::New<ts::String>(name, "Greg"));
     database.AddNode(ts::New<ts::String>(name, "Gregory"));
     database.AddNode(ts::New<ts::String>(name, "Hyperb0rean"));
-    database.PrintAllNodes(name);
+    database.PrintNodesIf(name, db::kAll);
 }
 
 TEST(VarNodeStorage, NodeAdditionWithAllocation) {
@@ -26,7 +26,7 @@ TEST(VarNodeStorage, NodeAdditionWithAllocation) {
         database.AddNode(ts::New<ts::String>(name, "Hyperb0rean"));
     }
 
-    database.PrintAllNodes(name);
+    database.PrintNodesIf(name, db::kAll);
 }
 
 TEST(VarNodeStorage, NodeDeletion) {
@@ -44,7 +44,7 @@ TEST(VarNodeStorage, NodeDeletion) {
             name, [](db::VarNodeIterator it) { return it->Data<ts::String>()->Value()[0] == 'G'; });
     }
 
-    database.PrintAllNodes(name);
+    database.PrintNodesIf(name, db::kAll);
 }
 
 TEST(VarNodeStorage, NodeDeletionWithDeallocation) {
@@ -63,5 +63,5 @@ TEST(VarNodeStorage, NodeDeletionWithDeallocation) {
     }
     database.RemoveNodesIf(
         name, [](db::VarNodeIterator it) { return it->Data<ts::String>()->Value()[0] == 'G'; });
-    database.PrintAllNodes(name);
+    database.PrintNodesIf(name, db::kAll);
 }

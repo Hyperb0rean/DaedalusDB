@@ -1,14 +1,16 @@
 #pragma once
 
+#include <iterator>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 
+#include "pattern.hpp"
+#include "struct.hpp"
 #include "val_node_storage.hpp"
 #include "var_node_storage.hpp"
 
 namespace db {
-
-constexpr auto kAll = [](auto) { return true; };
 
 enum class OpenMode { kDefault, kRead, kWrite };
 
@@ -66,18 +68,18 @@ public:
     };
 
     template <ts::ClassLike C>
-    void AddClass(util::Ptr<C>& new_class) {
+    void AddClass(const util::Ptr<C>& new_class) {
         class_storage_->AddClass(new_class);
     }
 
     template <ts::ClassLike C>
-    void RemoveClass(util::Ptr<C>& node_class) {
+    void RemoveClass(const util::Ptr<C>& node_class) {
         NodeStorage(node_class, class_storage_, alloc_, LOGGER).Drop();
         class_storage_->RemoveClass(node_class);
     }
 
     template <ts::ClassLike C>
-    bool Contains(util::Ptr<C>& node_class) {
+    bool Contains(const util::Ptr<C>& node_class) {
         bool found = 0;
         std::string serialized = node_class->Serialize();
         class_storage_->VisitClasses([&found, &serialized](ts::Class::Ptr stored_class) {
@@ -91,7 +93,7 @@ public:
         return found;
     }
 
-    void PrintAllClasses(std::ostream& os = std::cout) {
+    void PrintClasses(std::ostream& os = std::cout) {
         auto& alloc = alloc_;
         class_storage_->VisitClasses([alloc, &os](mem::ClassHeader class_header) -> void {
             ts::ClassObject class_object;
@@ -111,7 +113,7 @@ public:
     }
 
     template <ts::ClassLike C, typename Predicate>
-    void RemoveNodesIf(util::Ptr<C> node_class, Predicate predicate) {
+    void RemoveNodesIf(const util::Ptr<C>& node_class, Predicate predicate) {
         if (node_class->Size().has_value()) {
             if constexpr (std::is_invocable_r_v<bool, Predicate, ValNodeIterator>) {
                 ValNodeStorage(node_class, class_storage_, alloc_, LOGGER).RemoveNodesIf(predicate);
@@ -135,7 +137,7 @@ public:
     // or future me will implement this.
 
     template <ts::ClassLike C, typename Predicate, typename Functor>
-    void VisitNodes(util::Ptr<C>& node_class, Predicate predicate, Functor functor) {
+    void VisitNodes(const util::Ptr<C>& node_class, Predicate predicate, Functor functor) {
         if (node_class->Size().has_value()) {
             if constexpr (std::is_invocable_r_v<bool, Predicate, ValNodeIterator>) {
                 ValNodeStorage(node_class, class_storage_, alloc_, LOGGER)
@@ -156,25 +158,83 @@ public:
 
     template <ts::ClassLike C, typename Predicate>
     void PrintNodesIf(util::Ptr<C>& node_class, Predicate predicate, std::ostream& os = std::cout) {
-        auto print = [&os](Node node) { os << node.ToString() << std::endl; };
+        auto print = [&os](auto node) { os << node->ToString() << std::endl; };
         VisitNodes(node_class, predicate, print);
     }
 
-    template <ts::ObjectLike O, typename Container = std::vector<util::Ptr<O>>, ts::ClassLike C,
-              typename Predicate>
-    Container CollectNodesIf(util::Ptr<C>& node_class, Predicate predicate) {
-        Container result{};
-        auto insert = [&result](Node node) { result.push_back(node.Data<O>()); };
+    template <ts::ObjectLike O, typename Container, ts::ClassLike C, typename Predicate>
+    void CollectNodesIf(util::Ptr<C>& node_class,
+                        std::back_insert_iterator<Container> back_inserter, Predicate predicate) {
+
+        auto insert = [&back_inserter](auto node) {
+            *back_inserter++ = (node->template Data<O>());
+        };
         VisitNodes(node_class, predicate, insert);
+    }
+
+    // Very heavy operation
+    // Definitly needed review and rethinking
+    std::unordered_map<ts::ObjectId, ts::Struct::Ptr> PatternMatch(Pattern::Ptr pattern) {
+        std::unordered_map<ts::ObjectId, ts::Struct::Ptr> result{};
+        auto relations = pattern->GetRelations();
+        for (auto& [name, end] : relations) {
+
+            auto pattern_result = PatternMatch(util::As<Pattern>(end.pattern));
+            bool is_terminal = util::As<Pattern>(end.pattern)->GetRelations().empty();
+            std::unordered_map<ts::ObjectId, mem::Offset> from_index;
+            std::unordered_map<ts::ObjectId, mem::Offset> to_index;
+
+            auto fill_from = [&from_index](auto node) {
+                from_index.insert({node.Id(), node.GetRealOffset()});
+            };
+            auto fill_to = [&to_index](auto node) {
+                to_index.insert({node.Id(), node.GetRealOffset()});
+            };
+
+            VisitNodes(end.relation->FromClass(), kAll, fill_from);
+            VisitNodes(end.relation->ToClass(), kAll, fill_to);
+            auto from_magic =
+                mem::ClassHeader(class_storage_->FindClass(end.relation->FromClass()).value())
+                    .ReadClassHeader(alloc_->GetFile())
+                    .magic_;
+
+            auto to_magic =
+                mem::ClassHeader(class_storage_->FindClass(end.relation->ToClass()).value())
+                    .ReadClassHeader(alloc_->GetFile())
+                    .magic_;
+
+            auto& file = alloc_->GetFile();
+            auto structure_class = ts::NewClass<ts::StructClass>(
+                end.relation->Name(), end.relation->FromClass(),
+                is_terminal ? end.relation->ToClass() : pattern_result.begin()->second->GetClass());
+
+            //  TODO: Manage lazy deletion
+
+            auto merge = [&from_index, &to_index, &pattern_result, &result, &end, &file,
+                          &from_magic, &to_magic, is_terminal,
+                          &structure_class](auto relation_node) {
+                auto from = relation_node->template Data<ts::Relation>()->FromId();
+                auto to = relation_node->template Data<ts::Relation>()->ToId();
+                auto from_node =
+                    Node(from_magic, end.relation->FromClass(), file, from_index[from]);
+                auto to_node = Node(to_magic, end.relation->ToClass(), file, to_index[to]);
+
+                if (end.predicate_(from_node, to_node)) {
+                    auto new_struct = util::MakePtr<ts::Struct>(structure_class);
+                    if (is_terminal) {
+                        new_struct->AddFieldValue(from_node.Data<ts::Object>());
+                        new_struct->AddFieldValue(to_node.Data<ts::Object>());
+                    } else {
+                        new_struct->AddFieldValue(from_node.Data<ts::Object>());
+                        new_struct->AddFieldValue(pattern_result[to]);
+                    }
+                    result.insert({from, new_struct});
+                }
+            };
+
+            VisitNodes(end.relation, kAll, merge);
+        }
         return result;
-    }
-
-    template <ts::ClassLike C>
-    void PrintAllNodes(util::Ptr<C>& node_class) {
-        PrintNodesIf(node_class, kAll);
-    }
-
-    void Join() {
     }
 };
 

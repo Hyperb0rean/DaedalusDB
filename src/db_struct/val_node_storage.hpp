@@ -187,7 +187,7 @@ public:
     };
 
     template <ts::ClassLike C>
-    ValNodeStorage(util::Ptr<C> nodes_class, ClassStorage::Ptr& class_storage,
+    ValNodeStorage(const util::Ptr<C>& nodes_class, ClassStorage::Ptr& class_storage,
                    mem::PageAllocator::Ptr& alloc, DEFAULT_LOGGER(logger))
         : NodeStorage(nodes_class, class_storage, alloc, logger) {
         DEBUG("Val Node storage initialized with class: ", ts::ClassObject(nodes_class).ToString());
@@ -277,17 +277,15 @@ public:
     template <typename Predicate, typename Functor>
     requires requires(Predicate pred, Functor functor, NodeIterator iter) {
         { pred(iter) } -> std::convertible_to<bool>;
-        {functor(*iter)};
+        {functor(iter)};
     }
     void VisitNodes(Predicate predicate, Functor functor) {
         DEBUG("Visiting nodes..");
-
-        DEBUG("Begin page: ", *data_page_list_.Begin());
         auto end = End();
         for (auto node_it = Begin(); node_it != end; ++node_it) {
             if (predicate(node_it)) {
                 DEBUG("Node: ", node_it->ToString());
-                functor(*node_it);
+                functor(node_it);
             }
         }
     }

@@ -51,7 +51,7 @@ protected:
 
 public:
     template <ts::ClassLike C>
-    NodeStorage(util::Ptr<C> nodes_class, ClassStorage::Ptr& class_storage,
+    NodeStorage(const util::Ptr<C>& nodes_class, ClassStorage::Ptr& class_storage,
                 mem::PageAllocator::Ptr& alloc, DEFAULT_LOGGER(logger))
         : LOGGER(logger), nodes_class_(nodes_class), class_storage_(class_storage), alloc_(alloc) {
 

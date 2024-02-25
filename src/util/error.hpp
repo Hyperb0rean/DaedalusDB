@@ -63,4 +63,9 @@ public:
     explicit RuntimeError(std::string desc) : Error{"RuntimeError | " + desc} {};
 };
 
+class PatternError : public Error {
+public:
+    explicit PatternError(std::string desc) : Error{"PatternError | " + desc} {};
+};
+
 }  // namespace error

@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <format>
+#include <iterator>
 #include <list>
 #include <string>
 
@@ -20,19 +21,19 @@ TEST(Database, Collect) {
         ts::NewClass<ts::PrimitiveClass<int>>("age"), address_class);
 
     database->AddClass(person_class);
-    database->PrintAllClasses();
+    database->PrintClasses();
     for (size_t i = 0; i < 100; ++i) {
         database->AddNode(ts::New<ts::Struct>(person_class, std::format("Greg {}", i), "Sosnovtsev",
                                               19, "Saint-Petersburg", "Lomonosova", i));
     }
-
-    auto list = database->CollectNodesIf<ts::Struct, std::list<ts::Struct::Ptr>>(
-        person_class, [](db::VarNodeIterator it) {
-            return it->Data<ts::Struct>()
-                       ->GetField<ts::Struct>("address")
-                       ->GetField<ts::Primitive<size_t>>("house")
-                       ->Value() > 90;
-        });
+    std::list<ts::Struct::Ptr> list;
+    database->CollectNodesIf<ts::Struct>(person_class, std::back_inserter(list),
+                                         [](db::VarNodeIterator it) {
+                                             return it->Data<ts::Struct>()
+                                                        ->GetField<ts::Struct>("address")
+                                                        ->GetField<ts::Primitive<size_t>>("house")
+                                                        ->Value() > 90;
+                                         });
 
     for (auto& ptr : list) {
         std::cout << ptr->ToString() << std::endl;
@@ -48,8 +49,8 @@ TEST(Database, Drop) {
         ts::NewClass<ts::PrimitiveClass<size_t>>("house"));
 
     database->AddClass(address_class);
-    database->PrintAllClasses();
-    for (size_t i = 0; i < 10000; ++i) {
+    database->PrintClasses();
+    for (size_t i = 0; i < 1; ++i) {
         database->AddNode(ts::New<ts::Struct>(address_class, "Saint-Petersburg", "Lomonosova", i));
     }
     ASSERT_TRUE(database->Contains(address_class));

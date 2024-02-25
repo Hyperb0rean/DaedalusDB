@@ -22,7 +22,7 @@ TEST(ClassStorage, ClassAddition) {
 
 TEST(ClassStorage, PrintClasses) {
     auto database = db::Database(util::MakePtr<mem::File>("test.data"));
-    database.PrintAllClasses();
+    database.PrintClasses();
 }
 
 TEST(ClassStorage, ClassRemoval) {
@@ -43,5 +43,5 @@ TEST(ClassStorage, ClassRemoval) {
     database.RemoveClass(person_class);
     database.RemoveClass(coordinates_class);
     // database.RemoveClass(city_class);
-    database.PrintAllClasses();
+    database.PrintClasses();
 }

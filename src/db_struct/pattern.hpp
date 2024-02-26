@@ -6,7 +6,7 @@
 
 namespace db {
 
-constexpr auto kAll = [](auto) { return true; };
+constexpr auto kAll = [](auto...) { return true; };
 
 // Currently will support only DAG-like structures ?
 

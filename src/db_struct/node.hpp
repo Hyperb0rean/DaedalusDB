@@ -124,10 +124,13 @@ public:
             } else {
 
 #define DDB_CREATE_PRIMITIVE(P)                                                                  \
-    if (util::Is<ts::PrimitiveClass<P>>(data_class)) {                                           \
+    else if (util::Is<ts::PrimitiveClass<P>>(data_class)) {                                      \
         data_ = ts::ReadNew<ts::Primitive<P>>(util::As<ts::PrimitiveClass<P>>(data_class), file, \
                                               offset);                                           \
     }
+
+                if (false) {
+                }
                 DDB_PRIMITIVE_GENERATOR(DDB_CREATE_PRIMITIVE)
                 else {
                     throw error::TypeError("Class can't be turned in Node");

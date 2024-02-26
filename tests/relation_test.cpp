@@ -182,3 +182,70 @@ TEST(Relation, PatternMatchColoredAngle) {
         std::cerr << structure->ToString() << std::endl;
     }
 }
+
+TEST(Relation, Star) {
+    auto point = ts::NewClass<ts::PrimitiveClass<int>>("point");
+    auto blue = ts::NewClass<ts::RelationClass>("blue", point, point);
+
+    auto database = util::MakePtr<db::Database>(util::MakePtr<mem::File>("test.data"),
+                                                db::OpenMode::kWrite, DEBUG_LOGGER);
+    database->AddClass(point);
+    database->AddClass(blue);
+
+    for (int i = 0; i < 70; ++i) {
+        database->AddNode(ts::New<ts::Primitive<int>>(point, i));
+    }
+    for (int i = 1; i < 70; ++i) {
+        database->AddNode(ts::New<ts::Relation>(blue, ID(0), ID(i)));
+        database->AddNode(ts::New<ts::Relation>(blue, ID(i), ID(0)));
+    }
+    auto star = util::MakePtr<db::Pattern>(point);
+    for (int i = 0; i < 10; ++i) {
+        star->AddRelation(blue, [](db::Node a, db::Node b) { return a.Id() == 0 && b.Id() >= 60; });
+    }
+
+    std::vector<ts::Struct::Ptr> result;
+    database->PatternMatch(star, std::back_inserter(result));
+    std::cerr << "RESULT" << std::endl;
+    for (auto& structure : result) {
+        std::cerr << structure->ToString() << std::endl;
+    }
+}
+
+// Not Working
+// TEST(Relation, Stress) {
+//     auto point = ts::NewClass<ts::PrimitiveClass<int>>("point");
+//     auto blue = ts::NewClass<ts::RelationClass>("blue", point, point);
+//     auto red = ts::NewClass<ts::RelationClass>("red", point, point);
+
+//     auto database = util::MakePtr<db::Database>(util::MakePtr<mem::File>("test.data"),
+//                                                 db::OpenMode::kWrite, DEBUG_LOGGER);
+//     database->AddClass(point);
+//     database->AddClass(blue);
+//     database->AddClass(red);
+
+//     for (int i = 0; i < 7; ++i) {
+//         database->AddNode(ts::New<ts::Primitive<int>>(point, i));
+//     }
+//     for (int i = 0; i < 7; ++i) {
+//         for (int j = 0; j < i; ++j) {
+//             auto color = 0 == 0 ? blue : red;
+//             database->AddNode(ts::New<ts::Relation>(color, ID(j), ID(i)));
+//             database->AddNode(ts::New<ts::Relation>(color, ID(i), ID(j)));
+//         }
+//     }
+//     auto edge = util::MakePtr<db::Pattern>(point);
+//     auto prev = edge;
+//     for (int i = 0; i < 5; ++i) {
+//         auto next = util::MakePtr<db::Pattern>(point);
+//         prev->AddRelation(blue, db::kAll, next);
+//         prev = next;
+//     }
+
+//     std::vector<ts::Struct::Ptr> result;
+//     database->PatternMatch(edge, std::back_inserter(result));
+//     std::cerr << "RESULT" << std::endl;
+//     for (auto& structure : result) {
+//         std::cerr << structure->ToString() << std::endl;
+//     }
+// }

@@ -2,8 +2,10 @@
 
 #include <iterator>
 #include <optional>
+#include <set>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "pattern.hpp"
@@ -17,7 +19,6 @@ enum class OpenMode { kDefault, kRead, kWrite };
 
 using ValNodeIterator = db::ValNodeStorage::NodeIterator;
 using VarNodeIterator = db::VarNodeStorage::NodeIterator;
-using PatterMatchResult = std::vector<ts::Struct::Ptr>;
 
 class Database {
 
@@ -51,21 +52,65 @@ class Database {
             } break;
         }
     }
+    struct SubPatternResult {
+        ts::ObjectId from;
+        // Set but not unordered set to correct operator==
+        std::set<ts::ObjectId> to;
+        ts::Struct::Ptr value;
+    };
+    using PatterMatchResultImpl = std::vector<SubPatternResult>;
 
-    using PatterMatchResultImpl = std::unordered_map<ts::ObjectId, ts::Struct::Ptr>;
-    void IntersectPatterMatchResults(PatterMatchResultImpl& mut_map,
-                                     PatterMatchResultImpl& immut_map) {
-        std::vector<PatterMatchResultImpl::iterator> for_erasure;
-        for (auto it = mut_map.begin(); it != mut_map.end(); ++it) {
-            if (immut_map.contains(it->first)) {
-                it->second->AddFieldValue(immut_map[it->first]->GetFields()[1]);
-            } else {
-                // for_erasure.push_back(it);
+    bool IsSetNew(std::set<ts::ObjectId>& subpattern_set, ts::ObjectId to,
+                  std::vector<std::set<ts::ObjectId>>& banned) {
+        if (subpattern_set.contains(to)) {
+            return false;
+        }
+        subpattern_set.insert(to);
+        for (auto& set : banned) {
+            if (set == subpattern_set) {
+                return false;
             }
         }
-        for (auto& it : for_erasure) {
-            mut_map.erase(it);
+        banned.push_back(subpattern_set);
+        return true;
+    }
+
+    void MakeCartesianProduct(PatterMatchResultImpl& graphs, PatterMatchResultImpl& edges,
+                              PatterMatchResultImpl& new_result) {
+        std::vector<std::set<ts::ObjectId>> banned;
+        for (auto& subpattern : graphs) {
+            for (auto& edge : edges) {
+                if (IsSetNew(subpattern.to, *edge.to.begin(), banned)) {
+                    subpattern.value->AddFieldValue(edge.value->GetFields()[1]);
+                    new_result.push_back(
+                        {subpattern.from, subpattern.to,
+                         util::Ptr<ts::Struct>(new ts::Struct(*subpattern.value))});
+                    subpattern.value->RemoveLAstFieldValue();
+                }
+            }
         }
+    }
+
+    PatterMatchResultImpl IntersectPatterMatchResults(const PatterMatchResultImpl& graphs,
+                                                      const PatterMatchResultImpl& edges) {
+
+        std::unordered_map<ts::ObjectId, PatterMatchResultImpl> from_graphs_index;
+        std::unordered_map<ts::ObjectId, PatterMatchResultImpl> from_edges_index;
+
+        for (auto& subpattern : graphs) {
+            from_graphs_index[subpattern.from].push_back(subpattern);
+        }
+        for (auto& edge : edges) {
+            from_edges_index[edge.from].push_back(edge);
+        }
+
+        PatterMatchResultImpl result;
+        for (auto& [from, vector] : from_graphs_index) {
+            if (from_edges_index.contains(from)) {
+                MakeCartesianProduct(vector, from_edges_index[from], result);
+            }
+        }
+        return result;
     }
 
     // Very heavy operation
@@ -73,7 +118,7 @@ class Database {
     std::optional<PatterMatchResultImpl> PatternMatchImpl(Pattern::Ptr pattern) {
         std::optional<PatterMatchResultImpl> result = std::nullopt;
         for (auto& end : pattern->GetRelations()) {
-            auto pattern_result = PatternMatchImpl(util::As<Pattern>(end.pattern));
+            auto pattern_result = PatternMatchImpl(end.pattern);
             std::unordered_map<ts::ObjectId, mem::Offset> from_index;
             std::unordered_map<ts::ObjectId, mem::Offset> to_index;
 
@@ -100,7 +145,7 @@ class Database {
             auto& file = alloc_->GetFile();
             auto structure_class = ts::NewClass<ts::StructClass>(
                 end.relation->Name(), end.relation->FromClass(),
-                pattern_result.has_value() ? pattern_result.value().begin()->second->GetClass()
+                pattern_result.has_value() ? pattern_result.value().begin()->value->GetClass()
                                            : end.relation->ToClass());
 
             //  TODO: Manage lazy deletion
@@ -119,23 +164,22 @@ class Database {
                     auto new_struct = util::MakePtr<ts::Struct>(structure_class);
                     new_struct->AddFieldValue(from_node.Data<ts::Object>());
                     if (pattern_result.has_value()) {
-                        new_struct->AddFieldValue(pattern_result.value()[to]);
+                        new_struct->AddFieldValue(pattern_result.value()[to].value);
                     } else {
                         new_struct->AddFieldValue(to_node.Data<ts::Object>());
                     }
-
-                    // TODO: using map for inner result will lead to overwrites of previous matches
-                    inner_map.insert({from, new_struct});
+                    inner_map.push_back({from, {to}, new_struct});
                 }
             };
 
             VisitNodes(end.relation, kAll, merge);
             if (result.has_value()) {
-                IntersectPatterMatchResults(result.value(), inner_map);
+                result = IntersectPatterMatchResults(result.value(), inner_map);
             } else {
                 result = inner_map;
             }
         }
+
         return result;
     }
 
@@ -263,15 +307,13 @@ public:
 
     // Very heavy operation
     // Definitly needed review and rethinking
-    PatterMatchResult PatternMatch(Pattern::Ptr pattern) {
+    template <typename Container>
+    void PatternMatch(Pattern::Ptr pattern, std::back_insert_iterator<Container> back_inserter) {
         auto result_impl = PatternMatchImpl(pattern);
-        PatterMatchResult result{};
         if (result_impl.has_value()) {
-            for (auto& [id, ptr] : result_impl.value()) {
-                result.emplace_back(ptr);
-            }
+            std::transform(result_impl.value().begin(), result_impl.value().end(), back_inserter,
+                           [](auto& it) { return it.value; });
         }
-        return result;
     }
 };
 

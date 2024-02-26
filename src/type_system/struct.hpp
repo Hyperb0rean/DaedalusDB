@@ -27,6 +27,10 @@ public:
         fields_.push_back(value);
     }
 
+    void RemoveLAstFieldValue() {
+        fields_.pop_back();
+    }
+
     [[nodiscard]] const std::vector<Object::Ptr> GetFields() const {
         return fields_;
     }

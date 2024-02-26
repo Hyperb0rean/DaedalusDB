@@ -10,28 +10,21 @@ constexpr auto kAll = [](auto) { return true; };
 
 // Currently will support only DAG-like structures ?
 
-class PatternBase {
+class Pattern {
 public:
-    using Ptr = util::Ptr<PatternBase>;
-    PatternBase() {
-    }
-    virtual ~PatternBase(){};
-};
+    using Ptr = util::Ptr<Pattern>;
 
-class Pattern : public PatternBase {
 private:
     ts::Class::Ptr root_;
     struct End {
         ts::RelationClass::Ptr relation;
         std::function<bool(Node, Node)> predicate_;
-        PatternBase::Ptr pattern;
+        Pattern::Ptr pattern;
     };
     using Relations = std::vector<End>;
     Relations relations_;
 
 public:
-    using Ptr = util::Ptr<Pattern>;
-    ~Pattern() = default;
     Pattern(const ts::Class::Ptr& root) : root_(root) {
     }
 

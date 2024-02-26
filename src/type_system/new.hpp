@@ -132,7 +132,6 @@ template <ObjectLike O, ClassLike C, typename... Args>
 
 template <ObjectLike O, ClassLike C>
 [[nodiscard]] util::Ptr<O> DefaultNew(util::Ptr<C> object_class) {
-
     if constexpr (std::is_same_v<O, Struct>) {
         auto new_object = util::MakePtr<Struct>(object_class);
         auto fields = util::As<StructClass>(object_class)->GetFields();

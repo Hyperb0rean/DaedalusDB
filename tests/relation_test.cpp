@@ -103,7 +103,8 @@ TEST(Relation, PatternMatchSimpleEdge) {
 
     database->PrintNodesIf(connected, db::kAll);
 
-    auto result = database->PatternMatch(pattern);
+    std::vector<ts::Struct::Ptr> result;
+    database->PatternMatch(pattern, std::back_inserter(result));
     std::cerr << "RESULT" << std::endl;
     for (auto& structure : result) {
         std::cerr << structure->ToString() << std::endl;
@@ -124,10 +125,13 @@ TEST(Relation, PatternMatchAngle) {
     database->AddNode(ts::New<ts::Struct>(point, 0.0, 1.0));
     database->AddNode(ts::New<ts::Struct>(point, 0.0, 0.0));
     database->AddNode(ts::New<ts::Struct>(point, 1.0, 0.0));
+    database->AddNode(ts::New<ts::Struct>(point, -1.0, 0.0));
+    database->AddNode(ts::New<ts::Struct>(point, 0.0, -1.0));
+
     database->AddNode(ts::New<ts::Relation>(connected, ID(1), ID(0)));
-    database->AddNode(ts::New<ts::Relation>(connected, ID(0), ID(1)));
-    database->AddNode(ts::New<ts::Relation>(connected, ID(2), ID(1)));
     database->AddNode(ts::New<ts::Relation>(connected, ID(1), ID(2)));
+    database->AddNode(ts::New<ts::Relation>(connected, ID(1), ID(3)));
+    database->AddNode(ts::New<ts::Relation>(connected, ID(1), ID(4)));
 
     auto pattern = util::MakePtr<db::Pattern>(point);
     pattern->AddRelation(connected, [](db::Node, db::Node) { return true; });
@@ -135,7 +139,8 @@ TEST(Relation, PatternMatchAngle) {
 
     database->PrintNodesIf(connected, db::kAll);
 
-    auto result = database->PatternMatch(pattern);
+    std::vector<ts::Struct::Ptr> result;
+    database->PatternMatch(pattern, std::back_inserter(result));
     std::cerr << "RESULT" << std::endl;
     for (auto& structure : result) {
         std::cerr << structure->ToString() << std::endl;

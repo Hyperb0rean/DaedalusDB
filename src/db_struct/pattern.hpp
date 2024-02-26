@@ -42,6 +42,10 @@ public:
     Relations GetRelations() {
         return relations_;
     }
+
+    ts::Class::Ptr GetRootClass() {
+        return root_;
+    }
 };
 
 }  // namespace db

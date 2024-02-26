@@ -146,3 +146,39 @@ TEST(Relation, PatternMatchAngle) {
         std::cerr << structure->ToString() << std::endl;
     }
 }
+
+TEST(Relation, PatternMatchColoredAngle) {
+    auto point =
+        ts::NewClass<ts::StructClass>("point", ts::NewClass<ts::PrimitiveClass<double>>("x"),
+                                      ts::NewClass<ts::PrimitiveClass<double>>("y"));
+    auto blue = ts::NewClass<ts::RelationClass>("blue", point, point);
+    auto red = ts::NewClass<ts::RelationClass>("red", point, point);
+
+    auto database = util::MakePtr<db::Database>(util::MakePtr<mem::File>("test.data"),
+                                                db::OpenMode::kWrite, DEBUG_LOGGER);
+    database->AddClass(point);
+    database->AddClass(blue);
+    database->AddClass(red);
+
+    database->AddNode(ts::New<ts::Struct>(point, 0.0, 1.0));
+    database->AddNode(ts::New<ts::Struct>(point, 0.0, 0.0));
+    database->AddNode(ts::New<ts::Struct>(point, 1.0, 0.0));
+    database->AddNode(ts::New<ts::Struct>(point, -1.0, 0.0));
+    database->AddNode(ts::New<ts::Struct>(point, 0.0, -1.0));
+
+    database->AddNode(ts::New<ts::Relation>(blue, ID(1), ID(0)));
+    database->AddNode(ts::New<ts::Relation>(blue, ID(1), ID(2)));
+    database->AddNode(ts::New<ts::Relation>(blue, ID(1), ID(3)));
+    database->AddNode(ts::New<ts::Relation>(red, ID(1), ID(4)));
+
+    auto pattern = util::MakePtr<db::Pattern>(point);
+    pattern->AddRelation(blue, [](db::Node, db::Node) { return true; });
+    pattern->AddRelation(red, [](db::Node, db::Node) { return true; });
+
+    std::vector<ts::Struct::Ptr> result;
+    database->PatternMatch(pattern, std::back_inserter(result));
+    std::cerr << "RESULT" << std::endl;
+    for (auto& structure : result) {
+        std::cerr << structure->ToString() << std::endl;
+    }
+}

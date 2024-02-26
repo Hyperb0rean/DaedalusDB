@@ -113,10 +113,23 @@ class Database {
         return result;
     }
 
+    std::string GenerateName(Pattern::Ptr& pattern) {
+        std::string result(pattern->GetRootClass()->Name());
+        for (auto& end : pattern->GetRelations()) {
+            result.append("-").append(end.relation->Name());
+        }
+        return result;
+    }
+
     // Very heavy operation
     // Definitly needed review and rethinking
     std::optional<PatterMatchResultImpl> PatternMatchImpl(Pattern::Ptr pattern) {
         std::optional<PatterMatchResultImpl> result = std::nullopt;
+        auto& file = alloc_->GetFile();
+
+        auto structure_class =
+            ts::NewClass<ts::StructClass>(GenerateName(pattern), pattern->GetRootClass());
+
         for (auto& end : pattern->GetRelations()) {
             auto pattern_result = PatternMatchImpl(end.pattern);
             std::unordered_map<ts::ObjectId, mem::Offset> from_index;
@@ -142,15 +155,13 @@ class Database {
                     .ReadMagic(alloc_->GetFile())
                     .magic_;
 
-            auto& file = alloc_->GetFile();
-            auto structure_class = ts::NewClass<ts::StructClass>(
-                end.relation->Name(), end.relation->FromClass(),
-                pattern_result.has_value() ? pattern_result.value().begin()->value->GetClass()
-                                           : end.relation->ToClass());
-
             //  TODO: Manage lazy deletion
+            structure_class->AddField(pattern_result.has_value()
+                                          ? pattern_result.value().begin()->value->GetClass()
+                                          : end.relation->ToClass());
 
             PatterMatchResultImpl inner_map;
+
             auto merge = [&from_index, &to_index, &pattern_result, &inner_map, &end, &file,
                           &from_magic, &to_magic, &structure_class](auto relation_node) {
                 auto from = relation_node->template Data<ts::Relation>()->FromId();

@@ -20,7 +20,7 @@ namespace ts {
 using ObjectId = uint64_t;
 
 template <ClassLike C, typename... Classes>
-[[nodiscard]] util::Ptr<C> NewClass(std::string&& name, Classes&&... classes) {
+[[nodiscard]] util::Ptr<C> NewClass(std::string name, Classes&&... classes) {
     if constexpr (std::is_same_v<C, StructClass>) {
         auto new_class = util::MakePtr<C>(std::move(name));
         (new_class->AddField(classes), ...);

@@ -212,7 +212,6 @@ TEST(Relation, Star) {
     }
 }
 
-// Not Working
 TEST(Relation, Stress) {
     auto point = ts::NewClass<ts::PrimitiveClass<int>>("point");
     auto blue = ts::NewClass<ts::RelationClass>("blue", point, point);

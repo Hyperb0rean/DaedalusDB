@@ -52,6 +52,9 @@ class Database {
             } break;
         }
     }
+
+    // Probably should introduce new entity to properly match or not match cycles, but the topics
+    // need more time to investigate
     struct SubPatternResult {
         ts::ObjectId from;
         // Set but not unordered set to correct operator==

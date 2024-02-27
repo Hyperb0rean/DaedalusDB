@@ -163,7 +163,7 @@ class Database {
             PatterMatchResultImpl inner_map;
 
             auto merge = [&from_index, &to_index, &pattern_result, &inner_map, &end, &file,
-                          &from_magic, &to_magic, &structure_class](auto relation_node) {
+                          from_magic, to_magic, &structure_class](auto relation_node) {
                 auto from = relation_node->template Data<ts::Relation>()->FromId();
                 auto to = relation_node->template Data<ts::Relation>()->ToId();
 
@@ -172,14 +172,22 @@ class Database {
                 auto to_node = Node(to_magic, end.relation->ToClass(), file, to_index[to]);
 
                 if (end.predicate_(from_node, to_node)) {
-                    auto new_struct = util::MakePtr<ts::Struct>(structure_class);
-                    new_struct->AddFieldValue(from_node.Data<ts::Object>());
                     if (pattern_result.has_value()) {
-                        new_struct->AddFieldValue(pattern_result.value()[to].value);
+                        for (auto& subpattern : pattern_result.value()) {
+                            if (subpattern.from == to) {
+                                // would match cycles
+                                auto new_struct = util::MakePtr<ts::Struct>(structure_class);
+                                new_struct->AddFieldValue(from_node.Data<ts::Object>());
+                                new_struct->AddFieldValue(subpattern.value);
+                                inner_map.push_back({from, {to}, new_struct});
+                            }
+                        }
                     } else {
+                        auto new_struct = util::MakePtr<ts::Struct>(structure_class);
+                        new_struct->AddFieldValue(from_node.Data<ts::Object>());
                         new_struct->AddFieldValue(to_node.Data<ts::Object>());
+                        inner_map.push_back({from, {to}, new_struct});
                     }
-                    inner_map.push_back({from, {to}, new_struct});
                 }
             };
 

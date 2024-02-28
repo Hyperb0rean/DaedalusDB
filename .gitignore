@@ -1,10 +1,10 @@
 .vscode*
 build*
-test.data
-database.data
 peda-session-database.txt
 .gdb_history
-test*.data
+*.data
+*.ddb
+*.csv
 .cache*
 compile_commands.json
 

@@ -8,7 +8,7 @@ namespace ts {
 // WARN: Is compiler dependent
 template <typename T>
 [[nodiscard]] constexpr std::string_view type_name() {
-    constexpr auto prefix = std::string_view{"[T = "};
+    constexpr auto prefix = std::string_view{"[ T ="};
     constexpr auto suffix = std::string_view{"]"};
     constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
     constexpr auto start = function.find(prefix) + prefix.size();

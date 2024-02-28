@@ -201,7 +201,10 @@ TEST(Relation, Star) {
     }
     auto star = util::MakePtr<db::Pattern>(point);
     for (int i = 0; i < 10; ++i) {
-        star->AddRelation(blue, [](db::Node a, db::Node b) { return a.Id() == 0 && b.Id() >= 60; });
+        star->AddRelation(blue, [](db::Node a, db::Node b) {
+            return a.Data<ts::Primitive<int>>()->Value() == 0 &&
+                   b.Data<ts::Primitive<int>>()->Value() >= 50;
+        });
     }
 
     std::vector<ts::Struct::Ptr> result;
@@ -223,19 +226,19 @@ TEST(Relation, Stress) {
     database->AddClass(blue);
     database->AddClass(red);
 
-    for (int i = 0; i < 7; ++i) {
+    for (int i = 0; i < 60; ++i) {
         database->AddNode(ts::New<ts::Primitive<int>>(point, i));
     }
-    for (int i = 0; i < 7; ++i) {
+    for (int i = 0; i < 60; ++i) {
         for (int j = 0; j < i; ++j) {
-            auto color = 0 == 0 ? blue : red;
+            auto color = rand() % 2 ? blue : red;
             database->AddNode(ts::New<ts::Relation>(color, ID(j), ID(i)));
             database->AddNode(ts::New<ts::Relation>(color, ID(i), ID(j)));
         }
     }
     auto edge = util::MakePtr<db::Pattern>(point);
     auto prev = edge;
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 2; ++i) {
         auto next = util::MakePtr<db::Pattern>(point);
         prev->AddRelation(blue, db::kAll, next);
         prev = next;

@@ -67,6 +67,7 @@ public:
         if (ftruncate64(fd_, GetSize() - size) != 0) {
             throw error::IoError("Can't truncate file " + fileName_);
         }
+        DEBUG("Truncating, current size: ", GetSize());
     }
 
     void Extend(Offset size) {

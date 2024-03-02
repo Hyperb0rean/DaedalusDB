@@ -15,7 +15,7 @@ public:
     }
     [[nodiscard]] std::string Serialize() const override {
         std::string result = "_";
-        result += type_name<T>();
+        result += TypeName<T>();
         result.append("@").append(name_).append("_");
         result.erase(std::remove_if(result.begin(), result.end(), isspace), result.end());
         return result;

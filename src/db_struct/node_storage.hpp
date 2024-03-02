@@ -2,6 +2,7 @@
 
 #include "allocator.hpp"
 #include "class_storage.hpp"
+#include "logger.hpp"
 
 namespace db {
 
@@ -15,8 +16,10 @@ protected:
 
     mem::Page AllocatePage() {
         data_page_list_.PushBack(alloc_->AllocatePage());
+        DEBUG(mem::Page(data_page_list_.Back()));
         auto page = ReadPage(mem::Page(data_page_list_.Back()), alloc_->GetFile());
         page.type_ = mem::PageType::kData;
+        DEBUG(page);
         return WritePage(page, alloc_->GetFile());
     }
 

@@ -58,7 +58,7 @@ private:
         return mem::ClassHeader(index)
             .ReadClassHeader(alloc_->GetFile())
             .InitClassHeader(alloc_->GetFile(), class_object->Size())
-            .WriteMagic(alloc_->GetFile(), mem::kMagic);
+            .WriteMagic(alloc_->GetFile(), rand());
     }
 
 public:

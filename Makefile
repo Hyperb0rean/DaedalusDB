@@ -27,8 +27,8 @@ compile-release: configure-release
 test: 
 	./build$(TYPE)/$(TARGET)-test --gtest_filter="$(TEST).*"
 
-perf: compile-release
-	./build-release/$(TARGET)-test --gtest_filter="Performance.$(TEST)" 2> $(TEST).csv
+perf: compile
+	./build/$(TARGET)-test --gtest_filter="Performance.$(TEST)" 2> $(TEST).csv
 	python3 ./tests/performance.py $(TEST)
 	rm -rf $(TEST).csv
 

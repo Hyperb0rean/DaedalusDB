@@ -208,6 +208,7 @@ private:
     template <ts::ObjectLike O>
     ts::ObjectId WrtiteIntoFree(mem::Page& back, mem::ClassHeader& header, Node& next_free,
                                 util::Ptr<O>& node) {
+        DEBUG("Back in free ", back);
         auto id = header.ReadNodeId(alloc_->GetFile()).id_;
         DEBUG("Rewrited id: ", id);
         DEBUG("Found free space: ", next_free.NextFree());
@@ -220,6 +221,7 @@ private:
 
     template <ts::ObjectLike O>
     ts::ObjectId WriteIntoInvalid(mem::Page& back, mem::ClassHeader& header, util::Ptr<O>& node) {
+        DEBUG("Back in invalid ", back);
         auto id = header.ReadNodeId(alloc_->GetFile()).id_;
         auto metaobject = Node(header.ReadMagic(alloc_->GetFile()).magic_, id, node);
         if (back.initialized_offset_ + metaobject.Size() >= mem::kPageSize) {
@@ -256,7 +258,12 @@ public:
         ts::ObjectId id;
         switch (next_free.State()) {
             case ObjectState::kFree: {
+                // if (back.initialized_offset_ == back.free_offset_) {
+                //     id = WriteIntoInvalid(back, header, node);
+                // } else {
+                // BUG: Need to generate magics for class;
                 id = WrtiteIntoFree(back, header, next_free, node);
+                // }
             } break;
             case ObjectState::kInvalid: {
                 id = WriteIntoInvalid(back, header, node);

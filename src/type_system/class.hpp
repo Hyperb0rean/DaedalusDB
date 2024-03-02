@@ -1,5 +1,6 @@
 #pragma once
 #include <optional>
+#include <string_view>
 
 #include "utils.hpp"
 
@@ -7,15 +8,17 @@ namespace ts {
 
 // WARN: Is compiler dependent
 template <typename T>
-[[nodiscard]] constexpr std::string_view type_name() {
-    constexpr auto prefix = std::string_view{"[ T ="};
+[[nodiscard]] constexpr std::string_view TypeName() {
+    constexpr auto prefix = std::string_view{"T ="};
     constexpr auto suffix = std::string_view{"]"};
     constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
-    constexpr auto start = function.find(prefix) + prefix.size();
+    constexpr auto start = function.rfind(prefix) + prefix.size();
     constexpr auto end = function.rfind(suffix);
+    static_assert(start != prefix.size() - 1);
     static_assert(start < end);
     constexpr auto result = function.substr(start, (end - start));
     return result;
+    return __PRETTY_FUNCTION__;
 }
 
 class Class {

@@ -189,6 +189,10 @@ public:
     PageIterator End() {
         return PageIterator(file_, file_->Read<Page>(sentinel_offset_).index_, sentinel_offset_);
     }
+    PageIterator RBegin() {
+        return PageIterator(file_, file_->Read<Page>(sentinel_offset_).next_page_index_,
+                            sentinel_offset_);
+    }
 
     PageIndex Front() {
         return file_->Read<Page>(sentinel_offset_).previous_page_index_;

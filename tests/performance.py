@@ -15,7 +15,11 @@ with open(sys.argv[1] +'.csv','r') as csvfile:
 plt.plot(x, y, color = 'g', linestyle = 'None', 
          marker = '.') 
   
-plt.ylabel('Time(μs)') 
+if sys.argv[1] == 'Compression':
+    plt.ylabel('Filesize (bytes)') 
+else:
+    plt.ylabel('Time (μs)') 
+
 plt.xlabel('Elements') 
 plt.title(sys.argv[1], fontsize = 20) 
 plt.grid() 

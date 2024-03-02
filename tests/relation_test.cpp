@@ -73,7 +73,6 @@ TEST(Relation, AddRelation) {
     database->AddNode(ts::New<ts::Struct>(point, 0.0, 1.0));
     database->AddNode(ts::New<ts::Struct>(point, 0.0, 0.0));
     database->AddNode(ts::New<ts::Relation>(connected, ID(1), ID(0)));
-
     database->AddNode(ts::New<ts::Relation>(connected, ID(0), ID(1)));
 
     database->PrintNodesIf(connected, db::kAll);

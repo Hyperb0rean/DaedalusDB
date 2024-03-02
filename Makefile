@@ -18,17 +18,17 @@ compile: configure
 
 compile-asan: configure-asan
 	cmake --build build-asan
-	cp build/compile_commands.json compile_commands.json
+	cp build-asan/compile_commands.json compile_commands.json
 
 compile-release: configure-release
 	cmake --build build-release
-	cp build/compile_commands.json compile_commands.json
+	cp build-release/compile_commands.json compile_commands.json
 
 test: 
 	./build$(TYPE)/$(TARGET)-test --gtest_filter="$(TEST).*"
 
-perf: compile
-	./build/$(TARGET)-test --gtest_filter="Performance.$(TEST)" 2> $(TEST).csv
+perf: compile-release
+	./build-release/$(TARGET)-test --gtest_filter="Performance.$(TEST)" 2> $(TEST).csv
 	python3 ./tests/performance.py $(TEST)
 	rm -rf $(TEST).csv
 

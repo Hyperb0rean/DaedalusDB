@@ -1,4 +1,3 @@
-
 #include "database.hpp"
 
 int main() {

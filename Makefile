@@ -1,4 +1,4 @@
-TARGET=database
+TARGET=ddb
 COMPILER=/usr/bin/clang++-18 
 
 .PHONY: clean configure configure-asan configure-release compile compile-asan compile-release test diff

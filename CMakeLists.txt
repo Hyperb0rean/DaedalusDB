@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.1...3.27)
 
 
 project(
-  database
+  ddb
   VERSION 1.0
   LANGUAGES CXX)
 
@@ -45,7 +45,7 @@ file(GLOB_RECURSE SRC CONFIGURE_DEPENDS src/*.hpp src/*.cpp)
 
 add_executable(${PROJECT_ARTIFACT_APP} src/main.cpp ${SRC})
 
-set_target_properties(database PROPERTIES LINKER_LANGUAGE CXX)
+set_target_properties(${PROJECT_ARTIFACT_APP} PROPERTIES LINKER_LANGUAGE CXX)
 
 target_include_directories(${PROJECT_ARTIFACT_APP} PRIVATE "src/util")
 target_include_directories(${PROJECT_ARTIFACT_APP} PRIVATE "src/mem")

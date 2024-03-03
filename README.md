@@ -5,12 +5,32 @@ Graph Document-oriented Database Managment System that implements **ADIO** (All 
 *In development*
 
 Current progress:
-- 100% API Bug fixes
+- 100% API - Currently: Bug fixes
 - 0% Query Language
 - 0% Client-Server managment
 - 0% Documentation TODO
 - 10% Test Coverage - Smoke tests only
 
+
+## Install
+
+If you want to build it manually be sure that you have C++23 clang++-18 and libc++-18 installed otherwise it will not build.
+
+### Docker
+1. Clone repo via:
+   ```console
+   git clone https://github.com/Hyperb0rean/DaedalusDB.git
+   ```
+3. Build docker container:
+   ```console
+   docker build . -t ddb
+   ```
+4. Run code in *main.cpp* :
+   ```console
+   docker run ddb
+   ```
+   
+TODO: Add volumes support.
 
 ## API
 

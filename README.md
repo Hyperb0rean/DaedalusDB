@@ -5,7 +5,7 @@ Graph Document-oriented Database Managment System that implements **ADIO** (All 
 *In development*
 
 Current progress:
-- 90% API
+- 100% API Bug fixes
 - 0% Query Language
 - 0% Client-Server managment
 - 0% Documentation TODO
@@ -16,10 +16,13 @@ Current progress:
 
 **ADIO** means that all of data that your store in database is stored as *Objects*, so:
 
-1. *Vertices* are *Objects* 
+1. *Nodes* are *Objects* 
 2. *Relations* are *Objects*
-3. *Subgrapghs* are *Objects*
+3. *Subgrapghs* are *Objects* (*PatternMatch* result is a Struct after contractions of all relations in subgraph that matches the pattern given)
 
+![adio](./tests/test_results/adio.png) 
+
+Sofor example it adds possibilities to make Relations of higher orders and Pattern Match pipelines.
 
 Every *Object* have *Class* that describes it's signature:
 
@@ -43,6 +46,9 @@ auto city_class = ts::NewClass<ts::StructClass>("city",
 
 ### Object definition
 
+DDB has no implicit type conversion of any kind, so C++ number literal should be casted to match class signature.
+This occures due to Type erasure to *std::any* during object definition, maybe I will change this in future.
+
 ```cpp
 
 auto address_class = ts::NewClass<ts::StructClass>(
@@ -54,8 +60,8 @@ auto person_class = ts::NewClass<ts::StructClass>(
         ts::NewClass<ts::StringClass>("surname"),
         ts::NewClass<ts::PrimitiveClass<int>>("age"), address_class);
 
-auto greg = ts::New<ts::Struct>(person_class, std::format("Greg {}",i),
-"Sosnovtsev", 19, "Saint-Petersburg", "Nevskiy prospekt",i);
+auto greg = ts::New<ts::Struct>(person_class, std::format("Greg {}",1),
+"Sosnovtsev", 20, "Saint-Petersburg", "Nevskiy prospekt", static_cast<size_t>(28));
 ```
 
 
@@ -74,6 +80,8 @@ database.AddNode(ts::New<ts::String>(name, "test name"));
 
 
 ### Simple relation addition
+
+As for other *Objects* arguments during *Relation* definition should be explicitlty converted to *ObjectId* with built-in macro *ID*
 
 ```cpp
 auto point =
@@ -108,7 +116,9 @@ database.PatternMatch(pattern, std::back_inserter(result));
 For more examples you can check tests folder, there are some smoke tests which I made during development.
 
 
-## Performance
+## Tests and Performance
+
+GTest were used for testing, only Smoke tests were made so any API testing PRs are highly welcome. You can also see more of API possibilities in tests. 
 
 ## Insertion
 
@@ -137,7 +147,7 @@ The database some primitive file compression mechanism implemented so filesize i
 
 ## Match
 
-Here is some performance test for Pattern Matching of simple pattern (see *performance_test.cpp*). Time complexity analysis is pretty complex so a left it for future, but it definitely depends on number of verticies and edges. 
+Here is some performance test for Pattern Matching of simple pattern (see *performance_test.cpp*). Time complexity analysis is pretty complex so I left it for future, but it definitely depends on number of verticies and edges. 
 
 ![RemoveVar plot](./tests/test_results/Match.png) 
 

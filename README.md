@@ -18,7 +18,7 @@ Current progress:
 
 1. *Nodes* are *Objects* 
 2. *Relations* are *Objects*
-3. *Subgrapghs* are *Objects* (*PatternMatch* result is a Struct after contractions of all relations in subgraph that matches the pattern given)
+3. *Subgraphs* are *Objects* (*PatternMatch* result is a Struct after contractions of all relations in subgraph that matches the pattern given)
 
 ![adio](./tests/test_results/adio.png) 
 

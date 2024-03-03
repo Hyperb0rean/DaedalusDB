@@ -19,7 +19,7 @@ If you want to build it manually be sure that you have C++23 clang++-18 and libc
 ### Docker
 1. Clone repo via:
    ```console
-   git clone https://github.com/Hyperb0rean/DaedalusDB.git
+   git clone https://github.com/Hyperb0rean/DaedalusDB.git && cd DaedalusDB
    ```
 3. Build docker container:
    ```console

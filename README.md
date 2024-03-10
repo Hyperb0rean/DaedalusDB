@@ -1,6 +1,6 @@
 # DaedalusDB
 
-Graph Document-oriented Database Managment System that implements **ADIO** (All Data Is Object) concept.
+Graph Document-oriented Database Managment System that implements **ADIO** (All Data Is Object) concept. 
 
 *In development*
 
@@ -48,18 +48,19 @@ Every *Object* have *Class* that describes it's signature:
 
 ### Class declaration
 ```cpp
- auto person_class = ts::NewClass<ts::StructClass>(
-        "person", ts::NewClass<ts::StringClass>("name"), 
-        ts::NewClass<ts::StringClass>("surname"),
-        ts::NewClass<ts::PrimitiveClass<int>>("age"),
-        ts::NewClass<ts::PrimitiveClass<bool>>("male"));
+using namespace ts;
+ auto person_class = NewClass<StructClass>(
+        "person", NewClass<StringClass>("name"), 
+        NewClass<StringClass>("surname"),
+        NewClass<PrimitiveClass<int>>("age"),
+        NewClass<PrimitiveClass<bool>>("male"));
 
-auto coordinates_class = ts::NewClass<ts::StructClass>(
-        "coordinates", ts::NewClass<ts::PrimitiveClass<double>>("lat"),
-        ts::NewClass<ts::PrimitiveClass<double>>("lon"));
+auto coordinates_class = NewClass<StructClass>(
+        "coordinates", NewClass<PrimitiveClass<double>>("lat"),
+        NewClass<PrimitiveClass<double>>("lon"));
 
-auto city_class = ts::NewClass<ts::StructClass>("city", 
-            ts::NewClass<ts::StringClass>("name"), 
+auto city_class = NewClass<StructClass>("city", 
+            NewClass<StringClass>("name"), 
             coordinates_class);
 
 ```
@@ -70,17 +71,17 @@ DDB has no implicit type conversion of any kind, so C++ number literal should be
 This occures due to Type erasure to *std::any* during object definition, maybe I will change this in future.
 
 ```cpp
+using namespace ts;
+auto address_class = NewClass<StructClass>(
+        "address", NewClass<StringClass>("city"),
+        NewClass<StringClass>("street"),
+        NewClass<PrimitiveClass<size_t>>("house"));
+auto person_class = NewClass<StructClass>(
+        "person", NewClass<StringClass>("name"),  
+        NewClass<StringClass>("surname"),
+        NewClass<PrimitiveClass<int>>("age"), address_class);
 
-auto address_class = ts::NewClass<ts::StructClass>(
-        "address", ts::NewClass<ts::StringClass>("city"),
-        ts::NewClass<ts::StringClass>("street"),
-        ts::NewClass<ts::PrimitiveClass<size_t>>("house"));
-auto person_class = ts::NewClass<ts::StructClass>(
-        "person", ts::NewClass<ts::StringClass>("name"),  
-        ts::NewClass<ts::StringClass>("surname"),
-        ts::NewClass<ts::PrimitiveClass<int>>("age"), address_class);
-
-auto greg = ts::New<ts::Struct>(person_class, std::format("Greg {}",1),
+auto greg = New<Struct>(person_class, std::format("Greg {}",1),
 "Sosnovtsev", 20, "Saint-Petersburg", "Nevskiy prospekt", static_cast<size_t>(28));
 ```
 
@@ -104,21 +105,22 @@ database.AddNode(ts::New<ts::String>(name, "test name"));
 As for other *Objects* arguments during *Relation* definition should be explicitlty converted to *ObjectId* with built-in macro *ID*
 
 ```cpp
+using namespace ts;
 auto point =
-        ts::NewClass<ts::StructClass>("point",
-        ts::NewClass<ts::PrimitiveClass<double>>("x"),
-        ts::NewClass<ts::PrimitiveClass<double>>("y"));
+        NewClass<StructClass>("point",
+        NewClass<PrimitiveClass<double>>("x"),
+        NewClass<PrimitiveClass<double>>("y"));
 
-auto connected = ts::NewClass<ts::RelationClass>("connected",point,point);
+auto connected = NewClass<RelationClass>("connected",point,point);
 
 auto database = db::Database(util::MakePtr<mem::File("test.data"));
 database.AddClass(point);
 database.AddClass(connected);
 
-database.AddNode(ts::New<ts::Struct>(point, 0.0, 1.0));
-database.AddNode(ts::New<ts::Struct>(point, 0.0, 0.0));
-database.AddNode(ts::New<ts::Relation>(connected, ID(1), ID(0)));
-database.AddNode(ts::New<ts::Relation>(connected, ID(0), ID(1)));
+database.AddNode(New<Struct>(point, 0.0, 1.0));
+database.AddNode(New<Struct>(point, 0.0, 0.0));
+database.AddNode(New<Relation>(connected, ID(1), ID(0)));
+database.AddNode(New<Relation>(connected, ID(0), ID(1)));
 ```
 
 ### Pattern Matching

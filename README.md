@@ -1,6 +1,6 @@
 # DaedalusDB
 
-Graph Document-oriented Database Managment System that implements **ADIO** (All Data Is Object) concept. 
+Graph Document-oriented Database Managment System with custom Type System that implements **ADIO** (All Data Is Object) concept. 
 
 *In development*
 

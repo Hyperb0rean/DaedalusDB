@@ -34,11 +34,11 @@ set(CMAKE_CXX_FLAGS_ASAN "${CXX_COMMON_FLAGS} -g -fsanitize=address -fsanitize=p
 add_subdirectory(tests)
 add_subdirectory(googletest)
 
-include_directories(src)
-include_directories(src/util)
-include_directories(src/mem)
-include_directories(src/type_system)
-include_directories(src/db_struct)
+# include_directories(src)
+# include_directories(src/util)
+# include_directories(src/mem)
+# include_directories(src/type_system)
+# include_directories(src/db_struct)
 
 
 file(GLOB_RECURSE SRC CONFIGURE_DEPENDS src/*.hpp src/*.cpp)

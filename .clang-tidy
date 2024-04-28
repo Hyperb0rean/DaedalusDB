@@ -1,14 +1,13 @@
-# ---
-# Checks: '*,\
-#   -llvmlibc-implementation-in-namespace,
-#   -llvmlibc-restrict-system-libc-headers,
-#   -llvmlibc-callee-namespace,
-#   llvmlibc-inline-function-decl,
-#   -llvmlibc-restrict-system-libc-headers,
-#   -fuchsia-trailing-return,
-#   -modernize-use-trailing-return-type,
-#   -misc-no-recursion,
-#   -altera-unroll-loops'
-# WarningsAsErrors: '*'
-# HeaderFilterRegex: ".*"
-# FormatStyle: .clang-format
+Checks: '
+  -llvmlibc-implementation-in-namespace,
+  -llvmlibc-restrict-system-libc-headers,
+  -llvmlibc-callee-namespace,
+  -llvmlibc-inline-function-decl,
+  -llvmlibc-restrict-system-libc-headers,
+  -fuchsia-trailing-return,
+  -modernize-use-trailing-return-type,
+  -misc-no-recursion,
+  -altera-unroll-loops'
+WarningsAsErrors: ".*"
+HeaderFilterRegex: ".*" 
+FormatStyle: '.clang-format'

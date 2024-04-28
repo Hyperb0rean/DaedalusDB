@@ -1,4 +1,4 @@
-FROM ubuntu:latest as build
+FROM ubuntu:latest AS build
 LABEL author="hyperb0rean (Greg) greg.sosnovtsev@gmail.com"
 
 ARG LLVM_VERSION=14.0.0
@@ -28,32 +28,27 @@ RUN apt-get update && \
     apt-get install -y libc++-18-dev
 
 ADD ./src /ddb/src
-ADD ./tests /ddb/tests
 ADD ./CMakeLists.txt /ddb/CMakeLists.txt
 ADD ./Makefile /ddb/Makefile
 
 WORKDIR /ddb/
 
-RUN git clone https://github.com/google/googletest.git
-
 RUN ls -l
 RUN ls /usr/bin/ 
 
-RUN make compile-asan
 RUN make compile-release
-RUN make compile-asan
 
-RUN make test TEST=-Performance TYPE=-asan
+FROM build AS test
 
-FROM ubuntu:latest as run
+ADD ./tests /ddb/tests
 
+RUN git clone https://github.com/google/googletest.git
 
-RUN apt-get update -y && \
-    apt-get install -y libc++-dev
+RUN make compile-asan && make test TEST=-Performance TYPE=-asan
 
+FROM build AS run
 
 RUN groupadd -r usermode && useradd -r -g usermode usermode
-WORKDIR /ddb
 RUN chown -R usermode:usermode .
 
 USER usermode

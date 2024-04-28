@@ -23,7 +23,7 @@ If you want to build it manually be sure that you have C++23 clang++-18 and libc
    ```
 3. Build docker container:
    ```console
-   docker build . -t ddb
+   docker buildx build . -t ddb --target run
    ```
 4. Run code in *main.cpp* :
    ```console

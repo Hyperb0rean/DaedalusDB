@@ -28,8 +28,8 @@ public:
     }
     ~RelationClass() = default;
 
-    [[nodiscard]] std::string Serialize() const override {
-        return std::string("_relation@")
+    [[nodiscard]] auto Serialize() const -> std::string override {
+        return std::string{"_relation@"}
             .append(name_)
             .append("_")
             .append(from_class_->Serialize())
@@ -38,7 +38,7 @@ public:
             .append(attributes_class_.has_value() ? attributes_class_.value()->Serialize() : "");
     }
 
-    [[nodiscard]] std::optional<size_t> Size() const override {
+    [[nodiscard]] auto Size() const -> std::optional<size_t> override {
         if (!attributes_class_.has_value()) {
             return 2 * sizeof(Id);
         }
@@ -48,11 +48,7 @@ public:
             return std::nullopt;
         }
     }
-
-    [[nodiscard]] std::string Name() const override {
-        return name_;
-    }
-    [[nodiscard]] size_t Count() const override {
+    [[nodiscard]] auto Count() const -> size_t override {
         // Should think about this more
         if (attributes_class_.has_value()) {
             return attributes_class_.value()->Count() + 2;
@@ -61,13 +57,13 @@ public:
         }
     }
 
-    [[nodiscard]] Class::Ptr FromClass() const {
+    [[nodiscard]] auto FromClass() const noexcept -> Class::Ptr {
         return from_class_;
     }
-    [[nodiscard]] Class::Ptr ToClass() const {
+    [[nodiscard]] auto ToClass() const noexcept -> Class::Ptr {
         return to_class_;
     }
-    [[nodiscard]] std::optional<Class::Ptr> AttributesClass() const {
+    [[nodiscard]] auto AttributesClass() const noexcept -> std::optional<Class::Ptr> {
         return attributes_class_;
     }
 };

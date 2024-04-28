@@ -8,7 +8,7 @@ namespace ts {
 
 // WARN: Is compiler dependent
 template <typename T>
-[[nodiscard]] constexpr std::string_view TypeName() {
+[[nodiscard]] constexpr auto TypeName() -> std::string_view {
     constexpr auto prefix = std::string_view{"T ="};
     constexpr auto suffix = std::string_view{"]"};
     constexpr auto function = std::string_view{__PRETTY_FUNCTION__};
@@ -26,7 +26,7 @@ protected:
     std::string name_;
 
     // Is it necessary in Class definition ?
-    void Validate() const {
+    auto Validate() const -> void {
         for (auto& c : name_) {
             if (c == '@' || c == '_' || c == '<' || c == '>') {
                 throw error::TypeError("Invalid class name");
@@ -42,14 +42,14 @@ public:
     }
     virtual ~Class() = default;
 
-    [[nodiscard]] virtual std::string Serialize() const = 0;
+    [[nodiscard]] virtual auto Serialize() const -> std::string = 0;
 
-    [[nodiscard]] virtual std::optional<size_t> Size() const = 0;
+    [[nodiscard]] virtual auto Size() const -> std::optional<size_t> = 0;
 
-    [[nodiscard]] virtual std::string Name() const {
+    [[nodiscard]] auto Name() const noexcept -> std::string {
         return name_;
     }
-    [[nodiscard]] virtual size_t Count() const = 0;
+    [[nodiscard]] virtual auto Count() const -> size_t = 0;
 };
 
 template <typename C>

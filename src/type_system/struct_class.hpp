@@ -15,11 +15,12 @@ public:
     StructClass(std::string name) : Class(std::move(name)) {
     }
 
-    void AddField(const Class::Ptr& field) {
+    // Maybe should not be public
+    auto AddField(const Class::Ptr& field) -> void {
         fields_.push_back(field);
     }
 
-    [[nodiscard]] std::string Serialize() const override {
+    [[nodiscard]] auto Serialize() const -> std::string override {
         auto result = "_struct@" + name_ + "_<";
         for (auto& field : fields_) {
             result.append(field->Serialize());
@@ -28,7 +29,7 @@ public:
         return result;
     }
 
-    [[nodiscard]] std::optional<size_t> Size() const override {
+    [[nodiscard]] auto Size() const -> std::optional<size_t> override {
         auto result = 0;
         for (auto& field : fields_) {
             auto size = field->Size();
@@ -41,11 +42,11 @@ public:
         return result;
     }
 
-    [[nodiscard]] const std::vector<Class::Ptr>& GetFields() const {
+    [[nodiscard]] auto GetFields() const noexcept -> const std::vector<Class::Ptr>& {
         return fields_;
     }
 
-    [[nodiscard]] size_t Count() const override {
+    [[nodiscard]] auto Count() const -> size_t override {
         size_t count = 0;
         for (auto& field : fields_) {
             count += field->Count();

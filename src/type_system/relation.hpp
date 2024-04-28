@@ -32,11 +32,11 @@ public:
 
     virtual ~Relation() = default;
 
-    [[nodiscard]] size_t Size() const override {
+    [[nodiscard]] auto Size() const -> size_t override {
         return 2 * sizeof(Id) +
                (attributes_object_.has_value() ? attributes_object_.value()->Size() : 0);
     }
-    mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const override {
+    auto Write(mem::File::Ptr& file, mem::Offset offset) const -> mem::Offset override {
         file->Write(from_id_, offset);
         offset += sizeof(Id);
         file->Write(to_id_, offset);
@@ -47,7 +47,7 @@ public:
             return offset;
         }
     }
-    void Read(mem::File::Ptr& file, mem::Offset offset) override {
+    auto Read(mem::File::Ptr& file, mem::Offset offset) -> void override {
         from_id_ = file->Read<Id>(offset);
         offset += sizeof(Id);
         to_id_ = file->Read<Id>(offset);
@@ -56,7 +56,7 @@ public:
             attributes_object_.value()->Read(file, offset);
         }
     }
-    [[nodiscard]] std::string ToString() const override {
+    [[nodiscard]] auto ToString() const -> std::string override {
         return std::string("relation: ")
             .append(class_->Name())
             .append(" ( from: ")
@@ -78,13 +78,13 @@ public:
             .append(" ) ");
     }
 
-    [[nodiscard]] Id FromId() const {
+    [[nodiscard]] auto FromId() const noexcept -> Id {
         return from_id_;
     }
-    [[nodiscard]] Id ToId() const {
+    [[nodiscard]] auto ToId() const noexcept -> Id {
         return to_id_;
     }
-    [[nodiscard]] std::optional<Object::Ptr> Attributes() const {
+    [[nodiscard]] auto Attributes() const noexcept -> std::optional<Object::Ptr> {
         return attributes_object_;
     }
 };

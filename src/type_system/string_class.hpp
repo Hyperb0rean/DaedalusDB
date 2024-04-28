@@ -9,14 +9,14 @@ public:
 
     explicit StringClass(std::string name) : Class(std::move(name)) {
     }
-    [[nodiscard]] std::string Serialize() const override {
+    [[nodiscard]] auto Serialize() const -> std::string override {
         return "_string@" + name_ + "_";
     }
-    [[nodiscard]] std::optional<size_t> Size() const override {
+    [[nodiscard]] auto Size() const -> std::optional<size_t> override {
         return std::nullopt;
     }
 
-    [[nodiscard]] size_t Count() const override {
+    [[nodiscard]] auto Count() const -> size_t override {
         return 1;
     }
 };

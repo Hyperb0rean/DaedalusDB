@@ -1,7 +1,9 @@
 #pragma once
 
+#include "error.hpp"
 #include "object.hpp"
 #include "struct_class.hpp"
+#include "utils.hpp"
 
 namespace ts {
 class Struct : public Object {
@@ -14,7 +16,7 @@ public:
     Struct(const StructClass::Ptr& argclass) {
         this->class_ = argclass;
     }
-    [[nodiscard]] size_t Size() const override {
+    [[nodiscard]] auto Size() const -> size_t override {
         size_t size = 0;
         for (auto& field : fields_) {
             size += field->Size();
@@ -22,21 +24,23 @@ public:
         return size;
     }
 
+    // Maybe should not be public
     template <ObjectLike O>
-    void AddFieldValue(const util::Ptr<O>& value) {
+    auto AddFieldValue(const util::Ptr<O>& value) -> void {
         fields_.push_back(value);
     }
 
-    void RemoveLAstFieldValue() {
+    // Maybe should not be public
+    auto RemoveLAstFieldValue() -> void {
         fields_.pop_back();
     }
 
-    [[nodiscard]] const std::vector<Object::Ptr> GetFields() const {
+    [[nodiscard]] auto GetFields() const noexcept -> const std::vector<Object::Ptr>& {
         return fields_;
     }
 
     template <ObjectLike O>
-    [[nodiscard]] util::Ptr<O> GetField(std::string name) const {
+    [[nodiscard]] auto GetField(std::string name) const -> util::Ptr<O> {
         for (auto& field : fields_) {
             if (field->GetClass()->Name() == name) {
                 return util::As<O>(field);
@@ -45,7 +49,7 @@ public:
         throw error::RuntimeError("No such field");
     }
 
-    mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const override {
+    auto Write(mem::File::Ptr& file, mem::Offset offset) const -> mem::Offset override {
         mem::Offset new_offset = offset;
         for (auto& field : fields_) {
             field->Write(file, new_offset);
@@ -53,14 +57,14 @@ public:
         }
         return new_offset;
     }
-    void Read(mem::File::Ptr& file, mem::Offset offset) override {
+    auto Read(mem::File::Ptr& file, mem::Offset offset) -> void override {
         mem::Offset new_offset = offset;
         for (auto& field : fields_) {
             field->Read(file, new_offset);
             new_offset += field->Size();
         }
     }
-    [[nodiscard]] std::string ToString() const override {
+    [[nodiscard]] auto ToString() const -> std::string override {
         std::string result = class_->Name() + ": { ";
         for (auto& field : fields_) {
             if (field != *fields_.begin()) {

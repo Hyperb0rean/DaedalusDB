@@ -33,14 +33,14 @@ protected:
 public:
     using Ptr = util::Ptr<Object>;
 
-    [[nodiscard]] virtual Class::Ptr GetClass() {
+    [[nodiscard]] auto GetClass() noexcept -> Class::Ptr {
         return class_;
     }
     virtual ~Object() = default;
-    [[nodiscard]] virtual size_t Size() const = 0;
-    virtual mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const = 0;
-    virtual void Read(mem::File::Ptr& file, mem::Offset offset) = 0;
-    [[nodiscard]] virtual std::string ToString() const = 0;
+    [[nodiscard]] virtual auto Size() const -> size_t = 0;
+    virtual auto Write(mem::File::Ptr& file, mem::Offset offset) const -> mem::Offset = 0;
+    virtual auto Read(mem::File::Ptr& file, mem::Offset offset) -> void = 0;
+    [[nodiscard]] virtual auto ToString() const -> std::string = 0;
 };
 
 template <typename O>

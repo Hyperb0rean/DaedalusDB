@@ -13,7 +13,7 @@ class ClassObject : public Object {
     std::string serialized_;
     using SizeType = uint32_t;
 
-    [[nodiscard]] std::string ReadString(std::stringstream& stream, char end) const {
+    [[nodiscard]] auto ReadString(std::stringstream& stream, char end) const -> std::string {
         std::string result;
         char c;
         stream >> c;
@@ -24,7 +24,7 @@ class ClassObject : public Object {
         return result;
     }
 
-    [[nodiscard]] Class::Ptr Deserialize(std::stringstream& stream) const {
+    [[nodiscard]] auto Deserialize(std::stringstream& stream) const -> Class::Ptr {
         char del;
         stream >> del;
         if (del == '>') {
@@ -100,26 +100,26 @@ public:
         std::stringstream stream(serialized_);
         class_ = Deserialize(stream);
     }
-    [[nodiscard]] size_t Size() const override {
+    [[nodiscard]] auto Size() const -> size_t override {
         return serialized_.size() + sizeof(SizeType);
     }
-    mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const override {
+    auto Write(mem::File::Ptr& file, mem::Offset offset) const -> mem::Offset override {
         auto new_offset = file->Write<SizeType>(static_cast<SizeType>(serialized_.size()), offset) +
                           static_cast<mem::Offset>(sizeof(SizeType));
         return file->Write(serialized_, new_offset);
     }
-    void Read(mem::File::Ptr& file, mem::Offset offset) override {
+    auto Read(mem::File::Ptr& file, mem::Offset offset) -> void override {
         SizeType size = file->Read<SizeType>(offset);
         serialized_ = file->ReadString(offset + static_cast<mem::Offset>(sizeof(SizeType)), size);
         std::stringstream stream{serialized_};
         class_ = Deserialize(stream);
     }
-    [[nodiscard]] std::string ToString() const override {
+    [[nodiscard]] auto ToString() const -> std::string override {
         return serialized_;
     }
 
     template <ClassLike C>
-    [[nodiscard]] bool Contains(util::Ptr<C> other_class) const {
+    [[nodiscard]] auto Contains(util::Ptr<C> other_class) const noexcept -> bool {
         return serialized_.contains(ClassObject(other_class).serialized_);
     }
 };

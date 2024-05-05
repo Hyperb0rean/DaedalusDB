@@ -1,5 +1,8 @@
 #pragma once
+#include <cstddef>
+
 #include "mem.hpp"
+#include "page.hpp"
 
 namespace mem {
 
@@ -11,17 +14,17 @@ class PageList {
     Offset sentinel_offset_;
     size_t pages_count_;
 
-    void DecrementCount() {
+    auto DecrementCount() -> void {
         file_->Write<size_t>(--pages_count_, GetCountFromSentinel(sentinel_offset_));
         DEBUG(name_, " Decremented page count, current: ", pages_count_);
     }
-    void IncrementCount() {
+    auto IncrementCount() -> void {
         file_->Write<size_t>(++pages_count_, GetCountFromSentinel(sentinel_offset_));
         DEBUG(name_, " Incremented page count, current: ", pages_count_);
     }
 
 public:
-    [[nodiscard]] size_t GetPagesCount() const {
+    [[nodiscard]] auto GetPagesCount() const noexcept -> size_t {
         return pages_count_;
     }
 
@@ -41,45 +44,45 @@ public:
             : file_(file), sentinel_offset_(sentinel_offset) {
             curr_ = ReadPage(index);
         }
-        PageIterator& operator++() {
+        auto operator++() -> PageIterator& {
             curr_ = ReadPage(curr_.previous_page_index_);
             return *this;
         }
-        PageIterator operator++(int) {
+        auto operator++(int) -> PageIterator {
             auto temp = *this;
             curr_ = ReadPage(curr_.previous_page_index_);
             return temp;
         }
 
-        PageIterator& operator--() {
+        auto operator--() -> PageIterator& {
             curr_ = ReadPage(curr_.next_page_index_);
             return *this;
         }
-        PageIterator operator--(int) {
+        auto operator--(int) -> PageIterator {
             auto temp = *this;
             curr_ = ReadPage(curr_.next_page_index_);
             return temp;
         }
 
-        reference operator*() {
+        auto operator*() noexcept -> reference {
             return curr_;
         }
-        pointer operator->() {
+        auto operator->() noexcept -> pointer {
             return &curr_;
         }
 
-        bool operator==(const PageIterator& other) const {
+        auto operator==(const PageIterator& other) const noexcept -> bool {
             return curr_.index_ == other.curr_.index_;
         }
-        bool operator!=(const PageIterator& other) const {
+        auto operator!=(const PageIterator& other) const noexcept -> bool {
             return !(*this == other);
         }
 
-        [[nodiscard]] mem::PageIndex Index() const noexcept {
+        [[nodiscard]] auto Index() const noexcept -> PageIndex {
             return curr_.index_;
         }
 
-        [[nodiscard]] Page ReadPage(PageIndex index) {
+        [[nodiscard]] auto ReadPage(PageIndex index) -> Page {
             if (index < kSentinelIndex) {
                 return mem::ReadPage(Page(index), file_);
             } else {
@@ -87,7 +90,7 @@ public:
             }
         }
 
-        void WritePage() {
+        auto WritePage() -> void {
             if (curr_.index_ < kSentinelIndex) {
                 mem::WritePage(curr_, file_);
             } else {
@@ -96,7 +99,7 @@ public:
         }
     };
 
-    PageList() {
+    PageList() noexcept {
     }
 
     PageList(std::string name, File::Ptr& file, Offset sentinel_offset, DEFAULT_LOGGER(logger))
@@ -104,7 +107,7 @@ public:
         pages_count_ = file_->Read<size_t>(GetCountFromSentinel(sentinel_offset));
     }
 
-    void Unlink(PageIndex index) {
+    auto Unlink(PageIndex index) -> void {
         auto it = PageIterator(file_, index, sentinel_offset_);
         if (it->next_page_index_ == it->index_ && it->previous_page_index_ == it->index_) {
             return;
@@ -130,7 +133,7 @@ public:
         DecrementCount();
     }
 
-    void LinkBefore(PageIndex other_index, PageIndex index) {
+    auto LinkBefore(PageIndex other_index, PageIndex index) -> void {
         // other_index must be from list, index must not be from list
         DEBUG(name_, " Linking page ", index, " before ", other_index);
 
@@ -155,59 +158,59 @@ public:
     }
 
     // Index must be in the list
-    PageIterator IteratorTo(PageIndex index) {
+    auto IteratorTo(PageIndex index) -> PageIterator {
         return PageIterator(file_, index, sentinel_offset_);
     }
 
-    void PushBack(PageIndex index) {
+    auto PushBack(PageIndex index) -> void {
         DEBUG(name_, " Push back");
         LinkBefore(IteratorTo(kSentinelIndex)->next_page_index_, index);
     }
 
-    void PushFront(PageIndex index) {
+    auto PushFront(PageIndex index) -> void {
         DEBUG(name_, " Push front");
         LinkBefore(kSentinelIndex, index);
     }
 
-    void PopBack() {
+    auto PopBack() -> void {
         DEBUG(name_, " Pop back");
         Unlink(IteratorTo(kSentinelIndex)->next_page_index_);
     }
-    void PopFront() {
+    auto PopFront() -> void {
         DEBUG(name_, " Pop front");
         Unlink(IteratorTo(kSentinelIndex)->previous_page_index_);
     }
 
-    bool IsEmpty() const {
+    auto IsEmpty() const -> bool {
         return GetPagesCount() == 0;
     }
 
-    PageIterator Begin() {
+    auto Begin() -> PageIterator {
         return PageIterator(file_, file_->Read<Page>(sentinel_offset_).previous_page_index_,
                             sentinel_offset_);
     }
-    PageIterator End() {
+    auto End() -> PageIterator {
         return PageIterator(file_, file_->Read<Page>(sentinel_offset_).index_, sentinel_offset_);
     }
-    PageIterator RBegin() {
+    auto RBegin() -> PageIterator {
         return PageIterator(file_, file_->Read<Page>(sentinel_offset_).next_page_index_,
                             sentinel_offset_);
     }
 
-    PageIndex Front() {
+    auto Front() -> PageIndex {
         return file_->Read<Page>(sentinel_offset_).previous_page_index_;
     }
 
-    PageIndex Back() {
+    auto Back() -> PageIndex {
         return file_->Read<Page>(sentinel_offset_).next_page_index_;
     }
 };
 
-inline PageList::PageIterator begin(PageList& list) {
+inline auto begin(PageList& list) -> PageList::PageIterator {
     return list.Begin();
 }
 
-inline PageList::PageIterator end(PageList& list) {
+inline auto end(PageList& list) -> PageList::PageIterator {
     return list.End();
 }
 

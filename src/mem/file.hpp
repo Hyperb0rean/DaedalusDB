@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -22,7 +23,7 @@ class File {
     FileDescriptor fd_;
     std::string fileName_;
 
-    Offset Seek(Offset offset) const {
+    auto Seek(Offset offset) const -> Offset {
         Offset new_offset = lseek64(fd_, offset, SEEK_SET);
         if (new_offset == offset - 1) {
             throw error::BadArgument("Wrong arguments");
@@ -47,11 +48,11 @@ public:
         close(fd_);
     }
 
-    [[nodiscard]] std::string GetFilename() const {
+    [[nodiscard]] auto GetFilename() const noexcept -> std::string_view {
         return fileName_;
     }
 
-    [[nodiscard]] Offset GetSize() const {
+    [[nodiscard]] auto GetSize() const -> Offset {
 
         // TODO: Adapt for Windows
         struct stat64 file_stat;
@@ -62,7 +63,7 @@ public:
         return file_stat.st_size;
     }
 
-    void Truncate(Offset size) {
+    auto Truncate(Offset size) -> void {
         DEBUG("Truncating, current size: ", GetSize());
         if (ftruncate64(fd_, GetSize() - size) != 0) {
             throw error::IoError("Can't truncate file " + fileName_);
@@ -70,13 +71,13 @@ public:
         DEBUG("Truncating, current size: ", GetSize());
     }
 
-    void Extend(Offset size) {
+    auto Extend(Offset size) -> void {
         DEBUG("Extending, current size: ", GetSize());
         if (ftruncate64(fd_, GetSize() + size) != 0) {
             throw error::IoError("Can't extend file " + fileName_);
         }
     }
-    void Clear() {
+    auto Clear() -> void {
         DEBUG("Clear");
         if (ftruncate64(fd_, 0) != 0) {
             throw error::IoError("Can't clear file " + fileName_);
@@ -84,8 +85,8 @@ public:
     }
 
     template <typename T>
-    Offset Write(const T& data, Offset offset = 0, StructOffset struct_offset = 0,
-                 StructOffset count = sizeof(T)) {
+    auto Write(const T& data, Offset offset = 0, StructOffset struct_offset = 0,
+               StructOffset count = sizeof(T)) -> Offset {
         count = std::min(count, sizeof(T) - struct_offset);
         auto new_offset = Seek(offset);
         if (write(fd_, reinterpret_cast<const char*>(&data) + struct_offset, count) == -1) {
@@ -94,8 +95,8 @@ public:
         return new_offset;
     }
 
-    Offset Write(std::string str, Offset offset = 0, size_t from = 0,
-                 size_t count = std::string::npos) {
+    auto Write(std::string str, Offset offset = 0, size_t from = 0,
+               size_t count = std::string::npos) -> Offset {
         count = std::min(count, str.size() - from);
         auto new_offset = Seek(offset);
         if (write(fd_, str.data() + from, count) == -1) {
@@ -105,8 +106,8 @@ public:
     }
 
     template <typename T>
-    Offset Write(const std::vector<T>& vec, Offset offset = 0, size_t from = 0,
-                 StructOffset count = SIZE_MAX) {
+    auto Write(const std::vector<T>& vec, Offset offset = 0, size_t from = 0,
+               StructOffset count = SIZE_MAX) -> Offset {
         count = std::min(count, vec.size() - from);
         auto new_offset = Seek(offset);
         if (write(fd_, vec.data(), count * sizeof(T)) == -1) {
@@ -116,9 +117,9 @@ public:
     }
 
     template <typename T>
-    [[nodiscard]] T Read(
-        Offset offset = 0, StructOffset struct_offset = 0,
-        StructOffset count = sizeof(T)) const requires std::is_default_constructible_v<T> {
+    [[nodiscard]] auto Read(Offset offset = 0, StructOffset struct_offset = 0,
+                            StructOffset count = sizeof(T)) const
+        -> T requires std::is_default_constructible_v<T> {
         count = std::min(count, sizeof(T) - struct_offset);
         Seek(offset);
         T data{};
@@ -132,7 +133,7 @@ public:
         return data;
     }
 
-    [[nodiscard]] std::string ReadString(Offset offset = 0, size_t count = 0) const {
+    [[nodiscard]] auto ReadString(Offset offset = 0, size_t count = 0) const -> std::string {
         Seek(offset);
         std::string str;
         str.resize(count);
@@ -147,8 +148,8 @@ public:
     }
 
     template <typename T>
-    [[nodiscard]] std::vector<T> ReadVector(
-        Offset offset = 0, size_t count = 0) const requires std::is_default_constructible_v<T> {
+    [[nodiscard]] auto ReadVector(Offset offset = 0, size_t count = 0) const -> std::vector<T>
+    requires std::is_default_constructible_v<T> {
         Seek(offset);
         std::vector<T> vec(count);
         auto result = read(fd_, vec.data(), count * sizeof(T));

@@ -19,14 +19,14 @@ private:
     using ClassCache = std::unordered_map<std::string, mem::PageIndex>;
     ClassCache class_cache_;
 
-    std::string GetSerializedClass(mem::PageIndex index) const {
+    auto GetSerializedClass(mem::PageIndex index) const -> std::string {
         auto header = mem::ClassHeader(index).ReadClassHeader(alloc_->GetFile());
         ts::ClassObject class_object;
         class_object.Read(alloc_->GetFile(), mem::GetOffset(header.index_, header.free_offset_));
         return class_object.ToString();
     }
 
-    void InitializeClassCache() {
+    auto InitializeClassCache() -> void {
         INFO("Initializing class cache..");
 
         class_cache_.clear();
@@ -38,7 +38,7 @@ private:
         }
     }
 
-    void EraseFromCache(mem::PageIndex index) {
+    auto EraseFromCache(mem::PageIndex index) -> void {
         for (auto it = class_cache_.begin(); it != class_cache_.end();) {
             if (it->second == index) {
                 it = class_cache_.erase(it);
@@ -49,12 +49,12 @@ private:
     }
 
     template <ts::ClassLike C>
-    ts::ClassObject::Ptr MakeClassHolder(const util::Ptr<C>& new_class) {
+    auto MakeClassHolder(const util::Ptr<C>& new_class) -> ts::ClassObject::Ptr {
         return util::MakePtr<ts::ClassObject>(new_class);
     }
 
-    mem::ClassHeader InitializeClassHeader(mem::PageIndex index,
-                                           ts::ClassObject::Ptr& class_object) {
+    auto InitializeClassHeader(mem::PageIndex index, ts::ClassObject::Ptr& class_object)
+        -> mem::ClassHeader {
         return mem::ClassHeader(index)
             .ReadClassHeader(alloc_->GetFile())
             .InitClassHeader(alloc_->GetFile(), class_object->Size())
@@ -80,8 +80,8 @@ public:
     }
 
     template <ts::ClassLike C>
-    std::optional<mem::PageIndex> FindClass(util::Ptr<C> new_class,
-                                            DataMode mode = DataMode::kCache) {
+    auto FindClass(util::Ptr<C> new_class, DataMode mode = DataMode::kCache)
+        -> std::optional<mem::PageIndex> {
         auto class_object = MakeClassHolder(new_class);
         auto serialized = class_object->ToString();
         if (class_cache_.contains(serialized)) {
@@ -108,7 +108,7 @@ public:
     }
 
     template <ts::ClassLike C>
-    void AddClass(const util::Ptr<C>& new_class) {
+    auto AddClass(const util::Ptr<C>& new_class) -> void {
         INFO("Adding new class..");
 
         auto class_object = MakeClassHolder(new_class);
@@ -148,7 +148,7 @@ public:
     }
 
     template <ts::ClassLike C>
-    void RemoveClass(const util::Ptr<C>& new_class) {
+    auto RemoveClass(const util::Ptr<C>& new_class) -> void {
         INFO("Removing class..");
 
         auto index = FindClass(new_class, DataMode::kFile);
@@ -173,7 +173,7 @@ public:
 
     template <typename F>
     requires std::invocable<F, mem::ClassHeader>
-    void VisitClasses(F functor) {
+    auto VisitClasses(F functor) -> void {
         for (auto& class_header : class_list_) {
             functor(mem::ClassHeader(class_header.index_).ReadClassHeader(alloc_->GetFile()));
         }
@@ -181,7 +181,7 @@ public:
 
     template <typename Functor>
     requires std::invocable<Functor, ts::Class::Ptr>
-    void VisitClasses(Functor functor) {
+    auto VisitClasses(Functor functor) -> void {
         for (auto& class_header : class_list_) {
             ts::ClassObject class_object;
             class_object.Read(alloc_->GetFile(),

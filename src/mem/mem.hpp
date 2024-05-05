@@ -29,28 +29,27 @@ public:
     Page class_list_sentinel_;
     size_t class_list_count_;
 
-    void CheckConsistency(File::Ptr& file) {
+    auto CheckConsistency(File::Ptr& file) -> void {
         try {
             auto magic = file->Read<GlobalMagic>();
             if (magic != kMagic) {
-                throw error::StructureError("Can't open database from this file: " +
-                                            file->GetFilename());
+                throw;
             }
 
         } catch (...) {
             throw error::StructureError("Can't open database from this file: " +
-                                        file->GetFilename());
+                                        std::string{file->GetFilename()});
         }
     }
 
-    Superblock& ReadSuperblock(File::Ptr& file) {
+    auto ReadSuperblock(File::Ptr& file) -> Superblock& {
         CheckConsistency(file);
         auto header = file->Read<Superblock>(sizeof(kMagic));
         std::swap(header, *this);
         return *this;
     }
 
-    Superblock& InitSuperblock(File::Ptr& file) {
+    auto InitSuperblock(File::Ptr& file) -> Superblock& {
         file->Write<GlobalMagic>(kMagic);
         free_list_sentinel_ = Page(kSentinelIndex);
         free_list_sentinel_.type_ = PageType::kSentinel;
@@ -63,33 +62,33 @@ public:
         file->Write<Superblock>(*this, sizeof(kMagic));
         return *this;
     }
-    Superblock& WriteSuperblock(File::Ptr& file) {
+    auto WriteSuperblock(File::Ptr& file) -> Superblock& {
         CheckConsistency(file);
         file->Write<Superblock>(*this, sizeof(kMagic));
         return *this;
     }
 };
 
-constexpr inline Offset GetCountFromSentinel(Offset sentinel) {
+constexpr inline auto GetCountFromSentinel(Offset sentinel) -> Offset {
     return sentinel + static_cast<Offset>(sizeof(Page));
 }
 
-constexpr inline Offset GetSentinelIndex(Offset sentinel) {
+constexpr inline auto GetSentinelIndex(Offset sentinel) -> Offset {
     return sentinel + static_cast<Offset>(sizeof(PageType));
 }
 
-constexpr inline Offset GetOffset(PageIndex index, PageOffset virt_offset) {
+constexpr inline auto GetOffset(PageIndex index, PageOffset virt_offset) -> Offset {
     if (virt_offset >= mem::kPageSize) {
         throw error::BadArgument("Invalid virtual offset");
     }
     return kPagetableOffset + static_cast<Offset>(index) * mem::kPageSize + virt_offset;
 }
 
-constexpr inline PageIndex GetIndex(Offset offset) {
+constexpr inline auto GetIndex(Offset offset) -> PageIndex {
     return static_cast<PageIndex>((offset - kPagetableOffset) / kPageSize);
 }
 
-constexpr inline Offset GetPageAddress(PageIndex index) {
+constexpr inline auto GetPageAddress(PageIndex index) -> Offset {
     return kPagetableOffset + static_cast<Offset>(index) * kPageSize;
 }
 
@@ -110,40 +109,40 @@ public:
         this->type_ = PageType::kClassHeader;
     }
 
-    Offset GetNodeListSentinelOffset() {
+    auto GetNodeListSentinelOffset() -> Offset {
         return GetOffset(index_, sizeof(Page));
     }
 
     // Should think about structure alignment in 4 following methods
 
-    ClassHeader& WriteNodeId(File::Ptr& file, size_t count) {
+    auto WriteNodeId(File::Ptr& file, size_t count) -> ClassHeader& {
         id_ = count;
         file->Write<size_t>(id_, GetOffset(index_, 2 * sizeof(Page) + sizeof(size_t)));
         return *this;
     }
 
-    ClassHeader& WriteMagic(File::Ptr& file, Magic magic) {
+    auto WriteMagic(File::Ptr& file, Magic magic) -> ClassHeader& {
         magic_ = magic;
         file->Write<Magic>(magic_, GetOffset(index_, 2 * sizeof(Page) + 2 * sizeof(size_t)));
         return *this;
     }
 
-    ClassHeader& ReadNodeId(File::Ptr& file) {
+    auto ReadNodeId(File::Ptr& file) -> ClassHeader& {
         id_ = file->Read<size_t>(GetOffset(index_, 2 * sizeof(Page) + sizeof(size_t)));
         return *this;
     }
 
-    ClassHeader& ReadMagic(File::Ptr& file) {
+    auto ReadMagic(File::Ptr& file) -> ClassHeader& {
         magic_ = file->Read<Magic>(GetOffset(index_, 2 * sizeof(Page) + 2 * sizeof(size_t)));
         return *this;
     }
 
-    ClassHeader& ReadClassHeader(File::Ptr& file) {
+    auto ReadClassHeader(File::Ptr& file) -> ClassHeader& {
         auto header = file->Read<ClassHeader>(GetPageAddress(index_));
         std::swap(header, *this);
         return *this;
     }
-    ClassHeader& InitClassHeader(File::Ptr& file, size_t size = 0) {
+    auto InitClassHeader(File::Ptr& file, size_t size = 0) -> ClassHeader& {
         this->type_ = PageType::kClassHeader;
         this->initialized_offset_ = static_cast<PageOffset>(sizeof(ClassHeader) + size);
         this->free_offset_ = sizeof(ClassHeader);
@@ -156,19 +155,19 @@ public:
         file->Write<ClassHeader>(*this, GetPageAddress(index_));
         return *this;
     }
-    ClassHeader& WriteClassHeader(File::Ptr& file) {
+    auto WriteClassHeader(File::Ptr& file) -> ClassHeader& {
         file->Write<ClassHeader>(*this, GetPageAddress(index_));
         return *this;
     }
 };
 
-inline Page ReadPage(Page other, File::Ptr& file) {
+inline auto ReadPage(Page other, File::Ptr& file) -> Page {
     auto page = file->Read<Page>(GetPageAddress(other.index_));
     std::swap(page, other);
     return other;
 }
 
-inline Page WritePage(Page other, File::Ptr& file) {
+inline auto WritePage(Page other, File::Ptr& file) -> Page {
     file->Write<Page>(other, GetPageAddress(other.index_));
     return other;
 }

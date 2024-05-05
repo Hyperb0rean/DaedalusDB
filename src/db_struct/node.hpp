@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+#include <string_view>
 #include <variant>
 
 #include "mem.hpp"
@@ -9,7 +11,7 @@ namespace db {
 
 enum class ObjectState { kFree, kValid, kInvalid };
 
-[[nodiscard]] inline std::string ObjectStateToString(ObjectState state) {
+[[nodiscard]] inline auto ObjectStateToString(ObjectState state) -> std::string_view {
     switch (state) {
         case ObjectState::kFree:
             return "free";
@@ -34,11 +36,11 @@ public:
     using Ptr = util::Ptr<Node>;
 
     template <ts::ObjectLike O>
-    Node(mem::Magic magic, ts::ObjectId id, util::Ptr<O> data)
+    Node(mem::Magic magic, ts::ObjectId id, util::Ptr<O> data) noexcept
         : magic_(magic), meta_(id), data_(data), state_(ObjectState::kValid) {
     }
 
-    size_t Size() const {
+    auto Size() const -> size_t {
         switch (state_) {
             case ObjectState::kFree: {
                 return sizeof(mem::Magic) + sizeof(mem::PageOffset);
@@ -52,7 +54,7 @@ public:
         }
     }
 
-    mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const {
+    auto Write(mem::File::Ptr& file, mem::Offset offset) const -> mem::Offset {
         switch (state_) {
             case ObjectState::kFree:
                 file->Write<mem::Magic>(~magic_, offset);
@@ -71,7 +73,7 @@ public:
                 throw error::RuntimeError("Invalid state");
         }
     }
-    void Read(mem::File::Ptr& file, mem::Offset offset) {
+    auto Read(mem::File::Ptr& file, mem::Offset offset) -> void {
         auto magic = file->Read<mem::Magic>(offset);
         offset += sizeof(mem::Magic);
 
@@ -87,7 +89,7 @@ public:
             state_ = ObjectState::kInvalid;
         }
     }
-    [[nodiscard]] std::string ToString() const {
+    [[nodiscard]] auto ToString() const -> std::string {
         return std::string("NODE: ")
             .append("state: ")
             .append(ObjectStateToString(state_))
@@ -145,31 +147,31 @@ public:
         }
     }
 
-    void Free(mem::PageOffset meta) {
+    auto Free(mem::PageOffset meta) -> void {
         state_ = ObjectState::kFree;
         meta_ = meta;
     }
 
-    [[nodiscard]] ts::ObjectId Id() const {
+    [[nodiscard]] auto Id() const -> ts::ObjectId {
         if (state_ != ObjectState::kValid) {
             throw error::BadArgument("Node has no id");
         }
         return std::get<ts::ObjectId>(meta_);
     }
 
-    [[nodiscard]] mem::PageOffset NextFree() const {
+    [[nodiscard]] auto NextFree() const -> mem::PageOffset {
         if (state_ != ObjectState::kFree) {
             throw error::BadArgument("Node has no next");
         }
         return std::get<mem::PageOffset>(meta_);
     }
 
-    [[nodiscard]] ObjectState State() const {
+    [[nodiscard]] auto State() const noexcept -> ObjectState {
         return state_;
     }
 
     template <ts::ObjectLike O>
-    [[nodiscard]] util::Ptr<O> Data() const {
+    [[nodiscard]] auto Data() const -> util::Ptr<O> {
         switch (state_) {
             case ObjectState::kFree: {
                 throw error::RuntimeError("Use after free");

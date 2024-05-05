@@ -22,7 +22,7 @@ TEST(Database, Collect) {
 
     database->AddClass(person_class);
     database->PrintClasses();
-    for (size_t i = 0; i < 100; ++i) {
+    for (size_t i : std::views::iota(0, 70)) {
         database->AddNode(ts::New<ts::Struct>(person_class, std::format("Greg {}", i), "Sosnovtsev",
                                               19, "Saint-Petersburg", "Lomonosova", i));
     }
@@ -50,7 +50,7 @@ TEST(Database, Drop) {
 
     database->AddClass(address_class);
     database->PrintClasses();
-    for (size_t i = 0; i < 1; ++i) {
+    for (size_t i : std::views::iota(0, 700)) {
         database->AddNode(ts::New<ts::Struct>(address_class, "Saint-Petersburg", "Lomonosova", i));
     }
     ASSERT_TRUE(database->Contains(address_class));

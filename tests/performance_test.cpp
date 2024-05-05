@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <ranges>
 
 #include "logger.hpp"
 #include "pattern.hpp"
@@ -14,7 +15,7 @@ TEST(Performance, Insert) {
     database.AddClass(name);
     database.AddClass(age);
 
-    for (size_t i = 0; i < 10'000; ++i) {
+    for (auto i : std::views::iota(0, 10'000)) {
         auto start = std::chrono::high_resolution_clock::now();
         database.AddNode(ts::New<ts::String>(name, "test name"));
         auto stop = std::chrono::high_resolution_clock::now();
@@ -39,13 +40,13 @@ TEST(Performance, RemoveVal) {
     database.AddClass(name);
     database.AddClass(age);
 
-    size_t size = 10'000;
-    for (size_t i = 0; i < size; ++i) {
+    int size = 10'000;
+    for ([[maybe_unused]] auto i : std::views::iota(0, size)) {
         database.AddNode(ts::New<ts::Primitive<int>>(age, 100000));
         database.AddNode(ts::New<ts::String>(name, "test name"));
     }
 
-    for (size_t i = 0; i < size; ++i) {
+    for ([[maybe_unused]] auto i : std::views::iota(0, size)) {
         auto start = std::chrono::high_resolution_clock::now();
         database.RemoveNodesIf(age, [i](auto it) { return it->Id() == ID(i); });
         auto stop = std::chrono::high_resolution_clock::now();
@@ -64,13 +65,13 @@ TEST(Performance, RemoveVar) {
     database.AddClass(name);
     database.AddClass(age);
 
-    size_t size = 10'000;
-    for (size_t i = 0; i < size; ++i) {
+    int size = 10'000;
+    for ([[maybe_unused]] auto i : std::views::iota(0, size)) {
         database.AddNode(ts::New<ts::Primitive<int>>(age, 100000));
         database.AddNode(ts::New<ts::String>(name, "test name"));
     }
 
-    for (size_t i = 0; i < size; ++i) {
+    for ([[maybe_unused]] auto i : std::views::iota(0, size)) {
         auto start = std::chrono::high_resolution_clock::now();
         database.RemoveNodesIf(name, [i](auto it) { return it->Id() == ID(i); });
         auto stop = std::chrono::high_resolution_clock::now();
@@ -89,20 +90,20 @@ TEST(Performance, Compression) {
     database.AddClass(name);
     database.AddClass(age);
 
-    size_t size = 10'000;
-    for (size_t i = 0; i < size; ++i) {
+    int size = 10'000;
+    for (auto i : std::views::iota(0, size)) {
         database.AddNode(ts::New<ts::String>(name, "test name"));
         std::cerr << i << "," << file->GetSize() << "\n";
     }
-    for (size_t i = size; i > 0; --i) {
+    for (auto i : std::views::iota(0, size) | std::views::reverse) {
         database.RemoveNodesIf(name, [i](auto it) { return it->Id() == ID(i); });
         std::cerr << i << "," << file->GetSize() << "\n";
     }
-    for (size_t i = 0; i < size; ++i) {
+    for (auto i : std::views::iota(0, size)) {
         database.AddNode(ts::New<ts::Primitive<int>>(age, 100000));
         std::cerr << i << "," << file->GetSize() << "\n";
     }
-    for (size_t i = size; i > 0; --i) {
+    for (auto i : std::views::iota(0, size) | std::views::reverse) {
         database.RemoveNodesIf(age, [i](auto it) { return it->Id() == ID(i); });
         std::cerr << i << "," << file->GetSize() << "\n";
     }
@@ -119,15 +120,15 @@ TEST(Performance, Match) {
 
     int size = 1'00;
     int operaption = 0;
-    for (int i = 0; i < size; ++i) {
+    for (auto i : std::views::iota(0, size)) {
         database->AddNode(ts::New<ts::Primitive<int>>(point, i));
     }
-    for (int i = 1; i < size; ++i) {
+    for (auto i : std::views::iota(1, size)) {
         database->AddNode(ts::New<ts::Relation>(edge, ID(0), ID(i)));
         database->AddNode(ts::New<ts::Relation>(edge, ID(i), ID(0)));
     }
-    for (int i = 1; i < size; ++i) {
-        for (int j = 1; j < i; ++j) {
+    for (auto i : std::views::iota(1, size)) {
+        for (auto j : std::views::iota(1, i)) {
             auto star = util::MakePtr<db::Pattern>(point);
             star->AddRelation(edge, [i](db::Node a, db::Node b) {
                 return a.Data<ts::Primitive<int>>()->Value() == 0 &&

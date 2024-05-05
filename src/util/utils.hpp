@@ -14,7 +14,7 @@ class PrintableAny {
     using PrintFunctor = void (*)(std::ostream&, const std::any&);
     PrintFunctor functor_;
 
-    friend std::ostream& operator<<(std::ostream& os, const PrintableAny& any) {
+    friend auto operator<<(std::ostream& os, const PrintableAny& any) -> std::ostream& {
         any.functor_(os, any.value_);
         return os;
     }
@@ -32,17 +32,17 @@ template <typename T>
 using Ptr = ::std::shared_ptr<T>;
 
 template <typename T, typename... Args>
-[[nodiscard]] inline Ptr<T> MakePtr(Args&&... args) {
+[[nodiscard]] inline auto MakePtr(Args&&... args) -> Ptr<T> {
     return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
 template <typename T, typename Base>
-[[nodiscard]] inline bool Is(const util::Ptr<Base>& obj) {
+[[nodiscard]] inline auto Is(const util::Ptr<Base>& obj) -> bool {
     return dynamic_cast<T*>(obj.get()) != nullptr;
 }
 
 template <typename T, typename Base>
-[[nodiscard]] inline util::Ptr<T> As(const util::Ptr<Base>& obj) {
+[[nodiscard]] inline auto As(const util::Ptr<Base>& obj) -> Ptr<T> {
     if (Is<T>(obj)) {
         return std::dynamic_pointer_cast<T>(obj);
     } else {

@@ -1,3 +1,8 @@
+#include <__ranges/repeat_view.h>
+
+#include <ranges>
+#include <tuple>
+
 #include "test.hpp"
 
 TEST(ValNodeStorage, NodeAddition) {
@@ -22,9 +27,9 @@ TEST(ValNodeStorage, NodeAddditionWithAllocation) {
         db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, CONSOLE_LOGGER);
     database.AddClass(coords);
 
-    for (size_t i = 0; i < 200; ++i) {
-        database.AddNode(ts::New<ts::Struct>(coords, 1., 0.));
-        database.AddNode(ts::New<ts::Struct>(coords, 0., 1.));
+    for (auto [one, zero] : std::views::repeat(std::tuple(1., 0.), 200)) {
+        database.AddNode(ts::New<ts::Struct>(coords, one, zero));
+        database.AddNode(ts::New<ts::Struct>(coords, zero, one));
     }
 }
 
@@ -37,9 +42,9 @@ TEST(ValNodeStorage, PrintNodes) {
         db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, CONSOLE_LOGGER);
     database.AddClass(coords);
 
-    for (size_t i = 0; i < 10; ++i) {
-        database.AddNode(ts::New<ts::Struct>(coords, 13., 46.));
-        database.AddNode(ts::New<ts::Struct>(coords, 60., 15.));
+    for (auto [one, ten] : std::views::repeat(std::tuple(1., 10.), 10)) {
+        database.AddNode(ts::New<ts::Struct>(coords, one, ten));
+        database.AddNode(ts::New<ts::Struct>(coords, ten, one));
     }
 
     database.PrintNodesIf(coords, [](auto it) { return it.Id() % 2 == 0; });
@@ -54,9 +59,9 @@ TEST(ValNodeStorage, RemoveNodes) {
         db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
     database.AddClass(coords);
 
-    for (size_t i = 0; i < 10; ++i) {
-        database.AddNode(ts::New<ts::Struct>(coords, 13., 46.));
-        database.AddNode(ts::New<ts::Struct>(coords, 60., 15.));
+    for (auto [one, ten] : std::views::repeat(std::tuple(1., 10.), 10)) {
+        database.AddNode(ts::New<ts::Struct>(coords, one, ten));
+        database.AddNode(ts::New<ts::Struct>(coords, ten, one));
     }
 
     database.RemoveNodesIf(coords, [](auto it) { return it.Id() % 2 == 0; });
@@ -72,14 +77,14 @@ TEST(ValNodeStorage, RemoveThenAddNodes) {
         db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
     database.AddClass(coords);
 
-    for (size_t i = 0; i < 10; ++i) {
-        database.AddNode(ts::New<ts::Struct>(coords, 13., 46.));
-        database.AddNode(ts::New<ts::Struct>(coords, 60., 15.));
+    for (auto [one, ten] : std::views::repeat(std::tuple(1., 10.), 10)) {
+        database.AddNode(ts::New<ts::Struct>(coords, one, ten));
+        database.AddNode(ts::New<ts::Struct>(coords, ten, one));
     }
 
     database.RemoveNodesIf(coords, [](auto it) { return it.Id() % 2 == 0; });
 
-    for (size_t i = 0; i < 5; ++i) {
+    for (auto i : std::views::iota(0ul, 15ul)) {
         database.AddNode(ts::New<ts::Struct>(coords, i * 1., -1. * i));
     }
 
@@ -95,7 +100,7 @@ TEST(ValNodeStorage, FreeUnusedDataPages) {
         db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
     database.AddClass(coords);
 
-    for (size_t i = 0; i < 1000; ++i) {
+    for ([[maybe_unused]] auto i : std::views::iota(0, 1000)) {
         database.AddNode(ts::New<ts::Struct>(coords, 13., 46.));
     }
 
@@ -112,7 +117,7 @@ TEST(ValNodeStorage, Select) {
         db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, CONSOLE_LOGGER);
     database.AddClass(coords);
 
-    for (size_t i = 0; i < 100; ++i) {
+    for (auto i : std::views::iota(0, 100)) {
         database.AddNode(ts::New<ts::Struct>(coords, i * 10., 1000. - i));
     }
 
@@ -131,14 +136,14 @@ TEST(ValNodeStorage, IdLogic) {
         db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, CONSOLE_LOGGER);
     database.AddClass(coords);
 
-    for (size_t i = 0; i < 1000; ++i) {
+    for ([[maybe_unused]] auto i : std::views::iota(0, 1000)) {
         database.AddNode(ts::New<ts::Struct>(coords, 10., 1000.));
     }
 
     database.RemoveNodesIf(coords, [](db::ValNodeIterator it) { return it->Id() < 50; });
     database.RemoveNodesIf(coords, [](db::ValNodeIterator it) { return it->Id() >= 150; });
 
-    for (size_t i = 0; i < 100; ++i) {
+    for ([[maybe_unused]] auto i : std::views::iota(0, 100)) {
         database.AddNode(ts::New<ts::Struct>(coords, 50., 2000.));
     }
 

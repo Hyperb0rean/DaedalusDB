@@ -3,6 +3,7 @@
 #include <any>
 #include <initializer_list>
 #include <string>
+#include <utility>
 
 #include "primitive.hpp"
 #include "relation.hpp"
@@ -14,20 +15,21 @@
 namespace ts {
 
 /* TODO: Make support of creation of attributed relations
+   TODO: Rewrite this file to make it more readable
  */
 
 // Should be twice size of mem::PageOffset;
 using ObjectId = uint64_t;
 
 template <ClassLike C, typename... Classes>
-[[nodiscard]] util::Ptr<C> NewClass(std::string name, Classes&&... classes) {
+[[nodiscard]] auto NewClass(std::string name, Classes&&... classes) -> util::Ptr<C> {
     if constexpr (std::is_same_v<C, StructClass>) {
         auto new_class = util::MakePtr<C>(std::move(name));
-        (new_class->AddField(classes), ...);
+        (new_class->AddField(std::forward<Classes>(classes)), ...);
         return new_class;
     } else if constexpr (std::is_same_v<C, RelationClass>) {
         static_assert(sizeof...(classes) == 2 || sizeof...(classes) == 3);
-        return util::MakePtr<C>(std::move(name), classes...);
+        return util::MakePtr<C>(std::move(name), std::forward<Classes>(classes)...);
     } else {
         static_assert(sizeof...(classes) == 0);
         return util::MakePtr<C>(std::move(name));
@@ -35,8 +37,8 @@ template <ClassLike C, typename... Classes>
 }
 
 template <ObjectLike O, ClassLike C>
-[[nodiscard]] util::Ptr<O> UnsafeNew(util::Ptr<C> object_class,
-                                     std::initializer_list<std::any>::iterator& arg_it) {
+[[nodiscard]] auto UnsafeNew(util::Ptr<C> object_class,
+                             std::initializer_list<std::any>::iterator& arg_it) -> util::Ptr<O> {
     if constexpr (std::is_same_v<O, Struct>) {
         auto new_object = util::MakePtr<Struct>(object_class);
         auto it = util::As<StructClass>(object_class)->GetFields().begin();
@@ -81,6 +83,7 @@ template <ObjectLike O, ClassLike C>
         }
 
         return new_object;
+
     } else if constexpr (std::is_same_v<O, String>) {
         if (arg_it->type() == typeid(std::string)) {
             return util::MakePtr<String>(object_class,
@@ -88,10 +91,11 @@ template <ObjectLike O, ClassLike C>
         } else if (arg_it->type() == typeid(const char*)) {
             return util::MakePtr<String>(object_class,
                                          std::move(std::any_cast<const char*>(*arg_it)));
+        } else {
+            throw error::TypeError(
+                "Incorrect cast or attempt to implicit type conversion of argument type " +
+                std::string(arg_it->type().name()) + " to class type" + object_class->Serialize());
         }
-        throw error::TypeError(
-            "Incorrect cast or attempt to implicit type conversion of argument type " +
-            std::string(arg_it->type().name()) + " to class type" + object_class->Serialize());
     } else if constexpr (std::is_same_v<O, Relation>) {
         auto in_id = std::any_cast<ObjectId>(*arg_it++);
         auto out_id = std::any_cast<ObjectId>(*arg_it++);
@@ -120,7 +124,7 @@ template <ObjectLike O, ClassLike C>
 }
 
 template <ObjectLike O, ClassLike C, typename... Args>
-[[nodiscard]] util::Ptr<O> New(util::Ptr<C> object_class, Args&&... args) {
+[[nodiscard]] auto New(util::Ptr<C> object_class, Args&&... args) -> util::Ptr<O> {
 
     if (object_class->Count() != sizeof...(Args)) {
         throw error::BadArgument("Wrong number of arguments");
@@ -131,7 +135,7 @@ template <ObjectLike O, ClassLike C, typename... Args>
 }
 
 template <ObjectLike O, ClassLike C>
-[[nodiscard]] util::Ptr<O> DefaultNew(util::Ptr<C> object_class) {
+[[nodiscard]] auto DefaultNew(util::Ptr<C> object_class) -> util::Ptr<O> {
     if constexpr (std::is_same_v<O, Struct>) {
         auto new_object = util::MakePtr<Struct>(object_class);
         auto fields = util::As<StructClass>(object_class)->GetFields();
@@ -169,9 +173,8 @@ template <ObjectLike O, ClassLike C>
 }
 
 template <ObjectLike O, ClassLike C>
-[[nodiscard]] util::Ptr<O> ReadNew(util::Ptr<C> object_class, mem::File::Ptr& file,
-                                   mem::Offset offset) {
-
+[[nodiscard]] auto ReadNew(util::Ptr<C> object_class, mem::File::Ptr& file, mem::Offset offset)
+    -> util::Ptr<O> {
     auto new_object = DefaultNew<O, C>(object_class);
     new_object->Read(file, offset);
     return new_object;

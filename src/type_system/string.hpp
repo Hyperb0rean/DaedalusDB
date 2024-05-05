@@ -19,25 +19,25 @@ public:
     explicit String(const StringClass::Ptr& argclass) : str_("") {
         this->class_ = argclass;
     }
-    [[nodiscard]] size_t Size() const override {
+    [[nodiscard]] auto Size() const -> size_t override {
         return str_.size() + sizeof(SizeType);
     }
-    [[nodiscard]] std::string_view Value() const {
+    [[nodiscard]] auto Value() const noexcept -> std::string_view {
         return str_;
     }
-    [[nodiscard]] std::string& Value() {
+    [[nodiscard]] auto Value() noexcept -> std::string& {
         return str_;
     }
-    mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const override {
+    auto Write(mem::File::Ptr& file, mem::Offset offset) const -> mem::Offset override {
         auto new_offset = file->Write<SizeType>(static_cast<SizeType>(str_.size()), offset) +
                           static_cast<mem::Offset>(sizeof(SizeType));
         return file->Write(str_, new_offset);
     }
-    void Read(mem::File::Ptr& file, mem::Offset offset) override {
+    auto Read(mem::File::Ptr& file, mem::Offset offset) -> void override {
         SizeType size = file->Read<SizeType>(offset);
         str_ = file->ReadString(offset + static_cast<mem::Offset>(sizeof(SizeType)), size);
     }
-    [[nodiscard]] std::string ToString() const override {
+    [[nodiscard]] auto ToString() const -> std::string override {
         return class_->Name() + ": \"" + str_ + "\"";
     }
 };

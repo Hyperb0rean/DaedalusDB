@@ -33,42 +33,42 @@ public:
 
         Node::Ptr curr_;
 
-        [[nodiscard]] mem::PageOffset InPageOffset() const noexcept {
+        [[nodiscard]] auto InPageOffset() const noexcept -> mem::PageOffset {
             return inner_offset_;
         }
-        [[nodiscard]] mem::PageList::PageIterator Page() const noexcept {
+        [[nodiscard]] auto Page() const noexcept -> mem::PageList::PageIterator {
             return current_page_;
         }
 
-        [[nodiscard]] size_t GetNodesInPage() const {
+        [[nodiscard]] auto GetNodesInPage() const -> size_t {
             return (mem::kPageSize - sizeof(mem::Page)) / Size();
         }
 
-        [[nodiscard]] ts::ObjectId GetInPageIndex() const {
+        [[nodiscard]] auto GetInPageIndex() const -> ts::ObjectId {
             return (inner_offset_ - sizeof(mem::Page)) / Size();
         }
 
     public:
-        [[nodiscard]] size_t Size() const {
+        [[nodiscard]] auto Size() const -> size_t {
             return sizeof(mem::Magic) + sizeof(ts::ObjectId) + node_class_->Size().value();
         }
 
-        [[nodiscard]] ts::ObjectId Id() {
+        [[nodiscard]] auto Id() -> ts::ObjectId {
             return file_->Read<ts::ObjectId>(GetRealOffset() +
                                              static_cast<mem::Offset>(sizeof(mem::Magic)));
         }
 
-        [[nodiscard]] mem::Offset GetRealOffset() {
+        [[nodiscard]] auto GetRealOffset() -> mem::Offset {
             return mem::GetOffset(current_page_->index_, inner_offset_);
         }
 
     private:
-        void RegenerateEnd() {
+        auto RegenerateEnd() -> void {
             auto back = mem::ReadPage(mem::Page(page_list_.Back()), file_);
             end_offset_ = mem::GetOffset(back.index_, back.initialized_offset_);
         }
 
-        ObjectState State() {
+        auto State() -> ObjectState {
             auto magic = file_->Read<mem::Magic>(GetRealOffset());
             if (magic == magic_) {
                 return ObjectState::kValid;
@@ -80,7 +80,7 @@ public:
             }
         }
 
-        void Advance() {
+        auto Advance() -> void {
             RegenerateEnd();
             do {
                 if (GetRealOffset() >= end_offset_) {
@@ -95,7 +95,7 @@ public:
             } while (State() != ObjectState::kValid);
         }
 
-        void Retreat() {
+        auto Retreat() -> void {
             RegenerateEnd();
             do {
                 if (page_list_.Front() == current_page_->index_ &&
@@ -112,7 +112,7 @@ public:
             } while (State() != ObjectState::kValid);
         }
 
-        void Read() {
+        auto Read() -> void {
             curr_ = util::MakePtr<Node>(magic_, node_class_, file_, GetRealOffset());
         }
 
@@ -145,43 +145,43 @@ public:
                 current_page_ = page_list_.End();
             }
         }
-        NodeIterator& operator++() {
+        auto operator++() -> NodeIterator& {
             Advance();
             return *this;
         }
-        NodeIterator operator++(int) {
+        auto operator++(int) -> NodeIterator {
             auto temp = *this;
             Advance();
             return temp;
         }
 
-        NodeIterator& operator--() {
+        auto operator--() -> NodeIterator& {
             Retreat();
             return *this;
         }
-        NodeIterator operator--(int) {
+        auto operator--(int) -> NodeIterator {
             auto temp = *this;
             Retreat();
             return temp;
         }
 
-        reference operator*() {
+        auto operator*() -> reference {
             Read();
             return *curr_;
         }
-        pointer operator->() {
+        auto operator->() -> pointer {
             Read();
             return curr_;
         }
 
-        bool operator==(const NodeIterator& other) const {
+        auto operator==(const NodeIterator& other) const -> bool {
             if (current_page_ == page_list_.End() && current_page_ == other.current_page_) {
                 return true;
             } else {
                 return current_page_ == other.current_page_ && inner_offset_ == other.inner_offset_;
             }
         }
-        bool operator!=(const NodeIterator& other) const {
+        auto operator!=(const NodeIterator& other) const -> bool {
             return !(*this == other);
         }
     };
@@ -193,12 +193,12 @@ public:
         DEBUG("Val Node storage initialized with class: ", ts::ClassObject(nodes_class).ToString());
     }
 
-    NodeIterator Begin() {
+    auto Begin() -> NodeIterator {
         return NodeIterator(GetHeader().magic_, nodes_class_, alloc_->GetFile(), data_page_list_,
                             data_page_list_.Begin(), sizeof(mem::Page));
     }
 
-    NodeIterator End() {
+    auto End() -> NodeIterator {
         return NodeIterator(GetHeader().magic_, nodes_class_, alloc_->GetFile(), data_page_list_,
                             data_page_list_.IteratorTo(GetBack().index_),
                             GetBack().initialized_offset_);
@@ -206,8 +206,8 @@ public:
 
 private:
     template <ts::ObjectLike O>
-    ts::ObjectId WrtiteIntoFree(mem::Page& back, mem::ClassHeader& header, Node& next_free,
-                                util::Ptr<O>& node) {
+    auto WrtiteIntoFree(mem::Page& back, mem::ClassHeader& header, Node& next_free,
+                        util::Ptr<O>& node) -> ts::ObjectId {
         DEBUG("Back in free ", back);
         auto id = header.ReadNodeId(alloc_->GetFile()).id_;
         DEBUG("Rewrited id: ", id);
@@ -220,7 +220,8 @@ private:
     }
 
     template <ts::ObjectLike O>
-    ts::ObjectId WriteIntoInvalid(mem::Page& back, mem::ClassHeader& header, util::Ptr<O>& node) {
+    auto WriteIntoInvalid(mem::Page& back, mem::ClassHeader& header, util::Ptr<O>& node)
+        -> ts::ObjectId {
         DEBUG("Back in invalid ", back);
         auto id = header.ReadNodeId(alloc_->GetFile()).id_;
         auto metaobject = Node(header.ReadMagic(alloc_->GetFile()).magic_, id, node);
@@ -241,7 +242,7 @@ private:
 
 public:
     template <ts::ObjectLike O>
-    requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(util::Ptr<O>& node) {
+    requires(!std::is_same_v<O, ts::ClassObject>) auto AddNode(util::Ptr<O>& node) -> void {
 
         if (node->Size() + sizeof(mem::Magic) + sizeof(ts::ObjectId) + sizeof(mem::Page) >=
             mem::kPageSize) {
@@ -286,7 +287,7 @@ public:
         { pred(iter) } -> std::convertible_to<bool>;
         {functor(iter)};
     }
-    void VisitNodes(Predicate predicate, Functor functor) {
+    auto VisitNodes(Predicate predicate, Functor functor) -> void {
         DEBUG("Visiting nodes..");
         auto end = End();
         for (auto node_it = Begin(); node_it != end; ++node_it) {
@@ -299,7 +300,7 @@ public:
 
     template <typename Predicate>
     requires std::is_invocable_r_v<bool, Predicate, NodeIterator>
-    void RemoveNodesIf(Predicate predicate) {
+    auto RemoveNodesIf(Predicate predicate) -> void {
         DEBUG("Removing nodes..");
 
         auto end = End();

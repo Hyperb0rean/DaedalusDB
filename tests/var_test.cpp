@@ -20,7 +20,7 @@ TEST(VarNodeStorage, NodeAdditionWithAllocation) {
         db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
     database.AddClass(name);
 
-    for (size_t i = 0; i < 150; ++i) {
+    for ([[maybe_unused]] auto i : std::views::iota(0, 150)) {
         database.AddNode(ts::New<ts::String>(name, "Greg"));
         database.AddNode(ts::New<ts::String>(name, "Gregory"));
         database.AddNode(ts::New<ts::String>(name, "Hyperb0rean"));
@@ -36,7 +36,7 @@ TEST(VarNodeStorage, NodeDeletion) {
         db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
     database.AddClass(name);
 
-    for (size_t i = 0; i < 50; ++i) {
+    for ([[maybe_unused]] auto i : std::views::iota(0, 50)) {
         database.AddNode(ts::New<ts::String>(name, "Greg"));
         database.AddNode(ts::New<ts::String>(name, "Gregory"));
         database.AddNode(ts::New<ts::String>(name, "Hyperb0rean"));
@@ -54,7 +54,7 @@ TEST(VarNodeStorage, NodeDeletionWithDeallocation) {
         db::Database(util::MakePtr<mem::File>("test.data"), db::OpenMode::kWrite, DEBUG_LOGGER);
     database.AddClass(name);
 
-    for (size_t i = 0; i < 150; ++i) {
+    for ([[maybe_unused]] auto i : std::views::iota(0, 150)) {
         database.AddNode(ts::New<ts::String>(name, "Greg"));
         database.AddNode(ts::New<ts::String>(name, "Gregory"));
         if (i > 100) {

@@ -9,7 +9,7 @@ inline const Offset kPageSize = 4096;
 
 enum class PageType { kClassHeader, kData, kFree, kSentinel };
 
-constexpr inline std::string_view PageTypeToString(PageType type) {
+constexpr inline auto PageTypeToString(PageType type) -> std::string_view {
     switch (type) {
         case PageType::kClassHeader:
             return "Class Header";
@@ -37,7 +37,7 @@ public:
     PageIndex previous_page_index_;
     PageIndex next_page_index_;
 
-    Page(PageIndex index)
+    Page(PageIndex index) noexcept
         : type_(PageType::kFree),
           index_(index),
           initialized_offset_(sizeof(Page)),
@@ -47,9 +47,9 @@ public:
           next_page_index_(index_) {
     }
 
-    Page() : Page(0) {
+    Page() noexcept : Page(0) {
     }
-    friend std::ostream& operator<<(std::ostream& os, const Page& page) {
+    friend auto operator<<(std::ostream& os, const Page& page) -> std::ostream& {
         return os << " [ " << page.index_ << " ] type: " << PageTypeToString(page.type_)
                   << ", init: " << page.initialized_offset_ << ", free: " << page.free_offset_
                   << ", size: " << page.actual_size_ << ", prev: " << page.previous_page_index_

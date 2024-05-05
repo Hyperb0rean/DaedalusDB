@@ -14,7 +14,7 @@ protected:
     mem::PageAllocator::Ptr alloc_;
     mem::PageList data_page_list_;
 
-    mem::Page AllocatePage() {
+    auto AllocatePage() -> mem::Page {
         data_page_list_.PushBack(alloc_->AllocatePage());
         DEBUG(mem::Page(data_page_list_.Back()));
         auto page = ReadPage(mem::Page(data_page_list_.Back()), alloc_->GetFile());
@@ -23,20 +23,21 @@ protected:
         return WritePage(page, alloc_->GetFile());
     }
 
-    void FreePage(mem::PageIndex index) {
+    auto FreePage(mem::PageIndex index) -> void {
         data_page_list_.Unlink(index);
         alloc_->FreePage(index);
     }
 
-    mem::Page GetBack() {
+    auto GetBack() -> mem::Page {
         if (data_page_list_.IsEmpty()) {
+            // TODO: probably should throw
             return AllocatePage();
         } else {
             return ReadPage(mem::Page(data_page_list_.Back()), alloc_->GetFile());
         }
     }
 
-    mem::Page GetFront() {
+    auto GetFront() -> mem::Page {
         if (data_page_list_.IsEmpty()) {
             throw error::RuntimeError("No front");
         } else {
@@ -44,7 +45,7 @@ protected:
         }
     }
 
-    mem::ClassHeader GetHeader() {
+    auto GetHeader() -> mem::ClassHeader {
         auto index = class_storage_->FindClass(nodes_class_);
         if (!index.has_value()) {
             throw error::RuntimeError("No such class in class storage");
@@ -62,7 +63,7 @@ public:
                                         GetHeader().GetNodeListSentinelOffset(), LOGGER);
     }
 
-    void Drop() {
+    auto Drop() -> void {
         std::vector<mem::PageIndex> indicies;
         for (auto& page : data_page_list_) {
             DEBUG("Freeing page: ", page);

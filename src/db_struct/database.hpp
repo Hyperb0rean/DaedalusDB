@@ -5,7 +5,6 @@
 #include <set>
 #include <type_traits>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "pattern.hpp"
@@ -28,7 +27,7 @@ class Database {
     mem::PageAllocator::Ptr alloc_;
     ClassStorage::Ptr class_storage_;
 
-    void InitializeSuperblock(OpenMode mode) {
+    auto InitializeSuperblock(OpenMode mode) -> void {
         switch (mode) {
             case OpenMode::kRead: {
                 DEBUG("OpenMode: Read");
@@ -63,8 +62,8 @@ class Database {
     };
     using PatterMatchResultImpl = std::vector<SubPatternResult>;
 
-    bool IsSetNew(std::set<ts::ObjectId>& subpattern_set, ts::ObjectId to,
-                  std::vector<std::set<ts::ObjectId>>& banned) {
+    auto IsSetNew(std::set<ts::ObjectId>& subpattern_set, ts::ObjectId to,
+                  std::vector<std::set<ts::ObjectId>>& banned) -> bool {
         if (subpattern_set.contains(to)) {
             return false;
         }
@@ -78,8 +77,8 @@ class Database {
         return true;
     }
 
-    void MakeCartesianProduct(PatterMatchResultImpl& graphs, PatterMatchResultImpl& edges,
-                              PatterMatchResultImpl& new_result) {
+    auto MakeCartesianProduct(PatterMatchResultImpl& graphs, PatterMatchResultImpl& edges,
+                              PatterMatchResultImpl& new_result) -> void {
         std::vector<std::set<ts::ObjectId>> banned;
         for (auto& subpattern : graphs) {
             for (auto& edge : edges) {
@@ -94,8 +93,8 @@ class Database {
         }
     }
 
-    PatterMatchResultImpl IntersectPatterMatchResults(const PatterMatchResultImpl& graphs,
-                                                      const PatterMatchResultImpl& edges) {
+    auto IntersectPatterMatchResults(const PatterMatchResultImpl& graphs,
+                                     const PatterMatchResultImpl& edges) -> PatterMatchResultImpl {
 
         std::unordered_map<ts::ObjectId, PatterMatchResultImpl> from_graphs_index;
         std::unordered_map<ts::ObjectId, PatterMatchResultImpl> from_edges_index;
@@ -116,7 +115,7 @@ class Database {
         return result;
     }
 
-    std::string GenerateName(Pattern::Ptr& pattern) {
+    auto GenerateName(Pattern::Ptr& pattern) -> std::string {
         std::string result(pattern->GetRootClass()->Name());
         for (auto& end : pattern->GetRelations()) {
             result.append("-").append(end.relation->Name());
@@ -126,7 +125,7 @@ class Database {
 
     // Very heavy operation
     // Definitly needed review and rethinking
-    std::optional<PatterMatchResultImpl> PatternMatchImpl(Pattern::Ptr pattern) {
+    auto PatternMatchImpl(Pattern::Ptr pattern) -> std::optional<PatterMatchResultImpl> {
         std::optional<PatterMatchResultImpl> result = std::nullopt;
         auto& file = alloc_->GetFile();
 
@@ -223,18 +222,18 @@ public:
     };
 
     template <ts::ClassLike C>
-    void AddClass(const util::Ptr<C>& new_class) {
+    auto AddClass(const util::Ptr<C>& new_class) -> void {
         class_storage_->AddClass(new_class);
     }
 
     template <ts::ClassLike C>
-    void RemoveClass(const util::Ptr<C>& node_class) {
+    auto RemoveClass(const util::Ptr<C>& node_class) -> void {
         NodeStorage(node_class, class_storage_, alloc_, LOGGER).Drop();
         class_storage_->RemoveClass(node_class);
     }
 
     template <ts::ClassLike C>
-    bool Contains(const util::Ptr<C>& node_class) {
+    auto Contains(const util::Ptr<C>& node_class) -> bool {
         bool found = 0;
         std::string serialized = node_class->Serialize();
         class_storage_->VisitClasses([&found, &serialized](ts::Class::Ptr stored_class) {
@@ -248,7 +247,7 @@ public:
         return found;
     }
 
-    void PrintClasses(std::ostream& os = std::cout) {
+    auto PrintClasses(std::ostream& os = std::cout) -> void {
         auto& alloc = alloc_;
         class_storage_->VisitClasses([alloc, &os](mem::ClassHeader class_header) -> void {
             ts::ClassObject class_object;
@@ -259,7 +258,7 @@ public:
     }
 
     template <ts::ObjectLike O>
-    requires(!std::is_same_v<O, ts::ClassObject>) void AddNode(util::Ptr<O> node) {
+    requires(!std::is_same_v<O, ts::ClassObject>) auto AddNode(util::Ptr<O> node) -> void {
         if (node->GetClass()->Size().has_value()) {
             ValNodeStorage(node->GetClass(), class_storage_, alloc_, LOGGER).AddNode(node);
         } else {
@@ -268,7 +267,7 @@ public:
     }
 
     template <ts::ClassLike C, typename Predicate>
-    void RemoveNodesIf(const util::Ptr<C>& node_class, Predicate predicate) {
+    auto RemoveNodesIf(const util::Ptr<C>& node_class, Predicate predicate) -> void {
         if (node_class->Size().has_value()) {
             if constexpr (std::is_invocable_r_v<bool, Predicate, ValNodeIterator>) {
                 ValNodeStorage(node_class, class_storage_, alloc_, LOGGER).RemoveNodesIf(predicate);
@@ -292,7 +291,7 @@ public:
     // or future me will implement this.
 
     template <ts::ClassLike C, typename Predicate, typename Functor>
-    void VisitNodes(const util::Ptr<C>& node_class, Predicate predicate, Functor functor) {
+    auto VisitNodes(const util::Ptr<C>& node_class, Predicate predicate, Functor functor) -> void {
         if (node_class->Size().has_value()) {
             if constexpr (std::is_invocable_r_v<bool, Predicate, ValNodeIterator>) {
                 ValNodeStorage(node_class, class_storage_, alloc_, LOGGER)
@@ -312,14 +311,16 @@ public:
     }
 
     template <ts::ClassLike C, typename Predicate>
-    void PrintNodesIf(util::Ptr<C>& node_class, Predicate predicate, std::ostream& os = std::cout) {
+    auto PrintNodesIf(util::Ptr<C>& node_class, Predicate predicate, std::ostream& os = std::cout)
+        -> void {
         auto print = [&os](auto node) { os << node->ToString() << std::endl; };
         VisitNodes(node_class, predicate, print);
     }
 
     template <ts::ObjectLike O, typename Container, ts::ClassLike C, typename Predicate>
-    void CollectNodesIf(util::Ptr<C>& node_class,
-                        std::back_insert_iterator<Container> back_inserter, Predicate predicate) {
+    auto CollectNodesIf(util::Ptr<C>& node_class,
+                        std::back_insert_iterator<Container> back_inserter, Predicate predicate)
+        -> void {
 
         auto insert = [&back_inserter](auto node) {
             *back_inserter++ = (node->template Data<O>());
@@ -330,7 +331,8 @@ public:
     // Very heavy operation
     // Definitly needed review and rethinking
     template <typename Container>
-    void PatternMatch(Pattern::Ptr pattern, std::back_insert_iterator<Container> back_inserter) {
+    auto PatternMatch(Pattern::Ptr pattern, std::back_insert_iterator<Container> back_inserter)
+        -> void {
         auto result_impl = PatternMatchImpl(pattern);
         if (result_impl.has_value()) {
             std::transform(result_impl.value().begin(), result_impl.value().end(), back_inserter,

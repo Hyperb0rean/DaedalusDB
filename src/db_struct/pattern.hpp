@@ -25,25 +25,26 @@ private:
     Relations relations_;
 
 public:
-    Pattern(const ts::Class::Ptr& root) : root_(root) {
+    Pattern(const ts::Class::Ptr& root) noexcept : root_(root) {
     }
 
-    void AddRelation(ts::RelationClass::Ptr relation, std::function<bool(Node, Node)> predicate,
-                     Pattern::Ptr pattern) {
+    auto AddRelation(ts::RelationClass::Ptr relation, std::function<bool(Node, Node)> predicate,
+                     Pattern::Ptr pattern) -> void {
         if (relation->FromClass()->Serialize() == root_->Serialize()) {
             relations_.emplace_back(relation, predicate, pattern);
         }
     }
 
-    void AddRelation(ts::RelationClass::Ptr relation, std::function<bool(Node, Node)> predicate) {
+    auto AddRelation(ts::RelationClass::Ptr relation, std::function<bool(Node, Node)> predicate)
+        -> void {
         AddRelation(relation, predicate, util::MakePtr<Pattern>(relation->ToClass()));
     }
 
-    Relations GetRelations() {
+    auto GetRelations() const noexcept -> const Relations& {
         return relations_;
     }
 
-    ts::Class::Ptr GetRootClass() {
+    auto GetRootClass() noexcept -> ts::Class::Ptr {
         return root_;
     }
 };

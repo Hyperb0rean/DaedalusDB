@@ -17,9 +17,9 @@ private:
     File::Ptr file_;
     PageList free_list_;
 
-    const double load_factor_ = 0.5;
+    static constexpr double kLoadFactor = 0.5;
 
-    PageIndex AllocateNewPage() {
+    auto AllocateNewPage() -> PageIndex {
         if ((file_->GetSize() - kPagetableOffset) % kPageSize != 0) {
             ERROR("Filesize: ", file_->GetSize());
             throw error::StructureError("Unaligned file");
@@ -38,7 +38,7 @@ private:
         return pages_count_ - 1;
     }
 
-    void SwapPages(PageIndex first, PageIndex second) {
+    auto SwapPages(PageIndex first, PageIndex second) -> void {
         if (first > pages_count_ || second > pages_count_) {
             throw error::BadArgument("The page index exceedes pages count: " +
                                      std::to_string(pages_count_));
@@ -63,7 +63,7 @@ private:
 
     // TODO: Need to do better compression but the problem that i need to know from which list
     // swapping occurs, but i can't. I'm tired
-    void Compression() {
+    auto Compression() -> void {
         auto rbegin = free_list_.RBegin();
         auto page_it = pages_count_ - 1;
         size_t count = 0;
@@ -97,15 +97,15 @@ public:
         INFO("FreeList initialized");
     }
 
-    [[nodiscard]] size_t GetPagesCount() const {
+    [[nodiscard]] auto GetPagesCount() const noexcept -> size_t {
         return pages_count_;
     }
 
-    [[nodiscard]] mem::File::Ptr& GetFile() {
+    [[nodiscard]] auto GetFile() -> File::Ptr& {
         return file_;
     }
 
-    mem::PageIndex AllocatePage() {
+    auto AllocatePage() -> PageIndex {
         if (free_list_.IsEmpty()) {
             return AllocateNewPage();
         }
@@ -114,14 +114,14 @@ public:
         return index;
     }
 
-    void FreePage(mem::PageIndex index) {
-        if (free_list_.IteratorTo(index)->type_ == mem::PageType::kFree) {
+    auto FreePage(PageIndex index) -> void {
+        if (free_list_.IteratorTo(index)->type_ == PageType::kFree) {
             throw error::RuntimeError("Double free");
         }
         WritePage(Page(index), file_);
         free_list_.PushBack(index);
 
-        if (static_cast<double>(free_list_.GetPagesCount()) / pages_count_ > load_factor_) {
+        if (static_cast<double>(free_list_.GetPagesCount()) / pages_count_ > kLoadFactor) {
             DEBUG("Compression");
             Compression();
         }

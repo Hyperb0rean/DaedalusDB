@@ -19,26 +19,27 @@ public:
     explicit Primitive(const PrimitiveClass<T>::Ptr& argclass) : value_(T{}) {
         this->class_ = argclass;
     }
-    [[nodiscard]] size_t Size() const override {
+    [[nodiscard]] auto Size() const -> size_t override {
         return sizeof(T);
     }
-    [[nodiscard]] T Value() const {
+    [[nodiscard]] auto Value() const noexcept -> T {
         return value_;
     }
-    [[nodiscard]] T& Value() {
+    [[nodiscard]] auto Value() noexcept -> T& {
         return value_;
     }
-    mem::Offset Write(mem::File::Ptr& file, mem::Offset offset) const override {
+    auto Write(mem::File::Ptr& file, mem::Offset offset) const -> mem::Offset override {
         return file->Write<T>(value_, offset);
     }
-    void Read(mem::File::Ptr& file, mem::Offset offset) override {
+    auto Read(mem::File::Ptr& file, mem::Offset offset) -> void override {
         value_ = file->Read<T>(offset);
     }
-    [[nodiscard]] std::string ToString() const override {
+    [[nodiscard]] auto ToString() const -> std::string override {
         if constexpr (std::is_same_v<bool, T>) {
             return class_->Name() + ": " + (value_ ? "true" : "false");
+        } else {
+            return class_->Name() + ": " + std::to_string(value_);
         }
-        return class_->Name() + ": " + std::to_string(value_);
     }
 };
 }  // namespace ts

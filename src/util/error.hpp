@@ -4,7 +4,7 @@
 #include "time.h"
 
 namespace util {
-inline const std::string GetCurrentTime() {
+inline auto GetCurrentTime() -> const std::string {
     time_t now = time(0);
     struct tm tstruct;
     char buf[80];
@@ -23,7 +23,7 @@ protected:
 public:
     explicit Error(std::string desc) : desc_{util::GetCurrentTime() + " | " + desc} {
     }
-    const char* what() const noexcept override {
+    auto what() const noexcept -> const char* override {
         return desc_.data();
     }
 };

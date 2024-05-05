@@ -13,18 +13,18 @@ public:
 
     explicit PrimitiveClass(std::string name) : Class(std::move(name)) {
     }
-    [[nodiscard]] std::string Serialize() const override {
+    [[nodiscard]] auto Serialize() const -> std::string override {
         std::string result = "_";
-        result += TypeName<T>();
+        result.append(TypeName<T>());
         result.append("@").append(name_).append("_");
         result.erase(std::remove_if(result.begin(), result.end(), isspace), result.end());
         return result;
     }
-    [[nodiscard]] std::optional<size_t> Size() const override {
+    [[nodiscard]] auto Size() const -> std::optional<size_t> override {
         return sizeof(T);
     }
 
-    [[nodiscard]] size_t Count() const override {
+    [[nodiscard]] auto Count() const -> size_t override {
         return 1;
     }
 };

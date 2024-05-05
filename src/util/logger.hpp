@@ -21,7 +21,7 @@ enum class LogLevel {
     kError,
 };
 
-inline std::string_view LevelToString(LogLevel level) noexcept {
+inline auto LevelToString(LogLevel level) noexcept -> std::string_view {
     switch (level) {
         case LogLevel::kDebug:
             return "D";
@@ -37,15 +37,15 @@ inline std::string_view LevelToString(LogLevel level) noexcept {
 
 class Logger {
 protected:
-    virtual void LogImpl(LogLevel, PrintableAny&&) const = 0;
-    virtual void LogHeader(LogLevel) const = 0;
-    virtual void LogFooter(LogLevel) const = 0;
+    virtual auto LogImpl(LogLevel, PrintableAny&&) const -> void = 0;
+    virtual auto LogHeader(LogLevel) const -> void = 0;
+    virtual auto LogFooter(LogLevel) const -> void = 0;
 
 public:
     Logger() = default;
 
     template <typename... Args>
-    void Log(LogLevel level, Args&&... args) const {
+    auto Log(LogLevel level, Args&&... args) const -> void {
         LogHeader(level);
         (LogImpl(level, PrintableAny(std::forward<Args>(args))), ...);
         LogFooter(level);
@@ -68,15 +68,15 @@ public:
         : cout_(cout), cerr_(cerr) {
     }
 
-    void LogFooter([[maybe_unused]] LogLevel level) const override {
+    auto LogFooter([[maybe_unused]] LogLevel level) const -> void override {
         cout_ << std::endl;
     }
 
-    void LogHeader(LogLevel level) const override {
+    auto LogHeader(LogLevel level) const -> void override {
         cout_ << GetCurrentTime() << " | " << LevelToString(level) << " | ";
     }
 
-    void LogImpl([[maybe_unused]] LogLevel level, PrintableAny&& data) const override {
+    auto LogImpl([[maybe_unused]] LogLevel level, PrintableAny&& data) const -> void override {
         cout_ << data;
     }
 };
@@ -89,19 +89,19 @@ public:
         : DebugLogger(cout, cerr) {
     }
 
-    void LogFooter(LogLevel level) const override {
+    auto LogFooter(LogLevel level) const -> void override {
         if (level != LogLevel::kDebug) {
             cout_ << std::endl;
         }
     }
 
-    void LogHeader(LogLevel level) const override {
+    auto LogHeader(LogLevel level) const -> void override {
         if (level != LogLevel::kDebug) {
             cout_ << GetCurrentTime() << " | " << LevelToString(level) << " | ";
         }
     }
 
-    void LogImpl(LogLevel level, PrintableAny&& data) const override {
+    auto LogImpl(LogLevel level, PrintableAny&& data) const -> void override {
         if (level != LogLevel::kDebug) {
             cout_ << data;
         }
@@ -118,14 +118,14 @@ public:
     EmptyLogger() {
     }
 
-    void LogFooter([[maybe_unused]] LogLevel level) const override {
+    auto LogFooter([[maybe_unused]] LogLevel level) const -> void override {
     }
 
-    void LogHeader([[maybe_unused]] LogLevel level) const override {
+    auto LogHeader([[maybe_unused]] LogLevel level) const -> void override {
     }
 
-    void LogImpl([[maybe_unused]] LogLevel level,
-                 [[maybe_unused]] PrintableAny&& data) const override {
+    auto LogImpl([[maybe_unused]] LogLevel level, [[maybe_unused]] PrintableAny&& data) const
+        -> void override {
     }
 };
 

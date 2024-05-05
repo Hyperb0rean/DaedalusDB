@@ -191,15 +191,15 @@ TEST(Relation, Star) {
     database->AddClass(point);
     database->AddClass(blue);
 
-    for (int i = 0; i < 70; ++i) {
+    for (auto i : std::views::iota(0, 70)) {
         database->AddNode(ts::New<ts::Primitive<int>>(point, i));
     }
-    for (int i = 1; i < 70; ++i) {
+    for (auto i : std::views::iota(0, 70)) {
         database->AddNode(ts::New<ts::Relation>(blue, ID(0), ID(i)));
         database->AddNode(ts::New<ts::Relation>(blue, ID(i), ID(0)));
     }
     auto star = util::MakePtr<db::Pattern>(point);
-    for (int i = 0; i < 10; ++i) {
+    for ([[maybe_unused]] auto i : std::views::iota(0, 10)) {
         star->AddRelation(blue, [](db::Node a, db::Node b) {
             return a.Data<ts::Primitive<int>>()->Value() == 0 &&
                    b.Data<ts::Primitive<int>>()->Value() >= 50;
@@ -225,11 +225,11 @@ TEST(Relation, Stress) {
     database->AddClass(blue);
     database->AddClass(red);
 
-    for (int i = 0; i < 60; ++i) {
+    for (auto i : std::views::iota(0, 60)) {
         database->AddNode(ts::New<ts::Primitive<int>>(point, i));
     }
-    for (int i = 0; i < 60; ++i) {
-        for (int j = 0; j < i; ++j) {
+    for (auto i : std::views::iota(0, 60)) {
+        for (auto j : std::views::iota(0, i)) {
             auto color = rand() % 2 ? blue : red;
             database->AddNode(ts::New<ts::Relation>(color, ID(j), ID(i)));
             database->AddNode(ts::New<ts::Relation>(color, ID(i), ID(j)));
@@ -237,7 +237,7 @@ TEST(Relation, Stress) {
     }
     auto edge = util::MakePtr<db::Pattern>(point);
     auto prev = edge;
-    for (int i = 0; i < 2; ++i) {
+    for ([[maybe_unused]] auto i : std::views::iota(0, 2)) {
         auto next = util::MakePtr<db::Pattern>(point);
         prev->AddRelation(blue, db::kAll, next);
         prev = next;

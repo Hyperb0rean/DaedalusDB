@@ -13,7 +13,7 @@ RUN apt-get update -y && apt-get install -y \
     make \
     musl-dev \
     ncurses-dev \
-    python2 \
+    python3 \
     lsb-release \
     wget \
     software-properties-common \

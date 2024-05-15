@@ -84,12 +84,6 @@ TEST(TypeSystem, ReadNew) {
 TEST(TypeSystem, TypeDump) {
     auto file = util::MakePtr<mem::File>("test.data");
     file->Clear();
-    // old syntax
-    // auto person_class = util::MakePtr<ts::StructClass>("person");
-    // person_class->AddField(ts::StringClass("name"));
-    // person_class->AddField(ts::StringClass("surname"));
-    // person_class->AddField(ts::PrimitiveClass<int>("age"));
-    // person_class->AddField(ts::PrimitiveClass<uint64_t>("money"));
 
     auto person_class = ts::NewClass<ts::StructClass>(
         "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),

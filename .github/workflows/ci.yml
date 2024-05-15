@@ -1,10 +1,16 @@
 name: CI
 
 on:
+  push:
+    branches: [ "master" ]
+    paths-ignore:
+      - '**/README.md'
+      - '**/LICENSE'
   pull_request:
-    types: [opened, edited]
-    branches:
-      - main
+    branches: [ "master" ]
+    paths-ignore:
+      - '**/README.md'
+      - '**/LICENSE'
 
 jobs:
   build:

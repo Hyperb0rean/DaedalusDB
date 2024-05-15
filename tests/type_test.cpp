@@ -100,6 +100,7 @@ TEST(TypeSystem, TypeDump) {
 }
 
 TEST(TypeSystem, Metadata) {
+    // junk
     auto person_class = ts::NewClass<ts::StructClass>(
         "person", ts::NewClass<ts::StringClass>("name"), ts::NewClass<ts::StringClass>("surname"),
         ts::NewClass<ts::PrimitiveClass<int>>("age"),
